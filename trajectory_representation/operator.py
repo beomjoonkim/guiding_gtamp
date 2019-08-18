@@ -88,8 +88,12 @@ class Operator:
         for k, v in zip(operator.discrete_parameters.keys(), operator.discrete_parameters.values()):
             self.discrete_parameters[other_op_type+'_'+k] = v
 
-        for k, v in zip(operator.continuous_parameters.keys(), operator.continuous_parameters.values()):
-            self.continuous_parameters[other_op_type+'_'+k] = v
+        if 'pick' in curr_op_type:
+            self.continuous_parameters['pick'] = {k: v for k, v in self.continuous_parameters.iteritems()}
+            self.continuous_parameters['place'] = operator.continuous_parameters
+
+        #for k, v in zip(operator.continuous_parameters.keys(), operator.continuous_parameters.values()):
+        #    self.continuous_parameters[other_op_type+'_'+k] = v
 
         return self
 

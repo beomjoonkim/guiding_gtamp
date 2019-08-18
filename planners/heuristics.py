@@ -15,6 +15,43 @@ def compute_hcount(state, problem_env):
             if not is_goal_region_contains_entity:
                 potential_obj_to_move_queue.put(entity)
 
+    object_names = [o for o in problem_env.entity_names if 'region' not in o]
+    n_occludes_pre = 0
+    n_occludes_manip = 0
+    n_occludes = 0
+    while not potential_obj_to_move_queue.empty():
+        obj_to_move = potential_obj_to_move_queue.get()
+        if obj_to_move not in objects_to_move:
+            objects_to_move.add(obj_to_move)
+            for o2 in object_names:
+                # OccludesPre
+                is_o2_in_way_of_obj_to_move = state.binary_edges[(o2, obj_to_move)][1]
+
+                if is_o2_in_way_of_obj_to_move:
+                    n_occludes_pre += 1
+
+                goal_region = 'home_region'
+                original_obj_region = 'loading_region'
+                is_o2_in_way_of_obj_to_move_to_region = False
+                if obj_to_move in state.goal_entities:
+                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)][0]
+                else:
+                    pass
+                    #is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)]
+
+                if is_o2_in_way_of_obj_to_move_to_region:
+                    n_occludes_manip += 1
+
+                if is_o2_in_way_of_obj_to_move or is_o2_in_way_of_obj_to_move_to_region:
+                    n_occludes += 1
+                    print o2
+                    potential_obj_to_move_queue.put(o2)
+
+    print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
+    print objects_to_move
+    #import pdb;pdb.set_trace()
+
+    """
     # Count the objects that need to be moved recursively
     object_names = [o for o in problem_env.entity_names if 'region' not in o]
     while not potential_obj_to_move_queue.empty():
@@ -31,11 +68,15 @@ def compute_hcount(state, problem_env):
                     if state.ternary_edges[(obj_to_move, o2, r)][0]:
                         print obj_to_move, o2, r, state.ternary_edges[(obj_to_move, o2, r)]
 
+                goal_region = 'home_region'
+                original_obj_region = 'loading_region'
                 if obj_to_move in state.goal_entities:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, 'home_region')]
+                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)]
                 else:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, 'loading_region')]
+                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)]
+
                 if is_o2_in_way_of_obj_to_move or is_o2_in_way_of_obj_to_move_to_region:
                     potential_obj_to_move_queue.put(o2)
+    """
 
     return -len(objects_to_move)
