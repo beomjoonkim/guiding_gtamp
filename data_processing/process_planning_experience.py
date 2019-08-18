@@ -3,13 +3,22 @@ from trajectory_representation.trajectory import Trajectory
 import pickle
 import os
 import argparse
+import socket
+
+
+hostname = socket.gethostname()
+if hostname == 'dell-XPS-15-9560' or hostname == 'phaedra' or hostname == 'shakey' or hostname == 'lab':
+    ROOTDIR = './'
+else:
+    ROOTDIR = '/data/public/rw/pass.port/tamp_q_results/'
+
 
 
 def get_save_dir(parameters):
     if parameters.scenario is None:
-        save_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/'
+        save_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/'
     else:
-        save_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/special_cases/'
+        save_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/special_cases/'
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     return save_dir
@@ -17,9 +26,9 @@ def get_save_dir(parameters):
 
 def get_raw_dir(parameters):
     if parameters.scenario is None:
-        raw_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+        raw_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     else:
-        raw_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+        raw_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     return raw_dir
 
 

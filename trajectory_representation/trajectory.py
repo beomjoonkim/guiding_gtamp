@@ -145,7 +145,7 @@ class Trajectory:
         paps_used = self.get_pap_used_in_plan(plan)
         pick_used = paps_used[0]
         place_used = paps_used[1]
-        reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region')
+        reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region', 3*8)
         utils.viewer()
         state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
         for action_idx, action in enumerate(plan):
@@ -170,7 +170,7 @@ class Trajectory:
             state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, action_idx)
 
             # execute the pap action
-            reward = reward_function(parent_state, state, parent_action)
+            reward = reward_function(parent_state, state, parent_action, action_idx)
             print "The reward is ", reward
 
             self.add_sar_tuples(parent_state, pap_action, reward)
