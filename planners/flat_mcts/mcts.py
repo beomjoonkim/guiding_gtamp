@@ -27,42 +27,42 @@ if hostname == 'dell-XPS-15-9560':
 
 
 class MCTS:
-    def __init__(self, widening_parameter, ucb_parameter, n_feasibility_checks, environment,
-                 depth_limit, discount_rate, check_reachability, use_progressive_widening, use_ucb,
-                 learned_q_function, n_motion_plan_trials, goal_entities):
-        self.widening_parameter = widening_parameter
-        self.ucb_parameter = ucb_parameter
-        self.time_limit = np.inf
-        self.check_reachability = check_reachability
-        self.discount_rate = discount_rate
-        self.n_motion_plan_trials = n_motion_plan_trials
+    def __init__(self, parameters, problem_env, goal_entities, learned_q):
+        # MCTS parameters
+        self.widening_parameter = parameters.widening_parameter
+        self.ucb_parameter = parameters.ucb_parameter
+        self.time_limit = parameters.timelimit
+        self.n_motion_plan_trials = parameters.n_motion_plan_trials
+        self.use_ucb = parameters.use_ucb
+        self.use_progressive_widening = parameters.pw
+        self.n_feasibility_checks = parameters.n_feasibility_checks
+        self.use_learned_q = parameters.use_learned_q
+        self.learned_q_function = learned_q
+        self.use_shaped_reward = parameters.use_shaped_reward
+        self.planning_horizon = parameters.planning_horizon
 
-        self.problem_env = environment
-        self.depth_limit = depth_limit
+        # Hard-coded params
+        self.check_reachability = True
+        self.discount_rate = 1.0
+
+        # Environment setup
+        self.problem_env = problem_env
         self.env = self.problem_env.env
         self.robot = self.problem_env.robot
+
+        # MCTS initialization
         self.s0_node = None
         self.tree = MCTSTree(self.ucb_parameter)
         self.best_leaf_node = None
-        self.use_ucb = use_ucb
-        self.use_progressive_widening = use_progressive_widening
         self.goal_entities = goal_entities
 
-        # logging purpose
+        # Logging purpose
         self.search_time_to_reward = []
         self.reward_lists = []
         self.progress_list = []
 
         self.found_solution = False
-        self.goal_reward = 2
-        self.n_feasibility_checks = n_feasibility_checks
         self.swept_volume_constraint = None
-
-        self.use_learned_q = False
-        self.learned_q_function = learned_q_function
-        if learned_q_function is not None:
-            self.use_learned_q = True
-            self.learned_q_function = learned_q_function
 
     def load_pickled_tree(self, fname=None):
         if fname is None:
@@ -102,45 +102,49 @@ class MCTS:
             elif operator_skeleton.type.find('place') != -1:
                 return UniformGenerator(operator_skeleton, self.problem_env, self.swept_volume_constraint)
 
+    def compute_state(self, parent_node, parent_action):
+        if self.problem_env.is_goal_reached():
+            state = parent_node.state
+        else:
+            if parent_node is None:
+                parent_state = None
+            else:
+                parent_state = parent_node.state
+            # where is the parent state?
+            if self.problem_env.name.find('one_arm') != -1:
+                state = OneArmPaPState(self.problem_env,
+                                       parent_state=parent_state,
+                                       parent_action=parent_action,
+                                       goal_entities=self.goal_entities)
+            else:
+                if parent_node is None:
+                    idx = -1
+                else:
+                    idx = parent_node.idx
+
+                fname = './tmp_%d.pkl' % idx
+                if os.path.isfile(fname):
+                    state = pickle.load(open(fname, 'r'))
+                    state.make_plannable(self.problem_env)
+                else:
+                    state = ShortestPathPaPState(self.problem_env,  # what's this?
+                                                 parent_state=parent_state,
+                                                 parent_action=parent_action,
+                                                 goal_entities=self.goal_entities, planner='mcts')
+                    state.make_pklable()
+                    pickle.dump(state, open(fname, 'wb'))
+                    state.make_plannable(self.problem_env)
+        return state
+
     def get_current_state(self, parent_node, parent_action, is_parent_action_infeasible):
         # this needs to be factored
         # why do I need a parent node? Can I just get away with parent state?
         is_operator_skeleton_node = (parent_node is None) or (not parent_node.is_operator_skeleton_node)
-        if self.use_learned_q:
+        if self.use_learned_q or self.use_shaped_reward:
             if is_parent_action_infeasible:
                 state = None
             elif is_operator_skeleton_node:
-                if self.problem_env.is_goal_reached():
-                    state = parent_node.state
-                else:
-                    if parent_node is None:
-                        parent_state = None
-                    else:
-                        parent_state = parent_node.state
-                    # where is the parent state?
-                    if self.problem_env.name.find('one_arm') != -1:
-                        state = OneArmPaPState(self.problem_env,
-                                               parent_state=parent_state,
-                                               parent_action=parent_action,
-                                               goal_entities=self.goal_entities)
-                    else:
-                        if parent_node is None:
-                            idx = -1
-                        else:
-                            idx = parent_node.idx
-
-                        fname = './tmp_%d.pkl' % idx
-                        if os.path.isfile(fname):
-                            state = pickle.load(open(fname, 'r'))
-                            state.make_plannable(self.problem_env)
-                        else:
-                            state = ShortestPathPaPState(self.problem_env,  # what's this?
-                                                         parent_state=parent_state,
-                                                         parent_action=parent_action,
-                                                         goal_entities=self.goal_entities, planner='mcts')
-                            state.make_pklable()
-                            pickle.dump(state, open(fname, 'wb'))
-                            state.make_plannable(self.problem_env)
+                state = self.compute_state(parent_node, parent_action)
             else:
                 state = parent_node.state
         else:
@@ -158,7 +162,6 @@ class MCTS:
         if is_operator_skeleton_node:
             applicable_op_skeletons = self.problem_env.get_applicable_ops(parent_action)
             if self.use_learned_q:
-                # todo number of parameters to node instantiation is getting out my hand.
                 node = PaPDiscreteTreeNodeWithLearnedQ(state,
                                                        self.ucb_parameter,
                                                        depth,
@@ -234,7 +237,7 @@ class MCTS:
         if socket.gethostname() == 'dell-XPS-15-9560':
             write_dot_file(self.tree, iteration, '', node_to_search_from)
 
-    def log_performance(self, time_to_search, iteration, ):
+    def log_performance(self, time_to_search, iteration):
         best_traj_rwd, progress, best_node = self.tree.get_best_trajectory_sum_rewards_and_node(self.discount_rate)
         self.search_time_to_reward.append([time_to_search, iteration, best_traj_rwd, self.found_solution])
         self.progress_list.append(progress)
@@ -353,15 +356,15 @@ class MCTS:
         curr_node.reward = reward
 
     def simulate(self, curr_node, node_to_search_from, depth, new_traj):
-        if self.problem_env.is_goal_reached():
+        if self.problem_env.reward_function.is_goal_reached():
             if not curr_node.is_goal_and_already_visited:
                 self.found_solution = True
                 curr_node.is_goal_node = True
-                print "Solution found, returning the goal reward", self.goal_reward
-                self.update_goal_node_statistics(curr_node, self.goal_reward)
-            return self.goal_reward
+                print "Solution found, returning the goal reward", self.problem_env.reward_function.goal_reward
+                self.update_goal_node_statistics(curr_node, self.problem_env.reward_function.goal_reward)
+            return self.problem_env.reward_function.goal_reward
 
-        if depth == self.depth_limit:
+        if depth == self.planning_horizon:
             # would it ever get here? why does it not satisfy the goal?
             print "Depth limit reached"
             return 0
@@ -376,8 +379,7 @@ class MCTS:
         if not curr_node.is_action_tried(action):
             next_node = self.create_node(action, depth + 1, curr_node, not is_action_feasible)
             self.tree.add_node(next_node, action, curr_node)
-
-            reward = self.problem_env.reward_function(curr_node.state, next_node.state, action)
+            reward = self.problem_env.reward_function(curr_node.state, next_node.state, action, depth)
             next_node.parent_action_reward = reward
             next_node.sum_ancestor_action_rewards = next_node.parent.sum_ancestor_action_rewards + reward
         else:

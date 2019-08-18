@@ -56,6 +56,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-dont_use_learned_q', action='store_false', default=True)
     parser.add_argument('-n_feasibility_checks', type=int, default=200)
     parser.add_argument('-n_motion_plan_trials', type=int, default=3)
+    parser.add_argument('-planning_horizon', type=int, default=3*8)
 
     # Learning-related parameters
     parser.add_argument('-train_seed', type=int, default=0)
@@ -64,35 +65,19 @@ def parse_mover_problem_parameters():
 
     # MCTS parameters
     parser.add_argument('-n_switch', type=int, default=5)
-    parser.add_argument('-uct', type=float, default=0.1)
-    parser.add_argument('-w', type=float, default=3)
+    parser.add_argument('-ucb_parameter', type=float, default=0.1)
+    parser.add_argument('-widening_parameter', type=float, default=3) # number of re-evals
     parser.add_argument('-v', action='store_true', default=False)
     parser.add_argument('-debug', action='store_true', default=False)
     parser.add_argument('-mcts_iter', type=int, default=1000)
     parser.add_argument('-use_learned_q', action='store_true', default=False)
+    parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-use_ucb', action='store_true', default=False)
     parser.add_argument('-pw', action='store_true', default=False)
-    parser.add_argument('-f', action='store_true', default=False)
+    parser.add_argument('-f', action='store_true', default=False) # what was this?
 
     parameters = parser.parse_args()
     return parameters
-
-
-def instantiate_mcts(parameters, problem_env, goal_entities, learned_q):
-    planner = MCTS(parameters.w,
-                   parameters.uct,
-                   parameters.n_feasibility_checks,
-                   problem_env,
-                   depth_limit=11,
-                   discount_rate=1,
-                   check_reachability=True,
-                   use_progressive_widening=parameters.pw,
-                   use_ucb=parameters.use_ucb,
-                   learned_q_function=learned_q,
-                   n_motion_plan_trials=parameters.n_motion_plan_trials,
-                   goal_entities=goal_entities)
-
-    return planner
 
 
 def set_seed(seed):
@@ -160,9 +145,10 @@ def main():
     goal_object_names = [obj.GetName() for obj in problem_env.objects[:parameters.n_objs_pack]]
     goal_region_name = [problem_env.regions['home_region'].name]
     goal_entities = goal_object_names + goal_region_name
-    #reward_function = GenericRewardFunction(problem_env, goal_object_names, goal_region_name[0])
-    reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0])
-
+    if parameters.use_shaped_reward:
+        reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0], parameters.planning_horizon)
+    else:
+        reward_function = GenericRewardFunction(problem_env, goal_object_names, goal_region_name[0])
 
     motion_planner = OperatorBaseMotionPlanner(problem_env, 'prm')
 
@@ -175,7 +161,7 @@ def main():
         learned_q = None
 
     if parameters.planner == 'mcts':
-        planner = instantiate_mcts(parameters, problem_env, goal_entities, learned_q)
+        planner = MCTS(parameters, problem_env, goal_entities, learned_q)
     else:
         raise NotImplementedError
 
