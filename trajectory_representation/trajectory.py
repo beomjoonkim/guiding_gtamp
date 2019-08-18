@@ -126,8 +126,8 @@ class Trajectory:
             state.make_pklable()  # removing openrave files to pkl
             pickle.dump(state, open(fstate, 'wb'))
             state.make_plannable(problem_env)
-
         # End of debugging
+
         return state
 
     def add_trajectory(self, plan, goal_entities):
