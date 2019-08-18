@@ -29,8 +29,13 @@ class GenericRewardFunction(AbstractRewardFunction):
 
     def is_goal_reached(self):
         # todo udpate self.achieved?
-        for obj in self.goal_objects:
-            if not (obj, self.goal_region) in self.achieved:
+        if not isinstance(self.goal_region, str):
+            assert False, "We only support single goal region"
+        goal_region_name = self.goal_region
+        goal_region = self.problem_env.regions[goal_region_name]
+        goal_objects = [self.problem_env.env.GetKinBody(obj_name) for obj_name in self.goal_objects]
+        for obj in goal_objects:
+            if not goal_region.contains(obj.ComputeAABB()):
                 return False
         return True
 

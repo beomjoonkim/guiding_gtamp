@@ -12,10 +12,11 @@ class ShapedRewardFunction(GenericRewardFunction):
             return 0
         else:
             if self.is_goal_reached():
-                return 1
+                return 10
             elif next_state is None:
                 return self.infeasible_reward
             else:
+                #state = PaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
                 true_reward = GenericRewardFunction.__call__(self, curr_state, next_state, action)
                 if curr_state is None:
                     return true_reward
@@ -24,9 +25,7 @@ class ShapedRewardFunction(GenericRewardFunction):
                     potential_next = self.potential_function(next_state)
 
                     print potential_curr, potential_next
-                    shaping_val = potential_next - potential_curr
-                    import pdb;pdb.set_trace()
+                    shaping_val = (potential_next - potential_curr)
                     return true_reward + shaping_val
-
 
 

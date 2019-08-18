@@ -13,6 +13,7 @@ import numpy as np
 import random
 import pickle
 import copy
+import os
 
 
 class Trajectory:
@@ -111,6 +112,24 @@ class Trajectory:
                 return False
         return True
 
+    def compute_state(self, parent_state, parent_action, goal_entities, problem_env, paps_used, idx):
+        # Debugging purpose
+        fstate = './%s_pidx_%d_node_idx_%d_state.pkl' % (self.filename, self.problem_idx, idx)
+        if os.path.isfile(fstate):
+            state = pickle.load(open(fstate, 'r'))
+            state.problem_env = problem_env
+            state.make_plannable(problem_env)
+        else:
+            if parent_action is not None:
+                parent_action.discrete_parameters['two_arm_place_object'] = parent_action.discrete_parameters['object']
+            state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
+            state.make_pklable()  # removing openrave files to pkl
+            pickle.dump(state, open(fstate, 'wb'))
+            state.make_plannable(problem_env)
+
+        # End of debugging
+        return state
+
     def add_trajectory(self, plan, goal_entities):
         print "Problem idx", self.problem_idx
         self.set_seed(self.problem_idx)
@@ -126,66 +145,36 @@ class Trajectory:
         paps_used = self.get_pap_used_in_plan(plan)
         pick_used = paps_used[0]
         place_used = paps_used[1]
-        #openrave_env.SetViewer('qtcoin')
-        import os
         reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region')
-
+        utils.viewer()
+        state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
         for action_idx, action in enumerate(plan):
-            # I need somehow "merge" the pick and place actions
-            if action.type.find('place') != -1:
-                import pdb;pdb.set_trace()
-                action.execute()
-                print "Executed", action.discrete_parameters
-                import pdb;pdb.set_trace()
+            if 'place' in action.type:
                 continue
 
-            # Debugging purpose
-            fstate = './%s_node_idx_%d_state.pkl' % (self.filename, idx)
-            if os.path.isfile(fstate):
-                state = pickle.load(open(fstate, 'r'))
-                state.problem_env = problem_env
-                state.make_plannable(problem_env)
-            else:
-                #state = PaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
-                state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
-                #state = MinimiumConstraintPaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
-                state.make_pklable()  # removing openrave files to pkl
-                pickle.dump(state, open(fstate, 'wb'))
-                state.make_plannable(problem_env)
-            # End of debugging
-            # Use shortest pap state?
-            if parent_state is None:
-                reward = 0
-            else:
-                reward = reward_function(parent_state, state, parent_action)
-            print "The reward is ", reward
-
-            for obj in pick_used:
-                q_goal_eq_last_config_on_path_to_obj \
-                    = pick_used[obj].continuous_parameters['q_goal'] == state.pick_in_way.mc_path_to_entity[obj][-1]
-                assert np.all(q_goal_eq_last_config_on_path_to_obj)
-
-            import pdb;pdb.set_trace()
             target_obj = openrave_env.GetKinBody(action.discrete_parameters['object'])
             color_before = get_color(target_obj)
             set_color(target_obj, [1, 1, 1])
             set_color(target_obj, color_before)
-
             pick_used, place_used = self.delete_moved_objects_from_pap_data(pick_used, place_used, target_obj)
             paps_used = [pick_used, place_used]
 
+            action.is_skeleton = False
             pap_action = copy.deepcopy(action)
             pap_action = pap_action.merge_operators(plan[action_idx + 1])
-            self.add_sar_tuples(state, pap_action, reward)
+            pap_action.is_skeleton = False
+            pap_action.execute()
 
-            import pdb;pdb.set_trace()
-            action.execute()
-            print "Executed", action.discrete_parameters
-            import pdb;pdb.set_trace()
-            idx += 1
             parent_state = state
-            parent_action = action
+            parent_action = pap_action
+            state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, action_idx)
 
+            # execute the pap action
+            reward = reward_function(parent_state, state, parent_action)
+            print "The reward is ", reward
+
+            self.add_sar_tuples(parent_state, pap_action, reward)
+            print "Executed", action.discrete_parameters
 
         self.add_state_prime()
         openrave_env.Destroy()
