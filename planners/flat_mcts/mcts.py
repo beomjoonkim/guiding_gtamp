@@ -96,6 +96,7 @@ class MCTS:
         is_pap = operator_skeleton.type.find('pick') != -1 and operator_skeleton.type.find('place') != -1
         if is_pap:
             return PaPUniformGenerator(operator_skeleton, self.problem_env, None)
+            # todo here, use VOO
         else:
             if operator_skeleton.type.find('pick') != -1:
                 return UniformGenerator(operator_skeleton, self.problem_env, None)
@@ -439,7 +440,7 @@ class MCTS:
                 current_collides = node.state.current_collides
 
             current_holding_collides = None
-            feasible_param = node.sampling_agent.sample_next_point(node.operator_skeleton,
+            feasible_param = node.sampling_agent.sample_next_point(node,
                                                                    self.n_feasibility_checks,
                                                                    self.n_motion_plan_trials,
                                                                    current_collides,
