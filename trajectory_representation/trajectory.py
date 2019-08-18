@@ -102,6 +102,15 @@ class Trajectory:
                             import pdb;pdb.set_trace()
                         # did I use the path given in the path?
 
+    @staticmethod
+    def is_same_motion(path1, path2):
+        if len(path1) != len(path2):
+            return False
+        for c1, c2 in zip(path1, path2):
+            if not np.all(c1 == c2):
+                return False
+        return True
+
     def add_trajectory(self, plan, goal_entities):
         print "Problem idx", self.problem_idx
         self.set_seed(self.problem_idx)
@@ -138,7 +147,6 @@ class Trajectory:
                 state.make_plannable(problem_env)
             else:
                 #state = PaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
-                import pdb;pdb.set_trace()
                 state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
                 #state = MinimiumConstraintPaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
                 state.make_pklable()  # removing openrave files to pkl
@@ -153,17 +161,11 @@ class Trajectory:
             print "The reward is ", reward
 
             for obj in pick_used:
-                q_goal_eq_last_config_on_path_to_obj = pick_used[obj].continuous_parameters['q_goal'] == state.pick_in_way.mc_path_to_entity[obj][-1]
+                q_goal_eq_last_config_on_path_to_obj \
+                    = pick_used[obj].continuous_parameters['q_goal'] == state.pick_in_way.mc_path_to_entity[obj][-1]
                 assert np.all(q_goal_eq_last_config_on_path_to_obj)
 
             import pdb;pdb.set_trace()
-            for obj_region_key in place_used:
-                path1 = place_used[obj_region_key].low_level_motion[0]
-                path2 = state.place_in_way.mc_path_to_entity[obj_region_key][0]
-                assert len(path1) == len(path2)
-                for c1, c2 in zip(path1, path2):
-                    assert np.all(c1 == c2)
-
             target_obj = openrave_env.GetKinBody(action.discrete_parameters['object'])
             color_before = get_color(target_obj)
             set_color(target_obj, [1, 1, 1])
@@ -181,6 +183,8 @@ class Trajectory:
             print "Executed", action.discrete_parameters
             import pdb;pdb.set_trace()
             idx += 1
+            parent_state = state
+            parent_action = action
 
 
         self.add_state_prime()

@@ -19,10 +19,9 @@ from manipulation.bodies.bodies import set_color
 class MinimiumConstraintPaPState(State):
     def __init__(self, problem_env, goal_entities, parent_state=None, parent_action=None, paps_used_in_data=None,
                  use_shortest_path=False):
-        # todo rewrite this later
         self.state_saver = CustomStateSaver(problem_env.env)
         self.problem_env = problem_env
-        self.parent_state = parent_state  # used to update the node features
+        self.parent_state = parent_state
         self.goal_entities = goal_entities
 
         # raw variables
@@ -40,6 +39,7 @@ class MinimiumConstraintPaPState(State):
             self.collides = None
             self.current_collides = None
 
+        # adopt from parent predicate evaluations
         self.parent_ternary_predicates = {}
         self.parent_binary_predicates = {}
         if parent_state is not None and paps_used_in_data is None:
@@ -60,56 +60,22 @@ class MinimiumConstraintPaPState(State):
                 for (a, b), v in parent_state.binary_edges.items()
                 if a != moved_obj and b != moved_obj
             }
-        else:
-            moved_obj = None
 
         self.use_shortest_path = use_shortest_path and paps_used_in_data is None
-        if self.use_shortest_path:
-            def get_pick_poses(object):
-                if parent_state is not None and moved_obj != object.GetName():
-                    return parent_state.pick_used[object.GetName()]
-                operator_skeleton = Operator('two_arm_pick', {'object': object})
-                generator = UniformGenerator(operator_skeleton, self.problem_env, None)
-                # we should disable objects, because we are getting shortest path that ignors all collisions anyways
-                self.problem_env.disable_objects_in_region('entire_region')
-                op_cont_params, _ = generator.sample_feasible_op_parameters(operator_skeleton,
-                                                                            n_iter=300,
-                                                                            n_parameters_to_try_motion_planning=5)
-                self.problem_env.enable_objects_in_region('entire_region')
-                motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
 
-                try:
-                    assert len(motion_plan_goals) > 0
-                except:
-                    import pdb;pdb.set_trace()
-
-                operator_skeleton.continuous_parameters['q_goal'] = motion_plan_goals  # to make it consistent with Dpl
-                return operator_skeleton
-
-            problem_env.enable_objects_in_region('entire_region')
-            self.pick_used = {
-                object.GetName(): get_pick_poses(object) for object in problem_env.objects
-            }
+        self.cached_place_paths = {}
+        if paps_used_in_data is None:
+            self.pick_used = {}
             self.place_used = {}
-            self.cached_pick_paths = {}
-            self.cached_place_paths = {}
-            self.set_cached_pick_paths(parent_state, moved_obj)
-            self.set_cached_place_paths(parent_state, moved_obj)
         else:
-            self.cached_place_paths = {}
-            if paps_used_in_data is None:
-                self.pick_used = {}
-                self.place_used = {}
-            else:
-                self.pick_used = paps_used_in_data[0]
-                self.place_used = paps_used_in_data[1]
+            self.pick_used = paps_used_in_data[0]
+            self.place_used = paps_used_in_data[1]
 
         self.mc_pick_path = {}
         self.mc_place_path = {}
         self.reachable_entities = []
 
         # predicates
-        # self.is_reachable = IsReachable(self.problem_env, collides=self.current_collides, pick_poses=pick_poses)
         self.pick_in_way = PickInWay(self.problem_env, collides=self.current_collides, pick_poses=self.pick_used,
                                      use_shortest_path=self.use_shortest_path)
         self.place_in_way = PlaceInWay(self.problem_env, collides=self.current_collides, pick_poses=self.pick_used,
@@ -117,14 +83,9 @@ class MinimiumConstraintPaPState(State):
         self.in_region = InRegion(self.problem_env)
         self.is_holding_goal_entity = IsHoldingGoalEntity(self.problem_env, goal_entities)
 
-        if self.use_shortest_path:
-            self.nodes = self.get_nodes()
-            self.binary_edges = self.get_binary_edges()
-            self.ternary_edges = self.get_ternary_edges()
-        else:
-            self.ternary_edges = self.get_ternary_edges()
-            self.binary_edges = self.get_binary_edges()
-            self.nodes = self.get_nodes()
+        self.ternary_edges = self.get_ternary_edges()
+        self.binary_edges = self.get_binary_edges()
+        self.nodes = self.get_nodes()
 
     def is_entity_reachable(self, entity):
         return self.nodes[entity][-2]
@@ -306,9 +267,9 @@ class MinimiumConstraintPaPState(State):
         else:
             key = (a, r)
             if key in self.cached_place_paths:
+                # perhaps it is here that we set the mc path?
                 cached_path = self.cached_place_paths[key]
             else:
-                #assert a.find('region') != -1
                 cached_path = None
             return [self.place_in_way(a, b, r, cached_path=cached_path)]
 
