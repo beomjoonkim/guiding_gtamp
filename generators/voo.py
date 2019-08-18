@@ -19,6 +19,57 @@ class VOOGenerator(Generator):
         self.sampling_mode = sampling_mode
         self.counter_ratio = 1.0 / counter_ratio
 
+    """
+    # This is from Uniform sampler
+    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
+                          cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
+        # Not yet motion-planning-feasible
+        operator_skeleton = node.operator_skeleton
+        target_obj = operator_skeleton.discrete_parameters['object']
+        if target_obj in self.feasible_pick_params:
+            self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
+
+        status = "NoSolution"
+        for n_iter in range(10, n_iter, 10):
+            feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
+                                                                                n_iter,
+                                                                                n_parameters_to_try_motion_planning)
+            if status =='HasSolution':
+                break
+        if status == "NoSolution":
+            return {'is_feasible': False}
+
+        if dont_check_motion_existence:
+            chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
+        else:
+            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
+                                                                           feasible_op_parameters,
+                                                                           cached_collisions,
+                                                                           cached_holding_collisions)
+
+        return chosen_op_param
+    """
+
+    # todo migrate the sample_next_point input/output spec into VOO
+
+    def sample_next_point(self, node, n_iter):
+        stime = time.time()
+        self.update_evaled_values(node)
+        print 'update evaled values time', time.time() - stime
+
+        action, status = self.sample_point(node, n_iter)
+
+        if status == 'HasSolution':
+            self.evaled_actions.append(action['action_parameters'])
+            self.evaled_q_values.append('update_me')
+            self.idx_to_update = len(self.evaled_actions) - 1
+        else:
+            print node.operator_skeleton.type + " sampling failed"
+            self.evaled_actions.append(action['action_parameters'])
+            self.evaled_q_values.append(-2)
+
+        return action
+
     def update_evaled_values(self, node):
         executed_actions_in_node = node.Q.keys()
         executed_action_values_in_node = node.Q.values()
@@ -42,26 +93,6 @@ class VOOGenerator(Generator):
         # What does the code snippet below do? Update the feasible operator instances? Why?
         # We need to assert that idxs other than self.idx_to_update has the same value
         assert np.array_equal(np.array(self.evaled_q_values).sort(), np.array(executed_action_values_in_node).sort()), "Are you using N_r?"
-        """
-        if self.problem_env.name.find('synthetic') == -1:
-            feasible_idxs = np.where(np.array(executed_action_values_in_node) != self.problem_env.infeasible_reward)[0].tolist()
-            assert np.sum(np.array(executed_action_values_in_node) != self.problem_env.infeasible_reward) == len(feasible_idxs)
-        else:
-            feasible_idxs = [idx for idx, a in enumerate(executed_actions_in_node) if
-                             self.problem_env.is_action_feasible(a)]
-
-        for i in feasible_idxs:
-            action = executed_actions_in_node[i]
-            q_value = executed_action_values_in_node[i]
-
-            is_in_array = [np.array_equal(action.continuous_parameters['action_parameters'], a)
-                           for a in self.evaled_actions]
-            is_action_included = np.any(is_in_array)
-
-            assert is_action_included
-            assert self.evaled_q_values[np.where(is_in_array)[0][0]] == q_value # would this ever be false?
-            #self.evaled_q_values[np.where(is_in_array)[0][0]] = q_value
-        """
 
     def sample_point(self, node, n_iter):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
@@ -92,23 +123,6 @@ class VOOGenerator(Generator):
 
         return action, status
 
-    def sample_next_point(self, node, n_iter):
-        stime = time.time()
-        self.update_evaled_values(node)
-        print 'update evaled values time', time.time() - stime
-
-        action, status = self.sample_point(node, n_iter)
-
-        if status == 'HasSolution':
-            self.evaled_actions.append(action['action_parameters'])
-            self.evaled_q_values.append('update_me')
-            self.idx_to_update = len(self.evaled_actions) - 1 # this assumes that we are not using PW, and re-evaluate the last-sampled action multiple times
-        else:
-            print node.operator_skeleton.type + " sampling failed"
-            self.evaled_actions.append(action['action_parameters'])
-            self.evaled_q_values.append(-2)
-
-        return action
 
     def visualize_samples(self, node, n_samples):
         to_plot = []

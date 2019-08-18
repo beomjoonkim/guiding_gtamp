@@ -45,8 +45,10 @@ class UniformGenerator(Generator):
 
         return chosen_op_param
 
-    def sample_next_point(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning=1,
+    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, dont_check_motion_existence=False):
+
+        operator_skeleton = node.operator_skeleton
         # Not yet motion-planning-feasible
         feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
                                                                             n_iter,
@@ -80,34 +82,31 @@ class PaPUniformGenerator(UniformGenerator):
         UniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
         self.feasible_pick_params = {}
 
-    def sample_next_point(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning=1,
+    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
         # Not yet motion-planning-feasible
+        operator_skeleton = node.operator_skeleton
         target_obj = operator_skeleton.discrete_parameters['object']
         if target_obj in self.feasible_pick_params:
             self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
 
         status = "NoSolution"
-        #stime = time.time()
         for n_iter in range(10, n_iter, 10):
             feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
                                                                                 n_iter,
                                                                                 n_parameters_to_try_motion_planning)
             if status =='HasSolution':
                 break
-        #print 'Sampling time', time.time()-stime
         if status == "NoSolution":
             return {'is_feasible': False}
 
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
         else:
-            #stime = time.time()
             chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
                                                                            feasible_op_parameters,
                                                                            cached_collisions,
                                                                            cached_holding_collisions)
-            #print 'MP time', time.time()-stime
 
         return chosen_op_param
 

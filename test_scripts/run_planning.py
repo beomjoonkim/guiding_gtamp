@@ -6,6 +6,7 @@ import os
 import sys
 import collections
 import tensorflow as tf
+import pickle
 
 from learn.pap_gnn import PaPGNN
 from gtamp_problem_environments.mover_env import Mover, PaPMoverEnv
@@ -25,9 +26,11 @@ def make_and_get_save_dir(parameters):
 
     save_dir = root_dir + '/test_results/mcts_results_on_mover_domain/' \
                + 'n_objs_pack_' + str(parameters.n_objs_pack) + '/' \
-               + 'n_mp_params_' + str(parameters.n_motion_plan_trials) + '/' \
-               + 'widening_' + str(parameters.w) \
-               + '/uct_' + str(parameters.uct)
+               + 'n_mp_trials_' + str(parameters.n_motion_plan_trials) + '/' \
+               + 'widening_' + str(parameters.widening_parameter) + '/' \
+               + 'uct_' + str(parameters.ucb_parameter) + '/' \
+               + 'reward_shaping_' + str(parameters.use_shaped_reward) + '/' \
+               + 'learned_q_' + str(parameters.use_learned_q) + '/'
     pidx = parameters.pidx
 
     if not os.path.isdir(save_dir):
@@ -49,6 +52,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-planner', type=str, default='mcts')
     parser.add_argument('-domain', type=str, default='two_arm_mover')
+    parser.add_argument('-planner_seed', type=int, default=0)
 
     # Planner-agnostic parameters
     parser.add_argument('-sampling_strategy', type=str, default='unif')
@@ -141,6 +145,7 @@ def main():
     parameters = parse_mover_problem_parameters()
     set_seed(parameters.pidx)
     problem_env = PaPMoverEnv(parameters.pidx)
+    save_dir = make_and_get_save_dir(parameters)
 
     goal_object_names = [obj.GetName() for obj in problem_env.objects[:parameters.n_objs_pack]]
     goal_region_name = [problem_env.regions['home_region'].name]
@@ -165,7 +170,12 @@ def main():
     else:
         raise NotImplementedError
 
-    planner.search()
+    set_seed(parameters.planner_seed)
+    search_time_to_reward, plan = planner.search(max_time=parameters.timelimit)
+    filename = save_dir + 'pidx_%d_planner_seed_%d.pkl' % (parameters.pidx, parameters.planner_seed)
+    pickle.dump({"search_time_to_reward": search_time_to_reward,
+                 "pidx": parameters.pidx,
+                 'n_nodes': len(planner.tree.get_discrete_nodes())}, open(filename, 'wb'))
 
 
 if __name__ == '__main__':

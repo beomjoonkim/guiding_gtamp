@@ -77,6 +77,7 @@ class TreeNode:
         try:
             assert is_new_arm_feasible
         except:
+            # todo it runs in here. Figure out why.
             import pdb;
             pdb.set_trace()
         return new_arm
