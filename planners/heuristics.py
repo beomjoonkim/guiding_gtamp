@@ -37,7 +37,6 @@ def compute_hcount(state, problem_env):
                     is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)][0]
                 else:
                     pass
-                    #is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)]
 
                 if is_o2_in_way_of_obj_to_move_to_region:
                     n_occludes_manip += 1
@@ -49,9 +48,10 @@ def compute_hcount(state, problem_env):
 
     print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
     print objects_to_move
-    if len(objects_to_move) == 0 or (n_occludes_pre==0 and n_occludes_manip ==0 and n_occludes==0):
-        import pdb;pdb.set_trace()
-    #import pdb;pdb.set_trace()
+    #if len(objects_to_move) == 0 or (n_occludes_pre == 0 and n_occludes_manip == 0 and n_occludes == 0):
+    #    import pdb;
+    #    pdb.set_trace()
+    # import pdb;pdb.set_trace()
 
     """
     # Count the objects that need to be moved recursively

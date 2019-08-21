@@ -7,7 +7,7 @@ import time
 
 
 def worker_p(config):
-    command = 'python ./test_scripts/run_irsc.py'
+    command = 'python ./test_scripts/run_mcts.py'
 
     for key, value in zip(config.keys(), config.values()):
         option = ' -' + str(key) + ' ' + str(value)
