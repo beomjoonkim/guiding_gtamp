@@ -36,7 +36,7 @@ class ContinuousTreeNode(TreeNode):
         if not use_ucb:
             new_action = self.A[-1]
             #is_new_action_infeasible = np.max(self.reward_history[new_action]) <= infeasible_rwd
-            is_new_action_infeasible = new_action.continuous_parameters['is_feasible']
+            is_new_action_infeasible = not new_action.continuous_parameters['is_feasible']
             if is_new_action_infeasible:
                 return False
 
