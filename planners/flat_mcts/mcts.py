@@ -123,6 +123,7 @@ class MCTS:
                 else:
                     idx = parent_node.idx
 
+                """
                 fname = './tmp_%d.pkl' % idx
                 if os.path.isfile(fname):
                     state = pickle.load(open(fname, 'r'))
@@ -135,6 +136,11 @@ class MCTS:
                     state.make_pklable()
                     pickle.dump(state, open(fname, 'wb'))
                     state.make_plannable(self.problem_env)
+                """
+                state = ShortestPathPaPState(self.problem_env,  # what's this?
+                                             parent_state=parent_state,
+                                             parent_action=parent_action,
+                                             goal_entities=self.goal_entities, planner='mcts')
         return state
 
     def get_current_state(self, parent_node, parent_action, is_parent_action_infeasible):
@@ -247,11 +253,12 @@ class MCTS:
     def is_optimal_solution_found(self):
         best_traj_rwd, best_node, reward_list = self.tree.get_best_trajectory_sum_rewards_and_node(self.discount_rate)
         if self.found_solution:
-            if self.problem_env.reward_function.is_optimal_plan_found(best_traj_rwd):
-                print "Optimal score found"
-                return True
-            else:
-                return False
+            return True
+            #if self.problem_env.reward_function.is_optimal_plan_found(best_traj_rwd):
+            #    print "Optimal score found"
+            #    return True
+            #else:
+            #    return False
         else:
             return False
 
@@ -296,7 +303,6 @@ class MCTS:
             # self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
             self.log_performance(time_to_search, iteration)
             print self.search_time_to_reward[iteration_for_tree_logging:]
-            import pdb;pdb.set_trace()
 
             # break if the solution is found
             if self.is_optimal_solution_found():
