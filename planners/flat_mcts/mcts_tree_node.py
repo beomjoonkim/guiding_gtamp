@@ -73,7 +73,7 @@ class TreeNode:
 
     def choose_new_arm(self):
         new_arm = self.A[-1]  # what to do if the new action is not a feasible one?
-        is_new_arm_feasible = np.max(self.reward_history[new_arm]) > -2
+        is_new_arm_feasible = new_arm.continuous_parameters['is_feasible']
         try:
             assert is_new_arm_feasible
         except:

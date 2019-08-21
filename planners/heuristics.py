@@ -49,6 +49,8 @@ def compute_hcount(state, problem_env):
 
     print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
     print objects_to_move
+    if len(objects_to_move) == 0 or (n_occludes_pre==0 and n_occludes_manip ==0 and n_occludes==0):
+        import pdb;pdb.set_trace()
     #import pdb;pdb.set_trace()
 
     """
