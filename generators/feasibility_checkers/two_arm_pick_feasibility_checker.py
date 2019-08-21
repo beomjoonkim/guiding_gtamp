@@ -1,7 +1,9 @@
 from gtamp_utils.utils import set_robot_config,\
     two_arm_pick_object, two_arm_place_object
 from gtamp_utils.operator_utils.grasp_utils import solveTwoArmIKs, compute_two_arm_grasp
+from gtamp_utils import utils
 from generators.feasibility_checkers.pick_feasibility_checker import PickFeasibilityChecker
+
 
 
 class TwoArmPickFeasibilityChecker(PickFeasibilityChecker):
@@ -42,11 +44,11 @@ class TwoArmPickFeasibilityChecker(PickFeasibilityChecker):
         two_arm_pick_object(obj, pick_action)
         no_collision = not self.env.CheckCollision(self.robot)
 
-        # am I okay as long as im in the entire region?
-        #inside_region = self.problem_env.regions['home_region'].contains(self.robot.ComputeAABB()) or \
-        #                self.problem_env.regions['loading_region'].contains(self.robot.ComputeAABB())
+        inside_region = self.problem_env.regions['home_region'].contains(self.robot.ComputeAABB()) or \
+                        self.problem_env.regions['loading_region'].contains(self.robot.ComputeAABB())
 
-        inside_region = self.problem_env.regions['entire_region'].contains(self.robot.ComputeAABB())
+        # Why did I have the below? I cannot plan to some of the spots in entire region
+        #inside_region = self.problem_env.regions['entire_region'].contains(self.robot.ComputeAABB())
         two_arm_place_object(pick_action)
 
         return no_collision and inside_region

@@ -355,6 +355,7 @@ class MCTS:
                     action = curr_node.perform_ucb_over_actions()
                 else:
                     action = curr_node.choose_new_arm()
+
         return action
 
     @staticmethod
