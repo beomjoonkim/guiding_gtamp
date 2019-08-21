@@ -117,6 +117,7 @@ class ShortestPathPaPState(PaPState):
             op_cont_params, _ = generator.sample_feasible_op_parameters(operator_skeleton,
                                                                         n_iter=n_iter_to_try,
                                                                         n_parameters_to_try_motion_planning=5)
+            # I see. So here, return no op['q_goal'] when it is not feasible.
             motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
             if len(motion_plan_goals) > 2:
                 break
