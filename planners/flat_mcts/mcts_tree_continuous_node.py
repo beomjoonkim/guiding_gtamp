@@ -26,15 +26,17 @@ class ContinuousTreeNode(TreeNode):
         if n_arms < 1:
             return False
 
-        max_reward_of_each_action = np.array([np.max(rlist) for rlist in self.reward_history.values()])
-        n_feasible_actions = np.sum(max_reward_of_each_action > infeasible_rwd)
+        #max_reward_of_each_action = np.array([np.max(rlist) for rlist in self.reward_history.values()])
+        feasible_actions = [a for a in self.A if a.continuous_parameters['is_feasible']]
+        n_feasible_actions = len(feasible_actions)
 
         if n_feasible_actions < 1:
             return False
 
         if not use_ucb:
             new_action = self.A[-1]
-            is_new_action_infeasible = np.max(self.reward_history[new_action]) <= infeasible_rwd
+            #is_new_action_infeasible = np.max(self.reward_history[new_action]) <= infeasible_rwd
+            is_new_action_infeasible = new_action.continuous_parameters['is_feasible']
             if is_new_action_infeasible:
                 return False
 
