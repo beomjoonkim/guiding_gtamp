@@ -296,6 +296,7 @@ class MCTS:
             # self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
             self.log_performance(time_to_search, iteration)
             print self.search_time_to_reward[iteration_for_tree_logging:]
+            import pdb;pdb.set_trace()
 
             # break if the solution is found
             if self.is_optimal_solution_found():
