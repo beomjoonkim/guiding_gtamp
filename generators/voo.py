@@ -7,7 +7,7 @@ from gtamp_utils.utils import *
 import time
 
 
-class VOOGenerator(Generator):
+class PaPVOO(Generator):
     def __init__(self, operator_name, problem_env, explr_p, c1, sampling_mode, counter_ratio):
         Generator.__init__(self, operator_name, problem_env, None)
         self.explr_p = explr_p
@@ -51,24 +51,48 @@ class VOOGenerator(Generator):
     """
 
     # todo migrate the sample_next_point input/output spec into VOO
-
-    def sample_next_point(self, node, n_iter):
+    #   the thing that have to change, I think, is that I need to check the motion feasibility
+    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
+                          cached_collisions=None, cached_holding_collisions=None,
+                          dont_check_motion_existence=False):
         stime = time.time()
         self.update_evaled_values(node)
         print 'update evaled values time', time.time() - stime
 
-        action, status = self.sample_point(node, n_iter)
+        operator_skeleton = node.operator_skeleton
+
+        status = 'NoSolution'
+        feasible_cont_params = []
+        for n_iter in range(10, n_iter, 10):
+            cont_params, status = self.sample_point(node, n_iter)
+            if status == 'HasSolution':
+                feasible_cont_params.append(cont_params)
+            if len(feasible_cont_params) > n_parameters_to_try_motion_planning:
+                break
+        import pdb;pdb.set_trace()
+
+        # Choose one of them if no motion planning
+        if dont_check_motion_existence:
+            chosen_op_param = self.choose_one_of_params(feasible_cont_params, status)
+        else:
+            # todo implement the function below
+            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
+                                                                           feasible_cont_params,
+                                                                           cached_collisions,
+                                                                           cached_holding_collisions)
 
         if status == 'HasSolution':
-            self.evaled_actions.append(action['action_parameters'])
+            self.evaled_actions.append(chosen_op_param['action_parameters'])
             self.evaled_q_values.append('update_me')
             self.idx_to_update = len(self.evaled_actions) - 1
         else:
             print node.operator_skeleton.type + " sampling failed"
-            self.evaled_actions.append(action['action_parameters'])
-            self.evaled_q_values.append(-2)
+            self.evaled_actions.append(chosen_op_param['action_parameters'])
+            # todo how do I have the access to the worst-possible reward here?
+            worst_possible_rwd = -2
+            self.evaled_q_values.append(worst_possible_rwd)
 
-        return action
+        return chosen_op_param
 
     def update_evaled_values(self, node):
         executed_actions_in_node = node.Q.keys()
@@ -98,14 +122,9 @@ class VOOGenerator(Generator):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
         if is_more_than_one_action_in_node:
             stime=time.time()
-            if self.problem_env.name.find('synthetic') == -1:
-                max_reward_of_each_action = np.array([np.max(rlist) for rlist in node.reward_history.values()])
-                n_feasible_actions = np.sum(max_reward_of_each_action > -2)  # -2 or 0?
-                we_have_feasible_action = n_feasible_actions >= 1
-            else:
-                we_have_feasible_action = len(node.A) > 0
+            feasible_actions = [a for a in node.A if a.continuous_parameters['is_feasible']]
+            we_have_feasible_action = len(feasible_actions) > 0
             print 'action existence time check: ', time.time()-stime
-
         else:
             we_have_feasible_action = False
 
@@ -118,23 +137,10 @@ class VOOGenerator(Generator):
         else:
             maxrwd = None if len(self.evaled_actions) == 0 else np.max(node.reward_history.values())
             print 'Sample ' + node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
-
+        operator_skeleton = node.operator_skeleton
         action, status = self.sample_feasible_action(is_sample_from_best_v_region, n_iter, node)
 
         return action, status
-
-
-    def visualize_samples(self, node, n_samples):
-        to_plot = []
-        for i in range(n_samples):
-            action, status = self.sample_feasible_action(True, 100, node)
-            if status == 'HasSolution':
-                to_plot.append(action['base_pose'])
-        to_plot.append(get_body_xytheta(self.robot))
-        to_plot.append(self.get_best_evaled_action())
-        visualize_path(self.robot, to_plot)
-        print len(to_plot)
-        return to_plot
 
     def sample_feasible_action(self, is_sample_from_best_v_region, n_iter, node):
         action = None
@@ -143,12 +149,13 @@ class VOOGenerator(Generator):
         for i in range(n_iter):
             if is_sample_from_best_v_region:
                 stime = time.time()
-                action_parameters = self.sample_from_best_voronoi_region(node)
+                cont_parameters = self.sample_from_best_voronoi_region(node)
                 print "Best V region sampling time", time.time()-stime
             else:
-                action_parameters = self.sample_from_uniform()
-
-            action, status = self.feasibility_checker.check_feasibility(node, action_parameters)
+                cont_parameters = self.sample_from_uniform()
+            action, status = self.op_feasibility_checker.check_feasibility(node.operator_skeleton,
+                                                                           cont_parameters,
+                                                                           self.swept_volume_constraint)
             if status == 'HasSolution':
                 break
 
@@ -213,16 +220,8 @@ class VOOGenerator(Generator):
             def dist_fcn(x, y): return pick_parameter_distance(obj, x, y)
         elif operator == 'two_arm_place':
             def dist_fcn(x, y): return place_parameter_distance(x, y, self.c1)
-        elif operator.find('_paps') != -1:
-            n_actions = int(operator.split('_')[0])
-
-            def dist_fcn(x, y):
-                x_obj_placements = np.split(x, n_actions)
-                y_obj_placements = np.split(y, n_actions)
-                dist = 0
-                for x, y in zip(x_obj_placements, y_obj_placements):
-                    dist += place_parameter_distance(x, y, 1)
-                return dist
+        elif 'pap' in operator:
+            import pdb;pdb.set_trace()
         elif operator.find('synthe') != -1:
             def dist_fcn(x, y):
                 return np.linalg.norm(x - y)

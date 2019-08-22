@@ -63,6 +63,19 @@ class Generator:
         else:
             raise ValueError
 
+    @staticmethod
+    def choose_one_of_params(params, status):
+        sampled_feasible_parameters = status == "HasSolution"
+
+        if sampled_feasible_parameters:
+            chosen_op_param = params[0]
+            chosen_op_param['motion'] = [chosen_op_param['q_goal']]
+            chosen_op_param['is_feasible'] = True
+        else:
+            chosen_op_param = {'is_feasible': False}
+
+        return chosen_op_param
+
     def update_evaled_values(self, node):
         executed_actions_in_node = node.Q.keys()
         executed_action_values_in_node = node.Q.values()
