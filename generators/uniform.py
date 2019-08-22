@@ -2,17 +2,22 @@ from generator import PaPGenerator, Generator
 from gtamp_utils import utils
 
 
-
 class UniformGenerator(Generator):
+    # this is now a dummy variable which is same as Generator class
+    # get rid of it soon
     def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
         Generator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint, 1, 1, False)
 
+    def sample_next_point(self, n_iter):
+        raise NotImplementedError
+
 
 class UniformPaPGenerator(PaPGenerator):
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+    def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                  total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):
-        PaPGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint,
-                              total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence)
+        PaPGenerator.__init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
+                              total_number_of_feasibility_checks, n_candidate_params_to_smpl,
+                              dont_check_motion_existence)
 
     def sample_candidate_pap_parameters(self, iter_limit):
         assert iter_limit > 0
@@ -35,5 +40,3 @@ class UniformPaPGenerator(PaPGenerator):
             status = "HasSolution"
 
         return feasible_op_parameters, status
-
-

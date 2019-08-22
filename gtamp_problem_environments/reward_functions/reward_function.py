@@ -19,6 +19,7 @@ class AbstractRewardFunction:
 class GenericRewardFunction(AbstractRewardFunction):
     def __init__(self, problem_env, goal_objects, goal_region, planning_horizon):
         AbstractRewardFunction.__init__(self, problem_env, goal_objects, goal_region, planning_horizon)
+        self.worst_reward = planning_horizon*-1
 
     def __call__(self, curr_state, next_state, action, time_step):
         if action.is_skeleton:

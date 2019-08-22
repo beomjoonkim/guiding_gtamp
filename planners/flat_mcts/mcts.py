@@ -4,6 +4,7 @@ from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithLearnedQ
 from mcts_tree import MCTSTree
 
 from generators.uniform import UniformPaPGenerator
+from generators.voo import PaPVOOGenerator
 
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
 from trajectory_representation.state import StateWithoutCspacePredicates
@@ -26,7 +27,8 @@ hostname = socket.gethostname()
 if hostname == 'dell-XPS-15-9560':
     from mcts_graphics import write_dot_file
 
-
+# todo
+#   create MCTS for each environment. Each one will have different compute_state functions
 class MCTS:
     def __init__(self, parameters, problem_env, goal_entities, learned_q):
         # MCTS parameters
@@ -94,25 +96,30 @@ class MCTS:
                 return n
         return None
 
-    def create_sampling_agent(self, operator_skeleton):
+    def create_sampling_agent(self, node):
+        operator_skeleton = node.operator_skeleton
         if 'one_arm' in self.problem_env.name:
             dont_check_motion_existence = True
         else:
             dont_check_motion_existence = False
         if self.sampling_strategy == 'uniform':
-            generator = UniformPaPGenerator(operator_skeleton,
+            generator = UniformPaPGenerator(node,
+                                            operator_skeleton,
                                             self.problem_env,
                                             None,
                                             n_candidate_params_to_smpl=self.n_motion_plan_trials,
                                             total_number_of_feasibility_checks=self.n_feasibility_checks,
-                                            dont_check_motion_existence=False)
+                                            dont_check_motion_existence=dont_check_motion_existence)
 
         else:
-            #return PaPVOO(operator_skeleton, self.problem_env, 0.3, 1, 'gaussian', 1,
-            #              self.n_feasibility_checks,
-            #              self.n_motion_plan_trials,
-            #              dont_check_motion_existence)
-            raise NotImplementedError
+            return PaPVOOGenerator(node,
+                                   operator_skeleton,
+                                   self.problem_env,
+                                   None,
+                                   self.n_feasibility_checks,
+                                   self.n_motion_plan_trials,
+                                   dont_check_motion_existence,
+                                   0.3, 1, 'gaussian', 1)
         return generator
 
     def compute_state(self, parent_node, parent_action):
@@ -147,10 +154,12 @@ class MCTS:
                     state.make_pklable()
                     pickle.dump(state, open(fname, 'wb'))
                     state.make_plannable(self.problem_env)
+                """
                 state = ShortestPathPaPState(self.problem_env,  # what's this?
                                              parent_state=parent_state,
                                              parent_action=parent_action,
                                              goal_entities=self.goal_entities, planner='mcts')
+                """
         return state
 
     def get_current_state(self, parent_node, parent_action, is_parent_action_infeasible):
@@ -194,7 +203,7 @@ class MCTS:
         else:
             node = ContinuousTreeNode(state, parent_action, self.ucb_parameter, depth, state_saver,
                                       is_operator_skeleton_node, is_init_node)
-            node.sampling_agent = self.create_sampling_agent(node.operator_skeleton)
+            node.sampling_agent = self.create_sampling_agent(node)
 
         node.parent = parent_node
         node.parent_action = parent_action
@@ -354,7 +363,7 @@ class MCTS:
         else:
             print 'Instance node'
             if curr_node.sampling_agent is None:  # this happens if the tree has been pickled
-                curr_node.sampling_agent = self.create_sampling_agent(curr_node.operator_skeleton)
+                curr_node.sampling_agent = self.create_sampling_agent(curr_node)
             if not curr_node.is_reevaluation_step(self.widening_parameter,
                                                   self.problem_env.reward_function.infeasible_reward,
                                                   self.use_progressive_widening,
@@ -454,13 +463,6 @@ class MCTS:
     def sample_continuous_parameters(self, node):
         if self.problem_env.name.find('one_arm') != -1:
             raise NotImplementedError
-            """
-            # todo rewrite the below with the new constructor
-            feasible_param = node.sampling_agent.sample_next_point(node.operator_skeleton,
-                                                                   self.n_feasibility_checks,
-                                                                   n_parameters_to_try_motion_planning=1,
-                                                                   dont_check_motion_existence=True)
-            """
         else:
             if isinstance(node.state, StateWithoutCspacePredicates):
                 current_collides = None
@@ -471,7 +473,5 @@ class MCTS:
                     import pdb;pdb.set_trace()
 
             current_holding_collides = None
-            feasible_param = node.sampling_agent.sample_next_point(node,
-                                                                   current_collides,
-                                                                   current_holding_collides)
+            feasible_param = node.sampling_agent.sample_next_point(current_collides, current_holding_collides)
         return feasible_param

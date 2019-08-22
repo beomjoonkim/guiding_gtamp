@@ -11,7 +11,7 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
     def __init__(self, problem_env):
         TwoArmPickFeasibilityChecker.__init__(self, problem_env)
         TwoArmPlaceFeasibilityChecker.__init__(self, problem_env)
-        self.feasible_pick = []
+        self.feasible_pick = [] # todo this needs to be a set rather than a list
 
     def check_place_feasible(self, pick_parameters, place_parameters, operator_skeleton):
         pick_op = Operator('two_arm_pick', operator_skeleton.discrete_parameters)
@@ -56,8 +56,10 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
         if place_status != 'HasSolution':
             return None, "NoSolution"
         else:
-            pap_continuous_parameters = {'pick': pick_parameters, 'place': place_parameters}
-            #self.feasible_pick = []  # why do I reset it here? Because now I want to sample a new feasible pick? I think I can comment this out
+            # is action_parameters a good name?
+            pap_continuous_parameters = {'pick': pick_parameters,
+                                         'place': place_parameters,
+                                         'action_parameters': parameters}
             return pap_continuous_parameters, 'HasSolution'
 
 

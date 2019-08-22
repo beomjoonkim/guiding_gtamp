@@ -28,7 +28,8 @@ class PlaceInWay(TernaryPredicate, InWay):
 
         self.problem_env.disable_objects_in_region('entire_region')
         target_object.Enable(True)
-        generator = UniformPaPGenerator(operator_skeleton,
+        generator = UniformPaPGenerator(None,
+                                        operator_skeleton,
                                         self.problem_env,
                                         None,
                                         n_candidate_params_to_smpl=1,
@@ -38,7 +39,7 @@ class PlaceInWay(TernaryPredicate, InWay):
         print "Generating goals for ", target_object
         op_cont_params = []
         for _ in range(n_pick_configs):
-            param = generator.sample_next_point(operator_skeleton, cached_collisions=self.collides)
+            param = generator.sample_next_point(cached_collisions=self.collides)
             op_cont_params.append(param)
         print "Done"
         self.problem_env.enable_objects_in_region('entire_region')
