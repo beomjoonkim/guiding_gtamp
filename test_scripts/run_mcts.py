@@ -55,7 +55,6 @@ def parse_mover_problem_parameters():
     parser.add_argument('-planner_seed', type=int, default=0)
 
     # Planner-agnostic parameters
-    parser.add_argument('-sampling_strategy', type=str, default='unif')
     parser.add_argument('-timelimit', type=int, default=300)
     parser.add_argument('-dont_use_learned_q', action='store_false', default=True)
     parser.add_argument('-n_feasibility_checks', type=int, default=200)
@@ -79,6 +78,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-use_ucb', action='store_true', default=False)
     parser.add_argument('-pw', action='store_true', default=False)
     parser.add_argument('-f', action='store_true', default=False) # what was this?
+    parser.add_argument('-sampling_strategy', type=str, default='uniform')
 
     parameters = parser.parse_args()
     return parameters

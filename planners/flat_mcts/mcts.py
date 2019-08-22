@@ -1,20 +1,22 @@
-import sys
-import socket
-import pickle
-
 from mcts_tree_continuous_node import ContinuousTreeNode
 from mcts_tree_discrete_node import DiscreteTreeNode
 from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithLearnedQ
 from mcts_tree import MCTSTree
+
 from generators.uniform import UniformGenerator, PaPUniformGenerator
+from generators.voo import PaPVOO
+
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
 from trajectory_representation.state import StateWithoutCspacePredicates
 from trajectory_representation.one_arm_pap_state import OneArmPaPState
 
 ## openrave helper libraries
 from gtamp_utils import utils
-import numpy as np
 
+import numpy as np
+import sys
+import socket
+import pickle
 import time
 import os
 
@@ -40,6 +42,7 @@ class MCTS:
         self.learned_q_function = learned_q
         self.use_shaped_reward = parameters.use_shaped_reward
         self.planning_horizon = parameters.planning_horizon
+        self.sampling_strategy = parameters.sampling_strategy
 
         # Hard-coded params
         self.check_reachability = True
@@ -95,7 +98,11 @@ class MCTS:
     def create_sampling_agent(self, operator_skeleton):
         is_pap = operator_skeleton.type.find('pick') != -1 and operator_skeleton.type.find('place') != -1
         if is_pap:
-            return PaPUniformGenerator(operator_skeleton, self.problem_env, None)
+            if self.sampling_strategy == 'uniform':
+                return PaPUniformGenerator(operator_skeleton, self.problem_env, None)
+            else:
+                import pdb;pdb.set_trace()
+                return PaPVOO(operator_skeleton, self.problem_env, 0.3, 1, 'gaussian', 1)
             # todo here, use VOO
         else:
             if operator_skeleton.type.find('pick') != -1:
@@ -123,7 +130,6 @@ class MCTS:
                 else:
                     idx = parent_node.idx
 
-                """
                 fname = './tmp_%d.pkl' % idx
                 if os.path.isfile(fname):
                     state = pickle.load(open(fname, 'r'))
@@ -136,7 +142,6 @@ class MCTS:
                     state.make_pklable()
                     pickle.dump(state, open(fname, 'wb'))
                     state.make_plannable(self.problem_env)
-                """
                 state = ShortestPathPaPState(self.problem_env,  # what's this?
                                              parent_state=parent_state,
                                              parent_action=parent_action,
@@ -448,6 +453,7 @@ class MCTS:
                 current_collides = node.state.current_collides
 
             current_holding_collides = None
+            import pdb; pdb.set_trace()
             feasible_param = node.sampling_agent.sample_next_point(node,
                                                                    self.n_feasibility_checks,
                                                                    self.n_motion_plan_trials,

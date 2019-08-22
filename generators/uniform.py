@@ -32,19 +32,6 @@ class UniformGenerator(Generator):
 
         return feasible_op_parameters, status
 
-    @staticmethod
-    def choose_one_of_params(params, status):
-        sampled_feasible_parameters = status == "HasSolution"
-
-        if sampled_feasible_parameters:
-            chosen_op_param = params[0]
-            chosen_op_param['motion'] = [chosen_op_param['q_goal']]
-            chosen_op_param['is_feasible'] = True
-        else:
-            chosen_op_param = {'is_feasible': False}
-
-        return chosen_op_param
-
     def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, dont_check_motion_existence=False):
 
