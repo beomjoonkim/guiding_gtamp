@@ -36,7 +36,8 @@ class PickInWay(BinaryPredicate, InWay):
 
         self.problem_env.disable_objects_in_region('entire_region')
         target_object.Enable(True)
-        generator = UniformPaPGenerator(operator_skeleton,
+        generator = UniformPaPGenerator(None,
+                                        operator_skeleton,
                                         self.problem_env,
                                         None,
                                         n_candidate_params_to_smpl=n_pick_configs,

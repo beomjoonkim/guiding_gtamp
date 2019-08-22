@@ -11,10 +11,11 @@ from planners.mcts_utils import make_action_executable
 
 
 class Generator:
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+    def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                  total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):
         self.total_number_of_feasibility_checks = total_number_of_feasibility_checks
         self.n_candidate_params_to_smpl = n_candidate_params_to_smpl
+        self.node = node
 
         self.problem_env = problem_env
         self.env = problem_env.env
@@ -91,18 +92,18 @@ class Generator:
     def choose_one_of_params(params, status):
         sampled_feasible_parameters = status == "HasSolution"
 
+        chosen_op_param = params[0]
         if sampled_feasible_parameters:
-            chosen_op_param = params[0]
             chosen_op_param['motion'] = [chosen_op_param['q_goal']]
             chosen_op_param['is_feasible'] = True
         else:
-            chosen_op_param = {'is_feasible': False}
+            chosen_op_param['is_feasible'] = False
 
         return chosen_op_param
 
-    def update_evaled_values(self, node):
-        executed_actions_in_node = node.Q.keys()
-        executed_action_values_in_node = node.Q.values()
+    def update_evaled_values(self):
+        executed_actions_in_node = self.node.Q.keys()
+        executed_action_values_in_node = self.node.Q.values()
 
         for action, q_value in zip(executed_actions_in_node, executed_action_values_in_node):
             executable_action = make_action_executable(action)
@@ -116,7 +117,7 @@ class Generator:
                 # update the value if the action is included
                 self.evaled_q_values[np.where(is_in_array)[0][0]] = q_value
 
-    def sample_next_point(self, node, n_iter):
+    def sample_next_point(self, n_iter):
         raise NotImplementedError
 
     def sample_from_uniform(self):
@@ -127,9 +128,9 @@ class Generator:
 
 
 class PaPGenerator(Generator):
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+    def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                  total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):
-        Generator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+        Generator.__init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                            total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence)
         self.motion_verified_pick_params = {}
 
@@ -161,7 +162,7 @@ class PaPGenerator(Generator):
                                                 cached_collisions, cached_holding_collisions):
         chosen_pick_param = self.get_pick_param_with_feasible_motion_plan(candidate_pap_parameters, cached_collisions)
         if not chosen_pick_param['is_feasible']:
-            return {'is_feasible': False}
+            return candidate_pap_parameters[0]
 
         self.save_feasible_pick_params(chosen_pick_param)
 
@@ -169,23 +170,27 @@ class PaPGenerator(Generator):
                                                                             candidate_pap_parameters,
                                                                             cached_holding_collisions)
         if not chosen_place_param['is_feasible']:
-            return {'is_feasible': False}
+            return candidate_pap_parameters[0]
 
-        chosen_pap_param = {'pick': chosen_pick_param, 'place': chosen_place_param, 'is_feasible': True}
+        chosen_pap_action_parameters = np.hstack([chosen_pick_param['action_parameters'], chosen_place_param['action_parameters']])
+        chosen_pap_param = {'pick': chosen_pick_param,
+                            'place': chosen_place_param,
+                            'action_parameters': chosen_pap_action_parameters,
+                            'is_feasible': True}
         return chosen_pap_param
 
     def sample_candidate_params_with_increasing_iteration_limit(self):
         status = "NoSolution"
         candidate_op_parameters = None
         for iter_limit in range(10, self.total_number_of_feasibility_checks, 10):
+            print "Sampling.. %d / %d" % (iter_limit, self.total_number_of_feasibility_checks)
             candidate_op_parameters, status = self.sample_candidate_pap_parameters(iter_limit)
             if status == 'HasSolution' and len(candidate_op_parameters) >= self.n_candidate_params_to_smpl:
                 break
         return candidate_op_parameters, status
 
-    def sample_next_point(self, node, cached_collisions=None, cached_holding_collisions=None):
-        operator_skeleton = node.operator_skeleton
-        target_obj = operator_skeleton.discrete_parameters['object']
+    def sample_next_point(self, cached_collisions=None, cached_holding_collisions=None):
+        target_obj = self.operator_skeleton.discrete_parameters['object']
 
         # For re-using pick params if we have sampled feasible pick parameters but not place parameters
         if target_obj in self.motion_verified_pick_params:
@@ -194,7 +199,7 @@ class PaPGenerator(Generator):
         # sample parameters whose feasibility have been checked except the existence of collision-free motion
         candidate_op_parameters, status = self.sample_candidate_params_with_increasing_iteration_limit()
         if status == "NoSolution":
-            return {'is_feasible': False}
+            return candidate_op_parameters
 
         if self.dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(candidate_op_parameters, status)
@@ -202,7 +207,6 @@ class PaPGenerator(Generator):
             chosen_op_param = self.get_pap_param_with_feasible_motion_plan(candidate_op_parameters,
                                                                            cached_collisions,
                                                                            cached_holding_collisions)
-
         return chosen_op_param
 
     def sample_candidate_pap_parameters(self, iter_limit):

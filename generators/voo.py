@@ -8,11 +8,12 @@ import time
 
 
 class PaPVOOGenerator(PaPGenerator):
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+    def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                  n_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence,
                  explr_p, c1, sampling_mode, counter_ratio):
-        PaPGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+        PaPGenerator.__init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                               n_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence)
+        self.node = node
         self.explr_p = explr_p
         self.evaled_actions = []
         self.evaled_q_values = []
@@ -23,65 +24,54 @@ class PaPVOOGenerator(PaPGenerator):
         self.counter_ratio = 1.0 / counter_ratio
         self.feasible_pick_params = {}
 
-    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
-                          cached_collisions=None, cached_holding_collisions=None,
-                          dont_check_motion_existence=False):
-        stime = time.time()
-        self.update_evaled_values(node)
-        print 'update evaled values time', time.time() - stime
+    def sample_candidate_pap_parameters(self, iter_limit):
+        assert iter_limit > 0
+        feasible_op_parameters = []
+        for i in range(iter_limit):
+            op_parameters = self.sample_using_voo()
+            op_parameters, status = self.op_feasibility_checker.check_feasibility(self.operator_skeleton,
+                                                                                  op_parameters,
+                                                                                  self.swept_volume_constraint)
 
-        operator_skeleton = node.operator_skeleton
-        target_obj = operator_skeleton.discrete_parameters['object']
-
-        # this keeps the list of picks that are feasible, because we might have sampled a feasible pick but not
-        # a feasible place. The feasibility checker, when it sees feasible_pick is non-empty, tries to check
-        # the feasibility of the placement only. How can I design this code so that it is more readable?
-        if target_obj in self.feasible_pick_params:
-            self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
-
-        status = 'NoSolution'
-        feasible_cont_params = []
-        for n_iter in range(10, n_iter, 10):
-            cont_params, status = self.sample_point(node, n_iter)
             if status == 'HasSolution':
-                feasible_cont_params.append(cont_params)
-            if len(feasible_cont_params) > n_parameters_to_try_motion_planning:
-                break
-        import pdb;pdb.set_trace()
+                op_parameters['is_feasible'] = False
+                feasible_op_parameters.append(op_parameters)
+                if len(feasible_op_parameters) >= self.n_candidate_params_to_smpl:
+                    break
 
-        # Choose one of them if no motion planning
-        if dont_check_motion_existence:
-            chosen_op_param = self.choose_one_of_params(feasible_cont_params, status)
+        if len(feasible_op_parameters) == 0:
+            feasible_op_parameters.append(op_parameters)  # place holder
+            status = "NoSolution"
         else:
-            # todo implement the function below
-            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
-                                                                           feasible_cont_params,
-                                                                           cached_collisions,
-                                                                           cached_holding_collisions)
+            status = "HasSolution"
 
-        if status == 'HasSolution':
+        return feasible_op_parameters, status
+
+    def sample_next_point(self, cached_collisions=None, cached_holding_collisions=None):
+        chosen_op_param = PaPGenerator.sample_next_point(self, cached_collisions, cached_holding_collisions)
+        if chosen_op_param['is_feasible']:
             self.evaled_actions.append(chosen_op_param['action_parameters'])
             self.evaled_q_values.append('update_me')
             self.idx_to_update = len(self.evaled_actions) - 1
         else:
-            print node.operator_skeleton.type + " sampling failed"
+            print self.node.operator_skeleton.type + " sampling failed"
             self.evaled_actions.append(chosen_op_param['action_parameters'])
-            # todo how do I have the access to the worst-possible reward here?
-            worst_possible_rwd = -2
+            worst_possible_rwd = self.node.depth + self.problem_env.reward_function.worst_reward
             self.evaled_q_values.append(worst_possible_rwd)
 
         return chosen_op_param
 
-    def update_evaled_values(self, node):
-        executed_actions_in_node = node.Q.keys()
-        executed_action_values_in_node = node.Q.values()
+    def update_evaled_values(self):
+        executed_actions_in_node = self.node.Q.keys()
+        executed_action_values_in_node = self.node.Q.values()
         if len(executed_action_values_in_node) == 0:
             return
 
         if self.idx_to_update is not None:
             found = False
             for a, q in zip(executed_actions_in_node, executed_action_values_in_node):
-                if np.all(np.isclose(self.evaled_actions[self.idx_to_update], a.continuous_parameters['action_parameters'])):
+                if np.all(np.isclose(self.evaled_actions[self.idx_to_update],
+                                     a.continuous_parameters['action_parameters'])):
                     found = True
                     break
             try:
@@ -94,13 +84,28 @@ class PaPVOOGenerator(PaPGenerator):
 
         # What does the code snippet below do? Update the feasible operator instances? Why?
         # We need to assert that idxs other than self.idx_to_update has the same value
-        assert np.array_equal(np.array(self.evaled_q_values).sort(), np.array(executed_action_values_in_node).sort()), "Are you using N_r?"
+        assert np.array_equal(np.array(self.evaled_q_values).sort(),
+                              np.array(executed_action_values_in_node).sort()), "Are you using N_r?"
 
-    def sample_point(self, node, n_iter):
+    def sample_using_voo(self):
+        is_sample_from_best_v_region = self.is_time_to_sample_from_best_v_region()
+        action = None
+
+        status = 'NoSolution'
+        if is_sample_from_best_v_region:
+            stime = time.time()
+            cont_parameters = self.sample_from_best_voronoi_region()
+            print "Best V region sampling time", time.time() - stime
+        else:
+            cont_parameters = self.sample_from_uniform()
+
+        return cont_parameters
+
+    def is_time_to_sample_from_best_v_region(self):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
         if is_more_than_one_action_in_node:
             stime=time.time()
-            feasible_actions = [a for a in node.A if a.continuous_parameters['is_feasible']]
+            feasible_actions = [a for a in self.node.A if a.continuous_parameters['is_feasible']]
             we_have_feasible_action = len(feasible_actions) > 0
             print 'action existence time check: ', time.time()-stime
         else:
@@ -110,36 +115,14 @@ class PaPVOOGenerator(PaPGenerator):
         is_sample_from_best_v_region = rnd < (1 - self.explr_p) and we_have_feasible_action
 
         if is_sample_from_best_v_region:
-            node.best_v += 1
-            print 'Sample ' + node.operator_skeleton.type + ' from best region'
+            self.node.best_v += 1
+            print 'Sample ' + self.node.operator_skeleton.type + ' from best region'
         else:
-            maxrwd = None if len(self.evaled_actions) == 0 else np.max(node.reward_history.values())
-            print 'Sample ' + node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
-        operator_skeleton = node.operator_skeleton
-        action, status = self.sample_feasible_action(is_sample_from_best_v_region, n_iter, node)
+            maxrwd = None if len(self.evaled_actions) == 0 else np.max(self.node.reward_history.values())
+            print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
 
-        return action, status
+        return is_sample_from_best_v_region
 
-    def sample_feasible_action(self, is_sample_from_best_v_region, n_iter, node):
-        action = None
-        if is_sample_from_best_v_region:
-            print "Trying to sample a feasible sample from best v region..."
-        for i in range(n_iter):
-            if is_sample_from_best_v_region:
-                stime = time.time()
-                cont_parameters = self.sample_from_best_voronoi_region(node)
-                print "Best V region sampling time", time.time()-stime
-            else:
-                cont_parameters = self.sample_from_uniform()
-            action, status = self.op_feasibility_checker.check_feasibility(node.operator_skeleton,
-                                                                           cont_parameters,
-                                                                           self.swept_volume_constraint)
-            if status == 'HasSolution':
-                break
-
-        if is_sample_from_best_v_region:
-            print "Done sampling from best v region"
-        return action, status
 
     def get_best_evaled_action(self):
         DEBUG = True
@@ -184,30 +167,27 @@ class PaPVOOGenerator(PaPGenerator):
         new_parameters = np.random.uniform(self.domain[0], self.domain[1], (dim_x,))
         return new_parameters
 
-    def sample_from_best_voronoi_region(self, node):
+    def sample_from_best_voronoi_region(self):
         best_dist = np.inf
         other_dists = np.array([-1])
         counter = 0
-        operator = node.operator_skeleton.type
+        operator = self.node.operator_skeleton.type
 
         best_evaled_action = self.get_best_evaled_action()
         other_actions = self.evaled_actions
 
         if operator == 'two_arm_pick':
-            obj = node.operator_skeleton.discrete_parameters['object']
+            obj = self.node.operator_skeleton.discrete_parameters['object']
             def dist_fcn(x, y): return pick_parameter_distance(obj, x, y)
         elif operator == 'two_arm_place':
             def dist_fcn(x, y): return place_parameter_distance(x, y, self.c1)
         elif 'pap' in operator:
             import pdb;pdb.set_trace()
-        elif operator.find('synthe') != -1:
-            def dist_fcn(x, y):
-                return np.linalg.norm(x - y)
         else:
             raise NotImplementedError
         new_parameters = None
         closest_best_dist = np.inf
-        print "Q diff", np.max(node.Q.values()) - np.min(node.Q.values())
+        print "Q diff", np.max(self.node.Q.values()) - np.min(self.node.Q.values())
         max_counter = 1000 # 100 vs 1000 does not really make difference in MCD domain
         # todo I think I can squeeze out performance by using gaussian in higher dimension
         while np.any(best_dist > other_dists) and counter < max_counter:

@@ -107,7 +107,8 @@ class ShortestPathPaPState(PaPState):
             return parent_state.pick_used[object.GetName()]
 
         operator_skeleton = Operator('two_arm_pick', {'object': object})
-        generator = UniformPaPGenerator(operator_skeleton,
+        generator = UniformPaPGenerator(None,
+                                        operator_skeleton,
                                         self.problem_env,
                                         None,
                                         n_candidate_params_to_smpl=3,
@@ -115,9 +116,6 @@ class ShortestPathPaPState(PaPState):
                                         dont_check_motion_existence=False)
         # we should disable objects, because we are getting shortest path that ignors all collisions anyways
         self.problem_env.disable_objects_in_region('entire_region')
-
-        motion_plan_goals = []
-        n_iters = range(10, 500, 10)
 
         op_cont_params, _ = generator.sample_candidate_params_with_increasing_iteration_limit()
         motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
