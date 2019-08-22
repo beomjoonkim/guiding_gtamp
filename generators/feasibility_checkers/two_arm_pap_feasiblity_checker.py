@@ -39,6 +39,7 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
     def check_feasibility(self, operator_skeleton, parameters, swept_volume_to_avoid=None):
         pick_parameters = parameters[:6]
         place_parameters = parameters[-3:]
+        pap_continuous_parameters = {'action_parameters': parameters, 'is_feasible': False}
 
         we_already_have_feasible_pick = len(self.feasible_pick) > 0
         if we_already_have_feasible_pick:
@@ -47,19 +48,18 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
             pick_parameters, pick_status = self.check_pick_feasible(pick_parameters, operator_skeleton)
 
             if pick_status != 'HasSolution':
-                return None, pick_status
+                return pap_continuous_parameters, pick_status
             else:
                 self.feasible_pick.append(pick_parameters)
 
         place_parameters, place_status = self.check_place_feasible(pick_parameters, place_parameters, operator_skeleton)
 
         if place_status != 'HasSolution':
-            return None, "NoSolution"
+            return pap_continuous_parameters, "NoSolution"
         else:
-            # is action_parameters a good name?
-            pap_continuous_parameters = {'pick': pick_parameters,
-                                         'place': place_parameters,
-                                         'action_parameters': parameters}
+            pap_continuous_parameters['pick'] = pick_parameters
+            pap_continuous_parameters['place'] = place_parameters
+            pap_continuous_parameters['is_feasible'] = True
             return pap_continuous_parameters, 'HasSolution'
 
 

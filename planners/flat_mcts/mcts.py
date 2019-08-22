@@ -119,7 +119,7 @@ class MCTS:
                                    self.n_feasibility_checks,
                                    self.n_motion_plan_trials,
                                    dont_check_motion_existence,
-                                   0.3, 1, 'gaussian', 1)
+                                   0, 1, 'gaussian', 1)
         return generator
 
     def compute_state(self, parent_node, parent_action):
