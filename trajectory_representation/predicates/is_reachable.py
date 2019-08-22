@@ -1,6 +1,6 @@
 from planners.subplanners.motion_planner import BaseMotionPlanner, ArmBaseMotionPlanner
 from trajectory_representation.predicates.predicate import UnaryPredicate
-from generators.uniform import UniformGenerator
+from generators.uniform import UniformPaPGenerator
 from trajectory_representation.operator import Operator
 from gtamp_utils.utils import get_place_domain, set_robot_config, CustomStateSaver, get_body_xytheta, visualize_path, \
     are_base_confs_close_enough
@@ -37,8 +37,9 @@ class IsReachable(UnaryPredicate):
                 return poses
 
         self.problem_env.enable_objects_in_region('entire_region')
-        generator = UniformGenerator(operator_skeleton, self.problem_env, None)
+        generator = UniformPaPGenerator(operator_skeleton, self.problem_env, None, 100, n_pick_configs, False)
         print "Generating goals for ", target_object
+        # todo fix this here
         op_cont_params, _ = generator.sample_params_with_feasible_motion_planning_goals(operator_skeleton, n_iter=100,
                                                                                         n_parameters_to_try_motion_planning=n_pick_configs)
         print "Done"
