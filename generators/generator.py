@@ -165,14 +165,14 @@ class PaPGenerator(Generator):
             return candidate_pap_parameters[0]
 
         self.save_feasible_pick_params(chosen_pick_param)
-
         chosen_place_param = self.get_place_param_with_feasible_motion_plan(chosen_pick_param,
                                                                             candidate_pap_parameters,
                                                                             cached_holding_collisions)
         if not chosen_place_param['is_feasible']:
             return candidate_pap_parameters[0]
 
-        chosen_pap_action_parameters = np.hstack([chosen_pick_param['action_parameters'], chosen_place_param['action_parameters']])
+        chosen_pap_action_parameters = np.hstack([chosen_pick_param['action_parameters'],
+                                                  chosen_place_param['action_parameters']])
         chosen_pap_param = {'pick': chosen_pick_param,
                             'place': chosen_place_param,
                             'action_parameters': chosen_pap_action_parameters,
@@ -199,7 +199,7 @@ class PaPGenerator(Generator):
         # sample parameters whose feasibility have been checked except the existence of collision-free motion
         candidate_op_parameters, status = self.sample_candidate_params_with_increasing_iteration_limit()
         if status == "NoSolution":
-            return candidate_op_parameters
+            return candidate_op_parameters[0]
 
         if self.dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(candidate_op_parameters, status)

@@ -24,6 +24,28 @@ class PaPVOOGenerator(PaPGenerator):
         self.counter_ratio = 1.0 / counter_ratio
         self.feasible_pick_params = {}
 
+        if node.operator_skeleton.type == 'two_arm_pick':
+            obj = self.node.operator_skeleton.discrete_parameters['object']
+            def dist_fcn(x, y): return pick_parameter_distance(obj, x, y)
+        elif node.operator_skeleton.type == 'two_arm_place':
+            def dist_fcn(x, y): return place_parameter_distance(x, y, self.c1)
+        elif 'pick' in node.operator_skeleton.type \
+                and 'place' in node.operator_skeleton.type:
+            obj = self.node.operator_skeleton.discrete_parameters['object']
+
+            def dist_fcn(x, y):
+                x_pick = x[:6]
+                x_place = x[-3:]
+                y_pick = y[:6]
+                y_place = y[-3:]
+                dist = pick_parameter_distance(obj, x_pick, y_pick) \
+                        + place_parameter_distance(x_place, y_place, self.c1)
+                return dist
+        else:
+            raise NotImplementedError
+
+        self.dist_fcn = dist_fcn
+
     def sample_candidate_pap_parameters(self, iter_limit):
         assert iter_limit > 0
         feasible_op_parameters = []
@@ -78,7 +100,8 @@ class PaPVOOGenerator(PaPGenerator):
                 assert found
             except AssertionError:
                 print "idx to update not found"
-                import pdb;pdb.set_trace()
+                import pdb;
+                pdb.set_trace()
 
             self.evaled_q_values[self.idx_to_update] = q
 
@@ -89,10 +112,8 @@ class PaPVOOGenerator(PaPGenerator):
 
     def sample_using_voo(self):
         is_sample_from_best_v_region = self.is_time_to_sample_from_best_v_region()
-        action = None
-
-        status = 'NoSolution'
         if is_sample_from_best_v_region:
+            import pdb;pdb.set_trace()
             stime = time.time()
             cont_parameters = self.sample_from_best_voronoi_region()
             print "Best V region sampling time", time.time() - stime
@@ -103,13 +124,18 @@ class PaPVOOGenerator(PaPGenerator):
 
     def is_time_to_sample_from_best_v_region(self):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
+        print len(self.evaled_actions)
         if is_more_than_one_action_in_node:
-            stime=time.time()
+            import pdb;pdb.set_trace()
+            stime = time.time()
             feasible_actions = [a for a in self.node.A if a.continuous_parameters['is_feasible']]
             we_have_feasible_action = len(feasible_actions) > 0
-            print 'action existence time check: ', time.time()-stime
+            print 'action existence time check: ', time.time() - stime
         else:
             we_have_feasible_action = False
+
+        if we_have_feasible_action:
+            import pdb;pdb.set_trace()
 
         rnd = np.random.random()
         is_sample_from_best_v_region = rnd < (1 - self.explr_p) and we_have_feasible_action
@@ -119,10 +145,9 @@ class PaPVOOGenerator(PaPGenerator):
             print 'Sample ' + self.node.operator_skeleton.type + ' from best region'
         else:
             maxrwd = None if len(self.evaled_actions) == 0 else np.max(self.node.reward_history.values())
-            print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
+            #print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
 
         return is_sample_from_best_v_region
-
 
     def get_best_evaled_action(self):
         DEBUG = True
@@ -131,7 +156,8 @@ class PaPVOOGenerator(PaPGenerator):
                 try:
                     best_action_idxs = np.argwhere(self.evaled_q_values[:-1] == np.amax(self.evaled_q_values[:-1]))
                 except:
-                    import pdb;pdb.set_trace()
+                    import pdb;
+                    pdb.set_trace()
 
             else:
                 best_action_idxs = np.argwhere(self.evaled_q_values == np.amax(self.evaled_q_values))
@@ -145,8 +171,8 @@ class PaPVOOGenerator(PaPGenerator):
 
     def centered_uniform_sample_near_best_action(self, best_evaled_action, counter):
         dim_x = self.domain[1].shape[-1]
-        possible_max = (self.domain[1] - best_evaled_action) / np.exp(self.counter_ratio*counter)
-        possible_min = (self.domain[0] - best_evaled_action) / np.exp(self.counter_ratio*counter)
+        possible_max = (self.domain[1] - best_evaled_action) / np.exp(self.counter_ratio * counter)
+        possible_min = (self.domain[0] - best_evaled_action) / np.exp(self.counter_ratio * counter)
 
         possible_values = np.random.uniform(possible_min, possible_max, (dim_x,))
         new_parameters = best_evaled_action + possible_values
@@ -156,7 +182,7 @@ class PaPVOOGenerator(PaPGenerator):
         return new_parameters
 
     def gaussian_sample_near_best_action(self, best_evaled_action, counter):
-        variance = (self.domain[1] - self.domain[0]) / np.exp(self.counter_ratio*counter)
+        variance = (self.domain[1] - self.domain[0]) / np.exp(self.counter_ratio * counter)
         new_parameters = np.random.normal(best_evaled_action, variance)
         new_parameters = np.clip(new_parameters, self.domain[0], self.domain[1])
 
@@ -171,29 +197,19 @@ class PaPVOOGenerator(PaPGenerator):
         best_dist = np.inf
         other_dists = np.array([-1])
         counter = 0
-        operator = self.node.operator_skeleton.type
 
         best_evaled_action = self.get_best_evaled_action()
         other_actions = self.evaled_actions
 
-        if operator == 'two_arm_pick':
-            obj = self.node.operator_skeleton.discrete_parameters['object']
-            def dist_fcn(x, y): return pick_parameter_distance(obj, x, y)
-        elif operator == 'two_arm_place':
-            def dist_fcn(x, y): return place_parameter_distance(x, y, self.c1)
-        elif 'pap' in operator:
-            import pdb;pdb.set_trace()
-        else:
-            raise NotImplementedError
         new_parameters = None
         closest_best_dist = np.inf
         print "Q diff", np.max(self.node.Q.values()) - np.min(self.node.Q.values())
-        max_counter = 1000 # 100 vs 1000 does not really make difference in MCD domain
+        max_counter = 1000  # 100 vs 1000 does not really make difference in MCD domain
         # todo I think I can squeeze out performance by using gaussian in higher dimension
         while np.any(best_dist > other_dists) and counter < max_counter:
             new_parameters = self.sample_near_best_action(best_evaled_action, counter)
-            best_dist = dist_fcn(new_parameters, best_evaled_action)
-            other_dists = np.array([dist_fcn(other, new_parameters) for other in other_actions])
+            best_dist = self.dist_fcn(new_parameters, best_evaled_action)
+            other_dists = np.array([self.dist_fcn(other, new_parameters) for other in other_actions])
             counter += 1
 
             if closest_best_dist > best_dist:
@@ -218,7 +234,3 @@ class PaPVOOGenerator(PaPGenerator):
         else:
             new_parameters = self.uniform_sample_near_best_action(best_evaled_action)
         return new_parameters
-
-
-
-
