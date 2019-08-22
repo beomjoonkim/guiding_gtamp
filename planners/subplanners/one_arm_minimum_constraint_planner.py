@@ -1,4 +1,4 @@
-from generators.uniform import UniformGenerator
+from generators.uniform import UniformPaPGenerator
 from gtamp_utils import utils
 
 
@@ -10,12 +10,15 @@ class OneArmMinimumConstraintPlanner:
     def sample_pick_config(self):
         target_object = self.operator_skeleton.discrete_parameters['object']
         target_object.Enable(True)
-        generator = UniformGenerator(self.operator_skeleton, self.problem_env, None)
-        param = generator.sample_next_point(self.operator_skeleton,
-                                            n_iter=50,
-                                            n_parameters_to_try_motion_planning=1,
-                                            dont_check_motion_existence=True,
-                                            cached_collisions=None)
+
+        generator = UniformPaPGenerator(self.operator_skeleton,
+                                        self.problem_env,
+                                        None,
+                                        n_candidate_params_to_smpl=1,
+                                        total_number_of_feasibility_checks=50,
+                                        dont_check_motion_existence=True)
+
+        param = generator.sample_next_point(self.operator_skeleton)
         return param
 
     def approximate_minimal_collision_path(self, naive_path, naive_path_collisions):

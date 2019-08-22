@@ -1,5 +1,5 @@
 from trajectory_representation.operator import Operator
-from generators.uniform import UniformGenerator
+from generators.uniform import UniformPaPGenerator
 from gtamp_utils.utils import CustomStateSaver, get_body_xytheta, set_robot_config, set_obj_xytheta
 
 from predicates.is_holding_goal_entity import IsHoldingGoalEntity
@@ -107,12 +107,21 @@ class ShortestPathPaPState(PaPState):
             return parent_state.pick_used[object.GetName()]
 
         operator_skeleton = Operator('two_arm_pick', {'object': object})
-        generator = UniformGenerator(operator_skeleton, self.problem_env, None)
+        generator = UniformPaPGenerator(operator_skeleton,
+                                        self.problem_env,
+                                        None,
+                                        n_candidate_params_to_smpl=3,
+                                        total_number_of_feasibility_checks=500,
+                                        dont_check_motion_existence=False)
         # we should disable objects, because we are getting shortest path that ignors all collisions anyways
         self.problem_env.disable_objects_in_region('entire_region')
 
         motion_plan_goals = []
         n_iters = range(10, 500, 10)
+
+        op_cont_params, _ = generator.sample_candidate_params_with_increasing_iteration_limit()
+        motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
+        """
         for n_iter_to_try in n_iters:
             op_cont_params, _ = generator.sample_feasible_op_parameters(operator_skeleton,
                                                                         n_iter=n_iter_to_try,
@@ -121,6 +130,7 @@ class ShortestPathPaPState(PaPState):
             motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
             if len(motion_plan_goals) > 2:
                 break
+        """
         self.problem_env.enable_objects_in_region('entire_region')
 
         # assert len(motion_plan_goals) > 0 # if we can't find a pick pose then the object should be treated as unreachable
@@ -259,7 +269,7 @@ class ShortestPathPaPState(PaPState):
     def get_binary_edge_features(self, a, b):
         is_place_in_b_reachable_while_holding_a = (a, b) in self.reachable_regions_while_holding
 
-        if b.find('region') != -1:
+        if 'region' in b:
             cached_path = None
         else:
             cached_path = self.cached_pick_paths[b]

@@ -2,10 +2,9 @@ from predicate import TernaryPredicate
 from trajectory_representation.predicates.in_way import InWay
 from gtamp_utils.utils import two_arm_pick_object
 from planners.subplanners.motion_planner import BaseMotionPlanner
-from planners.subplanners.minimum_constraint_goal import MinimumConstraintGoalSampler
 from planners.subplanners.minimum_constraint_planner import MinimumConstraintPlanner
 from trajectory_representation.operator import Operator
-from generators.uniform import UniformGenerator
+from generators.uniform import UniformPaPGenerator
 import pickle
 
 from gtamp_utils.utils import *
@@ -29,14 +28,17 @@ class PlaceInWay(TernaryPredicate, InWay):
 
         self.problem_env.disable_objects_in_region('entire_region')
         target_object.Enable(True)
-        generator = UniformGenerator(operator_skeleton, self.problem_env, None)
+        generator = UniformPaPGenerator(operator_skeleton,
+                                        self.problem_env,
+                                        None,
+                                        n_candidate_params_to_smpl=1,
+                                        total_number_of_feasibility_checks=50,
+                                        dont_check_motion_existence=True)
+
         print "Generating goals for ", target_object
         op_cont_params = []
         for _ in range(n_pick_configs):
-            param = generator.sample_next_point(operator_skeleton,
-                                                n_iter=50,
-                                                n_parameters_to_try_motion_planning=1,
-                                                dont_check_motion_existence=True, cached_collisions=self.collides)
+            param = generator.sample_next_point(operator_skeleton, cached_collisions=self.collides)
             op_cont_params.append(param)
         print "Done"
         self.problem_env.enable_objects_in_region('entire_region')

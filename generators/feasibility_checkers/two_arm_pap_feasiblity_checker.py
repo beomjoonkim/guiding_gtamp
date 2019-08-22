@@ -57,7 +57,7 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
             return None, "NoSolution"
         else:
             pap_continuous_parameters = {'pick': pick_parameters, 'place': place_parameters}
-            self.feasible_pick = []
+            #self.feasible_pick = []  # why do I reset it here? Because now I want to sample a new feasible pick? I think I can comment this out
             return pap_continuous_parameters, 'HasSolution'
 
 

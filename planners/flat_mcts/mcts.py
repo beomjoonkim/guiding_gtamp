@@ -3,8 +3,7 @@ from mcts_tree_discrete_node import DiscreteTreeNode
 from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithLearnedQ
 from mcts_tree import MCTSTree
 
-from generators.uniform import UniformGenerator, PaPUniformGenerator
-from generators.voo import PaPVOO
+from generators.uniform import UniformPaPGenerator
 
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
 from trajectory_representation.state import StateWithoutCspacePredicates
@@ -96,19 +95,25 @@ class MCTS:
         return None
 
     def create_sampling_agent(self, operator_skeleton):
-        is_pap = operator_skeleton.type.find('pick') != -1 and operator_skeleton.type.find('place') != -1
-        if is_pap:
-            if self.sampling_strategy == 'uniform':
-                return PaPUniformGenerator(operator_skeleton, self.problem_env, None)
-            else:
-                import pdb;pdb.set_trace()
-                return PaPVOO(operator_skeleton, self.problem_env, 0.3, 1, 'gaussian', 1)
-            # todo here, use VOO
+        if 'one_arm' in self.problem_env.name:
+            dont_check_motion_existence = True
         else:
-            if operator_skeleton.type.find('pick') != -1:
-                return UniformGenerator(operator_skeleton, self.problem_env, None)
-            elif operator_skeleton.type.find('place') != -1:
-                return UniformGenerator(operator_skeleton, self.problem_env, self.swept_volume_constraint)
+            dont_check_motion_existence = False
+        if self.sampling_strategy == 'uniform':
+            generator = UniformPaPGenerator(operator_skeleton,
+                                            self.problem_env,
+                                            None,
+                                            n_candidate_params_to_smpl=self.n_motion_plan_trials,
+                                            total_number_of_feasibility_checks=self.n_feasibility_checks,
+                                            dont_check_motion_existence=False)
+
+        else:
+            #return PaPVOO(operator_skeleton, self.problem_env, 0.3, 1, 'gaussian', 1,
+            #              self.n_feasibility_checks,
+            #              self.n_motion_plan_trials,
+            #              dont_check_motion_existence)
+            raise NotImplementedError
+        return generator
 
     def compute_state(self, parent_node, parent_action):
         if self.problem_env.is_goal_reached():
@@ -294,16 +299,22 @@ class MCTS:
             time_to_search += time.time() - stime
             new_trajs.append(new_traj)
 
-            is_time_to_switch_node = iteration % 10 == 0
+            is_time_to_switch_node = iteration % 10 == 0 # and the node should be feasible
             # I have to have a feasible action to switch if this is an instance node
             if is_time_to_switch_node:
                 if node_to_search_from.is_operator_skeleton_node:
                     node_to_search_from = node_to_search_from.get_child_with_max_value()
                 else:
                     max_child = node_to_search_from.get_child_with_max_value()
+                    if max_child.parent_action.continuous_parameters['is_feasible']:
+                        node_to_search_from = node_to_search_from.get_child_with_max_value()
+
+                    """
+                    max_child = node_to_search_from.get_child_with_max_value()
                     if np.max(node_to_search_from.reward_history[max_child.parent_action]) != \
                             self.problem_env.reward_function.infeasible_reward:
                         node_to_search_from = node_to_search_from.get_child_with_max_value()
+                    """
 
             # self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
             self.log_performance(time_to_search, iteration)
@@ -442,21 +453,25 @@ class MCTS:
 
     def sample_continuous_parameters(self, node):
         if self.problem_env.name.find('one_arm') != -1:
+            raise NotImplementedError
+            """
+            # todo rewrite the below with the new constructor
             feasible_param = node.sampling_agent.sample_next_point(node.operator_skeleton,
                                                                    self.n_feasibility_checks,
                                                                    n_parameters_to_try_motion_planning=1,
                                                                    dont_check_motion_existence=True)
+            """
         else:
             if isinstance(node.state, StateWithoutCspacePredicates):
                 current_collides = None
             else:
-                current_collides = node.state.current_collides
+                try:
+                    current_collides = node.state.current_collides
+                except:
+                    import pdb;pdb.set_trace()
 
             current_holding_collides = None
-            import pdb; pdb.set_trace()
             feasible_param = node.sampling_agent.sample_next_point(node,
-                                                                   self.n_feasibility_checks,
-                                                                   self.n_motion_plan_trials,
                                                                    current_collides,
                                                                    current_holding_collides)
         return feasible_param

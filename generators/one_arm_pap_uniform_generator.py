@@ -30,7 +30,7 @@ class OneArmPaPUniformGenerator:
 
         self.pick_op = Operator(operator_type='one_arm_pick',
                                 discrete_parameters={'object': target_obj})
-        self.pick_generator = UniformGenerator(self.pick_op, problem_env)
+        self.pick_generator = UniformGenerator(self.pick_op, problem_env) # just use generator, I think
 
         self.place_op = Operator(operator_type='one_arm_place',
                                  discrete_parameters={'object': target_obj, 'region': target_region},

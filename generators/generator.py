@@ -1,5 +1,6 @@
 from gtamp_utils.samplers import *
 from gtamp_utils.utils import get_pick_domain, get_place_domain
+from gtamp_utils import utils
 
 from feasibility_checkers.two_arm_pick_feasibility_checker import TwoArmPickFeasibilityChecker
 from feasibility_checkers.two_arm_place_feasibility_checker import TwoArmPlaceFeasibilityChecker
@@ -10,7 +11,11 @@ from planners.mcts_utils import make_action_executable
 
 
 class Generator:
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint):
+    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+                 total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):
+        self.total_number_of_feasibility_checks = total_number_of_feasibility_checks
+        self.n_candidate_params_to_smpl = n_candidate_params_to_smpl
+
         self.problem_env = problem_env
         self.env = problem_env.env
         self.evaled_actions = []
@@ -18,6 +23,8 @@ class Generator:
         self.swept_volume_constraint = swept_volume_constraint
         self.objects_to_check_collision = None
         operator_type = operator_skeleton.type
+        self.operator_skeleton = operator_skeleton
+        self.dont_check_motion_existence = dont_check_motion_existence
 
         target_region = None
         if 'region' in operator_skeleton.discrete_parameters:
@@ -63,6 +70,23 @@ class Generator:
         else:
             raise ValueError
 
+    def get_op_param_with_feasible_motion_plan(self, feasible_op_params, cached_collisions):
+        # from the multiple operator continuous parameters, return the one that has the feasible motion
+        motion_plan_goals = [op['q_goal'] for op in feasible_op_params]
+        motion, status = self.problem_env.motion_planner.get_motion_plan(motion_plan_goals,
+                                                                         cached_collisions=cached_collisions)
+        found_feasible_motion_plan = status == "HasSolution"
+        if found_feasible_motion_plan:
+            which_op_param = np.argmin(np.linalg.norm(motion[-1] - motion_plan_goals, axis=-1))
+            chosen_op_param = feasible_op_params[which_op_param]
+            chosen_op_param['motion'] = motion
+            chosen_op_param['is_feasible'] = True
+        else:
+            chosen_op_param = feasible_op_params[0]
+            chosen_op_param['is_feasible'] = False
+
+        return chosen_op_param
+
     @staticmethod
     def choose_one_of_params(params, status):
         sampled_feasible_parameters = status == "HasSolution"
@@ -100,4 +124,91 @@ class Generator:
         domain_min = self.domain[0]
         domain_max = self.domain[1]
         return np.random.uniform(domain_min, domain_max, (1, dim_parameters)).squeeze()
+
+
+class PaPGenerator(Generator):
+    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+                 total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):
+        Generator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+                           total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence)
+        self.motion_verified_pick_params = {}
+
+    def get_place_param_with_feasible_motion_plan(self, chosen_pick_param, candidate_pap_parameters,
+                                                  cached_holding_collisions):
+        original_config = utils.get_body_xytheta(self.problem_env.robot).squeeze()
+        utils.two_arm_pick_object(self.operator_skeleton.discrete_parameters['object'], chosen_pick_param)
+        place_op_params = [op['place'] for op in candidate_pap_parameters]
+        chosen_place_param = self.get_op_param_with_feasible_motion_plan(place_op_params, cached_holding_collisions)
+        utils.two_arm_place_object(chosen_pick_param)
+        utils.set_robot_config(original_config)
+
+        return chosen_place_param
+
+    def get_pick_param_with_feasible_motion_plan(self, candidate_pap_parameters, cached_collisions):
+        pick_op_params = [op['pick'] for op in candidate_pap_parameters]
+        chosen_pick_param = self.get_op_param_with_feasible_motion_plan(pick_op_params, cached_collisions)
+        return chosen_pick_param
+
+    def save_feasible_pick_params(self, chosen_pick_param):
+        # For keeping pick params if we have sampled feasible pick parameters but not place parameters
+        target_obj = self.operator_skeleton.discrete_parameters['object']
+        if target_obj in self.motion_verified_pick_params:  # what is this object used for?
+            self.motion_verified_pick_params[target_obj].append(chosen_pick_param)
+        else:
+            self.motion_verified_pick_params[target_obj] = [chosen_pick_param]
+
+    def get_pap_param_with_feasible_motion_plan(self, candidate_pap_parameters,
+                                                cached_collisions, cached_holding_collisions):
+        chosen_pick_param = self.get_pick_param_with_feasible_motion_plan(candidate_pap_parameters, cached_collisions)
+        if not chosen_pick_param['is_feasible']:
+            return {'is_feasible': False}
+
+        self.save_feasible_pick_params(chosen_pick_param)
+
+        chosen_place_param = self.get_place_param_with_feasible_motion_plan(chosen_pick_param,
+                                                                            candidate_pap_parameters,
+                                                                            cached_holding_collisions)
+        if not chosen_place_param['is_feasible']:
+            return {'is_feasible': False}
+
+        chosen_pap_param = {'pick': chosen_pick_param, 'place': chosen_place_param, 'is_feasible': True}
+        return chosen_pap_param
+
+    def sample_candidate_params_with_increasing_iteration_limit(self):
+        status = "NoSolution"
+        candidate_op_parameters = None
+        for iter_limit in range(10, self.total_number_of_feasibility_checks, 10):
+            candidate_op_parameters, status = self.sample_candidate_pap_parameters(iter_limit)
+            if status == 'HasSolution' and len(candidate_op_parameters) >= self.n_candidate_params_to_smpl:
+                break
+        return candidate_op_parameters, status
+
+    def sample_next_point(self, node, cached_collisions=None, cached_holding_collisions=None):
+        operator_skeleton = node.operator_skeleton
+        target_obj = operator_skeleton.discrete_parameters['object']
+
+        # For re-using pick params if we have sampled feasible pick parameters but not place parameters
+        if target_obj in self.motion_verified_pick_params:
+            self.op_feasibility_checker.feasible_pick = self.motion_verified_pick_params[target_obj]
+
+        # sample parameters whose feasibility have been checked except the existence of collision-free motion
+        candidate_op_parameters, status = self.sample_candidate_params_with_increasing_iteration_limit()
+        if status == "NoSolution":
+            return {'is_feasible': False}
+
+        if self.dont_check_motion_existence:
+            chosen_op_param = self.choose_one_of_params(candidate_op_parameters, status)
+        else:
+            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(candidate_op_parameters,
+                                                                           cached_collisions,
+                                                                           cached_holding_collisions)
+
+        return chosen_op_param
+
+    def sample_candidate_pap_parameters(self, iter_limit):
+        raise NotImplementedError
+
+
+
+
 

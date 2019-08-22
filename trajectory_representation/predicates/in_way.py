@@ -1,12 +1,4 @@
-from trajectory_representation.predicates.predicate import BinaryPredicate
-from trajectory_representation.predicates.is_reachable import IsReachable
-from generators.uniform import UniformGenerator
-from trajectory_representation.operator import Operator
-from planners.subplanners.minimum_constraint_planner import MinimumConstraintPlanner
-from planners.subplanners.one_arm_minimum_constraint_planner import OneArmMinimumConstraintPlanner
-
 import numpy as np
-from gtamp_utils.utils import visualize_path
 
 
 class InWay:

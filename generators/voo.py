@@ -1,15 +1,18 @@
 import sys
 import numpy as np
 from gtamp_utils.samplers import gaussian_randomly_place_in_region
-from generator import Generator
+from generator import PaPGenerator
 from gtamp_utils.utils import pick_parameter_distance, place_parameter_distance, se2_distance, visualize_path
 from gtamp_utils.utils import *
 import time
 
 
-class PaPVOO(Generator):
-    def __init__(self, operator_name, problem_env, explr_p, c1, sampling_mode, counter_ratio):
-        Generator.__init__(self, operator_name, problem_env, None)
+class PaPVOOGenerator(PaPGenerator):
+    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+                 n_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence,
+                 explr_p, c1, sampling_mode, counter_ratio):
+        PaPGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint,
+                              n_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence)
         self.explr_p = explr_p
         self.evaled_actions = []
         self.evaled_q_values = []
@@ -18,40 +21,8 @@ class PaPVOO(Generator):
         self.robot = self.problem_env.robot
         self.sampling_mode = sampling_mode
         self.counter_ratio = 1.0 / counter_ratio
+        self.feasible_pick_params = {}
 
-    """
-    # This is from Uniform sampler
-    def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
-                          cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
-        # Not yet motion-planning-feasible
-        operator_skeleton = node.operator_skeleton
-        target_obj = operator_skeleton.discrete_parameters['object']
-        if target_obj in self.feasible_pick_params:
-            self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
-
-        status = "NoSolution"
-        for n_iter in range(10, n_iter, 10):
-            feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
-                                                                                n_iter,
-                                                                                n_parameters_to_try_motion_planning)
-            if status =='HasSolution':
-                break
-        if status == "NoSolution":
-            return {'is_feasible': False}
-
-        if dont_check_motion_existence:
-            chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
-        else:
-            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
-                                                                           feasible_op_parameters,
-                                                                           cached_collisions,
-                                                                           cached_holding_collisions)
-
-        return chosen_op_param
-    """
-
-    # todo migrate the sample_next_point input/output spec into VOO
-    #   the thing that have to change, I think, is that I need to check the motion feasibility
     def sample_next_point(self, node, n_iter, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, cached_holding_collisions=None,
                           dont_check_motion_existence=False):
@@ -60,6 +31,13 @@ class PaPVOO(Generator):
         print 'update evaled values time', time.time() - stime
 
         operator_skeleton = node.operator_skeleton
+        target_obj = operator_skeleton.discrete_parameters['object']
+
+        # this keeps the list of picks that are feasible, because we might have sampled a feasible pick but not
+        # a feasible place. The feasibility checker, when it sees feasible_pick is non-empty, tries to check
+        # the feasibility of the placement only. How can I design this code so that it is more readable?
+        if target_obj in self.feasible_pick_params:
+            self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
 
         status = 'NoSolution'
         feasible_cont_params = []
