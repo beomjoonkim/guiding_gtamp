@@ -298,7 +298,7 @@ class MCTS:
         plan = []
         if n_iter == np.inf:
             n_iter = 999999
-        for iteration in range(1, n_iter):
+        for iteration in range(0, n_iter):
             print '*****SIMULATION ITERATION %d' % iteration
             self.problem_env.reset_to_init_state(node_to_search_from)
 
@@ -321,6 +321,7 @@ class MCTS:
 
             if iteration % 10 == 0:
                 self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
+
             self.log_performance(time_to_search, iteration)
             print self.search_time_to_reward[iteration_for_tree_logging:]
 

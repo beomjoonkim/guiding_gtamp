@@ -149,13 +149,13 @@ def recursive_write_tree_on_graph(curr_node, curr_node_string_form, graph, node_
     """
     if curr_node.is_goal_node:
         node = graph.get_node(curr_node_string_form)
-        node.attr['color'] = "blue"
+        node.attr['color'] = "red"
 
     graph.add_node(curr_node_string_form)
 
-    if curr_node is node_to_search_from:
+    if curr_node.is_operator_skeleton_node:
         node = graph.get_node(curr_node_string_form)
-        node.attr['color'] = "red"
+        node.attr['color'] = "blue"
 
     for child_idx, child in enumerate(curr_node.children.values()):
         child_string_form = get_node_info_in_string(child, child_idx)
