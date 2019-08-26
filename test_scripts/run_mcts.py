@@ -24,8 +24,10 @@ def make_and_get_save_dir(parameters):
     else:
         root_dir = '/data/public/rw/pass.port/tamp_q_results/'
 
-    save_dir = root_dir + '/test_results/mcts_results_on_mover_domain/' \
+    save_dir = root_dir + '/test_results/mcts_results/' \
+               + 'domain_' + str(parameters.domain) + '/' \
                + 'n_objs_pack_' + str(parameters.n_objs_pack) + '/' \
+               + 'sampling_strategy_' + str(parameters.sampling_strategy) + '/' \
                + 'n_mp_trials_' + str(parameters.n_motion_plan_trials) + '/' \
                + 'widening_' + str(parameters.widening_parameter) + '/' \
                + 'uct_' + str(parameters.ucb_parameter) + '/' \
@@ -59,7 +61,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-dont_use_learned_q', action='store_false', default=True)
     parser.add_argument('-n_feasibility_checks', type=int, default=200)
     parser.add_argument('-n_motion_plan_trials', type=int, default=3)
-    parser.add_argument('-planning_horizon', type=int, default=3*8)
+    parser.add_argument('-planning_horizon', type=int, default=3 * 8)
 
     # Learning-related parameters
     parser.add_argument('-train_seed', type=int, default=0)
@@ -69,7 +71,7 @@ def parse_mover_problem_parameters():
     # MCTS parameters
     parser.add_argument('-n_switch', type=int, default=5)
     parser.add_argument('-ucb_parameter', type=float, default=0.1)
-    parser.add_argument('-widening_parameter', type=float, default=3) # number of re-evals
+    parser.add_argument('-widening_parameter', type=float, default=3)  # number of re-evals
     parser.add_argument('-v', action='store_true', default=False)
     parser.add_argument('-debug', action='store_true', default=False)
     parser.add_argument('-mcts_iter', type=int, default=1000)
@@ -77,7 +79,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-use_ucb', action='store_true', default=False)
     parser.add_argument('-pw', action='store_true', default=False)
-    parser.add_argument('-f', action='store_true', default=False) # what was this?
+    parser.add_argument('-f', action='store_true', default=False)  # what was this?
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
 
     parameters = parser.parse_args()
@@ -151,7 +153,8 @@ def main():
     goal_region_name = [problem_env.regions['home_region'].name]
     goal_entities = goal_object_names + goal_region_name
     if parameters.use_shaped_reward:
-        reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0], parameters.planning_horizon)
+        reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0],
+                                               parameters.planning_horizon)
     else:
         reward_function = GenericRewardFunction(problem_env, goal_object_names, goal_region_name[0])
 

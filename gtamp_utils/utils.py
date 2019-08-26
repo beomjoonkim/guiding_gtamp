@@ -357,6 +357,7 @@ def release_obj():
     obj = robot.GetGrabbed()[0]
     robot.Release(obj)
 
+
 def convert_to_kin_body(obj):
     env = openravepy.RaveGetEnvironment(1)
     if isinstance(obj, openravepy.KinBody):
@@ -364,6 +365,7 @@ def convert_to_kin_body(obj):
     else:
         obj = env.GetKinBody(obj)
     return obj
+
 
 def one_arm_pick_object(obj, pick_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
@@ -632,6 +634,7 @@ def randomly_place_region(body, region):
             region.z + aabb.extents()[2] + BODY_PLACEMENT_Z_OFFSET]) - aabb.pos() + get_point(body))
         if not body_collision(env, body):
             return
+
 
 class CustomStateSaver:
     def __init__(self, env):
