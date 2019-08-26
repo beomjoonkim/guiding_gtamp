@@ -12,6 +12,7 @@ def parse_options():
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     parser.add_argument('-train_seed', nargs=2, type=int, default=[0, 1])
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
+    parser.add_argument('-sampling_strategy', type=str, default='uniform')
 
     parameters = parser.parse_args()
     return parameters
@@ -36,6 +37,7 @@ def get_configs():
                 'loss': parameters.loss,
                 'num_train': parameters.num_train,
                 'domain': parameters.domain,
+                'sampling_strategy': parameters.sampling_strategy
             }
             if parameters.use_shaped_reward:
                 config['use_shaped_reward'] = ""
