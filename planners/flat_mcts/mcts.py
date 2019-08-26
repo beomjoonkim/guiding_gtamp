@@ -308,7 +308,8 @@ class MCTS:
             time_to_search += time.time() - stime
             new_trajs.append(new_traj)
 
-            is_time_to_switch_node = iteration % 10 == 0 # and the node should be feasible
+            # note that I need to evaluate all actions in a node to switch
+            is_time_to_switch_node = iteration % 100 == 0  # and the node should be feasible
             # I have to have a feasible action to switch if this is an instance node
             if is_time_to_switch_node:
                 if node_to_search_from.is_operator_skeleton_node:
@@ -318,14 +319,8 @@ class MCTS:
                     if max_child.parent_action.continuous_parameters['is_feasible']:
                         node_to_search_from = node_to_search_from.get_child_with_max_value()
 
-                    """
-                    max_child = node_to_search_from.get_child_with_max_value()
-                    if np.max(node_to_search_from.reward_history[max_child.parent_action]) != \
-                            self.problem_env.reward_function.infeasible_reward:
-                        node_to_search_from = node_to_search_from.get_child_with_max_value()
-                    """
-
-            # self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
+            if iteration % 10 == 0:
+                self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
             self.log_performance(time_to_search, iteration)
             print self.search_time_to_reward[iteration_for_tree_logging:]
 
@@ -356,10 +351,7 @@ class MCTS:
     def choose_action(self, curr_node):
         if curr_node.is_operator_skeleton_node:
             print "Skeleton node"
-            if curr_node.state is None:
-                action = curr_node.perform_ucb_over_actions()
-            else:
-                action = curr_node.perform_ucb_over_actions(self.learned_q_function)
+            action = curr_node.perform_ucb_over_actions(self.learned_q_function)
         else:
             print 'Instance node'
             if curr_node.sampling_agent is None:  # this happens if the tree has been pickled

@@ -4,6 +4,7 @@ from gtamp_utils.samplers import gaussian_randomly_place_in_region
 from generator import PaPGenerator
 from gtamp_utils.utils import pick_parameter_distance, place_parameter_distance, se2_distance, visualize_path
 from gtamp_utils.utils import *
+from gtamp_utils import utils
 import time
 
 
@@ -26,12 +27,16 @@ class PaPVOOGenerator(PaPGenerator):
 
         if node.operator_skeleton.type == 'two_arm_pick':
             obj = self.node.operator_skeleton.discrete_parameters['object']
-            def dist_fcn(x, y): return pick_parameter_distance(obj, x, y)
+
+            def dist_fcn(x, y):
+                return pick_parameter_distance(obj, x, y)
         elif node.operator_skeleton.type == 'two_arm_place':
-            def dist_fcn(x, y): return place_parameter_distance(x, y, self.c1)
+            def dist_fcn(x, y):
+                return place_parameter_distance(x, y, self.c1)
         elif 'pick' in node.operator_skeleton.type \
                 and 'place' in node.operator_skeleton.type:
-            obj = self.node.operator_skeleton.discrete_parameters['object']
+            obj_name = self.node.operator_skeleton.discrete_parameters['object']
+            obj = utils.convert_to_kin_body(obj_name)
 
             def dist_fcn(x, y):
                 x_pick = x[:6]
@@ -39,7 +44,7 @@ class PaPVOOGenerator(PaPGenerator):
                 y_pick = y[:6]
                 y_place = y[-3:]
                 dist = pick_parameter_distance(obj, x_pick, y_pick) \
-                        + place_parameter_distance(x_place, y_place, self.c1)
+                       + place_parameter_distance(x_place, y_place, self.c1)
                 return dist
         else:
             raise NotImplementedError
@@ -70,6 +75,7 @@ class PaPVOOGenerator(PaPGenerator):
         return feasible_op_parameters, status
 
     def sample_next_point(self, cached_collisions=None, cached_holding_collisions=None):
+        self.update_evaled_values()
         chosen_op_param = PaPGenerator.sample_next_point(self, cached_collisions, cached_holding_collisions)
         if chosen_op_param['is_feasible']:
             self.evaled_actions.append(chosen_op_param['action_parameters'])
@@ -113,7 +119,6 @@ class PaPVOOGenerator(PaPGenerator):
     def sample_using_voo(self):
         is_sample_from_best_v_region = self.is_time_to_sample_from_best_v_region()
         if is_sample_from_best_v_region:
-            import pdb;pdb.set_trace()
             stime = time.time()
             cont_parameters = self.sample_from_best_voronoi_region()
             print "Best V region sampling time", time.time() - stime
@@ -124,9 +129,8 @@ class PaPVOOGenerator(PaPGenerator):
 
     def is_time_to_sample_from_best_v_region(self):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
-        print len(self.evaled_actions)
+        # print len(self.evaled_actions)
         if is_more_than_one_action_in_node:
-            import pdb;pdb.set_trace()
             stime = time.time()
             feasible_actions = [a for a in self.node.A if a.continuous_parameters['is_feasible']]
             we_have_feasible_action = len(feasible_actions) > 0
@@ -134,18 +138,15 @@ class PaPVOOGenerator(PaPGenerator):
         else:
             we_have_feasible_action = False
 
-        if we_have_feasible_action:
-            import pdb;pdb.set_trace()
-
         rnd = np.random.random()
         is_sample_from_best_v_region = rnd < (1 - self.explr_p) and we_have_feasible_action
 
         if is_sample_from_best_v_region:
-            self.node.best_v += 1
-            print 'Sample ' + self.node.operator_skeleton.type + ' from best region'
+            # self.node.best_v += 1
+            print 'Sample from the best region'
         else:
             maxrwd = None if len(self.evaled_actions) == 0 else np.max(self.node.reward_history.values())
-            #print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
+            # print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
 
         return is_sample_from_best_v_region
 
@@ -158,7 +159,6 @@ class PaPVOOGenerator(PaPGenerator):
                 except:
                     import pdb;
                     pdb.set_trace()
-
             else:
                 best_action_idxs = np.argwhere(self.evaled_q_values == np.amax(self.evaled_q_values))
             best_action_idxs = best_action_idxs.reshape((len(best_action_idxs, )))

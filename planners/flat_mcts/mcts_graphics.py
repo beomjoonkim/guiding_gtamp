@@ -39,14 +39,17 @@ def get_constraint_diff(parent, child):
 
 
 def add_line(curr_line, action, value):
-    try:
-        is_discrete_node = action.continuous_parameters is None
-    except:
-        import pdb;pdb.set_trace()
-
     global pick_failed_node_idx
     global place_failed_node_idx
+    is_feasible_action = action.is_skeleton or action.continuous_parameters['is_feasible']
+    if is_feasible_action:
+        curr_line += '(%s %s ): %.2f ' % (action.discrete_parameters['object'],
+                                             action.discrete_parameters['region'],
+                                             value)
+    else:
+        curr_line += 'failed %f' % time.time()
 
+    """
     if is_discrete_node:
         if action.type == 'two_arm_pick':
             if type(action.discrete_parameters['object']) == str:
@@ -69,6 +72,7 @@ def add_line(curr_line, action, value):
                 place_failed_node_idx += 1
             else:
                 curr_line += 'place (%.2f,%.2f,%.2f):%.2f ' % (base_pose[0], base_pose[1], base_pose[2], value)
+    """
 
     return curr_line
 
@@ -78,7 +82,7 @@ def write_parent_action(node, child_idx):
     pact = node.parent_action
     operator_name = pact.type
 
-    parent_action = add_line(parent_action, pact, 1)[:-7]
+    parent_action = add_line(parent_action, pact, 1)[:-6]
 
     """
     is_discrete_node = pact.continuous_parameters is None
@@ -118,11 +122,6 @@ def get_node_info_in_string(node, child_idx):
         for key, value in zip(node.reward_history.keys(), node.reward_history.values()):
             reward_history = add_line(reward_history, key, np.max(value))
 
-    """
-    for key, value in zip(node.N.keys(), node.N.values()):
-        N = add_line(N, key, value)
-    """
-
     # write parent action
     if node.parent_action is not None:
         parent_action = write_parent_action(node, child_idx)
@@ -130,7 +129,6 @@ def get_node_info_in_string(node, child_idx):
         parent_action = 'None'
 
     info = 'node_idx: ' + str(node.idx) + '\n' + \
-           'parent_action: '+parent_action + '\n' + \
            'Nvisited: ' + str(node.Nvisited) + '\n' + \
            'Q: ' + Q + '\n' + \
            'R history: ' + reward_history
@@ -164,7 +162,9 @@ def recursive_write_tree_on_graph(curr_node, curr_node_string_form, graph, node_
 
         graph.add_edge(curr_node_string_form, child_string_form)
         edge = graph.get_edge(curr_node_string_form, child_string_form)
-        edge.attr['label'] = child.parent_action.type
+        parent_action = '(%s %s )' % (child.parent_action.discrete_parameters['object'],
+                                          child.parent_action.discrete_parameters['region'])
+        edge.attr['label'] = parent_action #child.parent_action.type
 
         recursive_write_tree_on_graph(child, child_string_form, graph, node_to_search_from)
     return
@@ -178,9 +178,6 @@ def write_dot_file(tree, file_idx, suffix, node_to_search_from):
     root_node_string_form = get_node_info_in_string(tree.root, 0)
     recursive_write_tree_on_graph(tree.root, root_node_string_form, graph, node_to_search_from)
     graph.layout(prog='dot')
-    graph.draw('./test_results/mcts_search_trees/'+str(file_idx)+'_'+suffix+'.png')  # draw png
+    graph.draw('./tmp_debugging/'+str(file_idx)+'_'+suffix+'.png')  # draw png
     print ("Done!")
 
-
-if __name__ == '__main__':
-    main()

@@ -38,7 +38,11 @@ class DiscreteTreeNode(TreeNode):
             best_action = self.get_never_evaluated_action()
         else:
             # why is it never coming down here? Because there are actions that have not been tried.
-            feasible_actions = [a for a in self.A if np.max(self.reward_history[a]) > -2]
+            if self.is_operator_skeleton_node:
+                feasible_actions = self.A
+            else:
+                feasible_actions = [a for a in self.A if a.continuous_parameters['is_feasible']]
+
             feasible_q_values = [self.Q[a] for a in feasible_actions]
 
             if not self.is_operator_skeleton_node:
@@ -46,8 +50,10 @@ class DiscreteTreeNode(TreeNode):
 
             for a, q in zip(feasible_actions, feasible_q_values):
                 print a.discrete_parameters, q
-
-            best_action = self.get_action_with_highest_ucb_value(feasible_actions, feasible_q_values)
+            try:
+                best_action = self.get_action_with_highest_ucb_value(feasible_actions, feasible_q_values)
+            except:
+                import pdb;pdb.set_trace()
 
         return best_action
 
