@@ -183,7 +183,7 @@ class PaPGenerator(Generator):
         status = "NoSolution"
         candidate_op_parameters = None
         for iter_limit in range(10, self.total_number_of_feasibility_checks, 10):
-            print "Sampling.. %d / %d" % (iter_limit, self.total_number_of_feasibility_checks)
+            #print "Sampling.. %d / %d" % (iter_limit, self.total_number_of_feasibility_checks)
             candidate_op_parameters, status = self.sample_candidate_pap_parameters(iter_limit)
             if status == 'HasSolution' and len(candidate_op_parameters) >= self.n_candidate_params_to_smpl:
                 break
