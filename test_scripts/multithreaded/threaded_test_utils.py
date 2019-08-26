@@ -14,6 +14,7 @@ def parse_options():
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
     parser.add_argument('-hcount', action='store_true', default=False)
+    parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
 
     parameters = parser.parse_args()
     return parameters
@@ -39,6 +40,7 @@ def get_configs():
                 'num_train': parameters.num_train,
                 'domain': parameters.domain,
                 'sampling_strategy': parameters.sampling_strategy,
+                'explr_p': parameters.explr_p
             }
             if parameters.use_shaped_reward:
                 config['use_shaped_reward'] = ""
