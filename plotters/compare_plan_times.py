@@ -55,8 +55,6 @@ def get_plan_times(test_dir, test_files, t_limit):
             time_taken.append(t_limit)
             successes.append(False)
 
-    import pdb;pdb.set_trace()
-
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
     print "Success rate %.3f" % np.mean(successes)
@@ -102,7 +100,8 @@ def main():
     test_dir = './test_results/%s_results/domain_%s/n_objs_pack_%d/' % (algo_name, domain, n_objs)
     #test_dir += 'hcount/'
     #test_dir += 'dql/n_train_5000/'
-    test_dir += 'sampling_strategy_uniform/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
+    #test_dir += 'sampling_strategy_uniform/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
+    test_dir += 'sampling_strategy_voo/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
 
 
     test_files = os.listdir(test_dir)
