@@ -134,7 +134,7 @@ class PaPVOOGenerator(PaPGenerator):
             stime = time.time()
             feasible_actions = [a for a in self.node.A if a.continuous_parameters['is_feasible']]
             we_have_feasible_action = len(feasible_actions) > 0
-            print 'action existence time check: ', time.time() - stime
+            #print 'action existence time check: ', time.time() - stime
         else:
             we_have_feasible_action = False
 
@@ -143,7 +143,8 @@ class PaPVOOGenerator(PaPGenerator):
 
         if is_sample_from_best_v_region:
             # self.node.best_v += 1
-            print 'Sample from the best region'
+            #print 'Sample from the best region'
+            pass
         else:
             maxrwd = None if len(self.evaled_actions) == 0 else np.max(self.node.reward_history.values())
             # print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
@@ -203,7 +204,7 @@ class PaPVOOGenerator(PaPGenerator):
 
         new_parameters = None
         closest_best_dist = np.inf
-        print "Q diff", np.max(self.node.Q.values()) - np.min(self.node.Q.values())
+        #print "Q diff", np.max(self.node.Q.values()) - np.min(self.node.Q.values())
         max_counter = 1000  # 100 vs 1000 does not really make difference in MCD domain
         # todo I think I can squeeze out performance by using gaussian in higher dimension
         while np.any(best_dist > other_dists) and counter < max_counter:

@@ -33,11 +33,14 @@ def make_and_get_save_dir(parameters):
                + 'uct_' + str(parameters.ucb_parameter) + '/' \
                + 'reward_shaping_' + str(parameters.use_shaped_reward) + '/' \
                + 'learned_q_' + str(parameters.use_learned_q) + '/'
-    pidx = parameters.pidx
+
+    if 'uniform' not in parameters.sampling_strategy:
+        save_dir += 'explr_p_' + str(parameters.explr_p) + '/'
 
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
+    pidx = parameters.pidx
     if os.path.isfile(save_dir + '/' + str(pidx) + '.pkl'):
         print "Already done"
         if not parameters.f:
@@ -72,6 +75,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-n_switch', type=int, default=5)
     parser.add_argument('-ucb_parameter', type=float, default=0.1)
     parser.add_argument('-widening_parameter', type=float, default=3)  # number of re-evals
+    parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
     parser.add_argument('-v', action='store_true', default=False)
     parser.add_argument('-debug', action='store_true', default=False)
     parser.add_argument('-mcts_iter', type=int, default=1000)
@@ -83,6 +87,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
 
     parameters = parser.parse_args()
+    import pdb;pdb.set_trace()
     return parameters
 
 

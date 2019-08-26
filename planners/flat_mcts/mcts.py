@@ -27,6 +27,7 @@ hostname = socket.gethostname()
 if hostname == 'dell-XPS-15-9560':
     from mcts_graphics import write_dot_file
 
+
 # todo
 #   create MCTS for each environment. Each one will have different compute_state functions
 class MCTS:
@@ -44,6 +45,7 @@ class MCTS:
         self.use_shaped_reward = parameters.use_shaped_reward
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
+        self.explr_p = parameters.explr_p
 
         # Hard-coded params
         self.check_reachability = True
@@ -119,7 +121,10 @@ class MCTS:
                                    self.n_feasibility_checks,
                                    self.n_motion_plan_trials,
                                    dont_check_motion_existence,
-                                   0, 1, 'gaussian', 1)
+                                   explr_p=self.explr_p,
+                                   c1=1,
+                                   sampling_mode='gaussian',
+                                   counter_ratio=1)
         return generator
 
     def compute_state(self, parent_node, parent_action):
@@ -273,10 +278,10 @@ class MCTS:
         best_traj_rwd, best_node, reward_list = self.tree.get_best_trajectory_sum_rewards_and_node(self.discount_rate)
         if self.found_solution:
             return True
-            #if self.problem_env.reward_function.is_optimal_plan_found(best_traj_rwd):
+            # if self.problem_env.reward_function.is_optimal_plan_found(best_traj_rwd):
             #    print "Optimal score found"
             #    return True
-            #else:
+            # else:
             #    return False
         else:
             return False
@@ -320,7 +325,7 @@ class MCTS:
                         node_to_search_from = node_to_search_from.get_child_with_max_value()
 
             if iteration % 10 == 0:
-                self.log_current_tree_to_dot_file(iteration_for_tree_logging+iteration, node_to_search_from)
+                self.log_current_tree_to_dot_file(iteration_for_tree_logging + iteration, node_to_search_from)
 
             self.log_performance(time_to_search, iteration)
             print self.search_time_to_reward[iteration_for_tree_logging:]
@@ -463,7 +468,8 @@ class MCTS:
                 try:
                     current_collides = node.state.current_collides
                 except:
-                    import pdb;pdb.set_trace()
+                    import pdb;
+                    pdb.set_trace()
 
             current_holding_collides = None
             feasible_param = node.sampling_agent.sample_next_point(current_collides, current_holding_collides)
