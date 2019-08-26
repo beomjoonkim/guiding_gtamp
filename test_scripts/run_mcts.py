@@ -22,7 +22,7 @@ def make_and_get_save_dir(parameters):
             hostname == 'glaucus':
         root_dir = './'
     else:
-        root_dir = '/data/public/rw/pass.port/tamp_q_results/'
+        root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
 
     save_dir = root_dir + '/test_results/mcts_results/' \
                + 'domain_' + str(parameters.domain) + '/' \
