@@ -48,37 +48,21 @@ def compute_hcount(state, problem_env):
 
     print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
     print objects_to_move
-    #if len(objects_to_move) == 0 or (n_occludes_pre == 0 and n_occludes_manip == 0 and n_occludes == 0):
-    #    import pdb;
-    #    pdb.set_trace()
-    # import pdb;pdb.set_trace()
 
-    """
-    # Count the objects that need to be moved recursively
-    object_names = [o for o in problem_env.entity_names if 'region' not in o]
-    while not potential_obj_to_move_queue.empty():
-        obj_to_move = potential_obj_to_move_queue.get()
-        if obj_to_move not in objects_to_move:
-            objects_to_move.add(obj_to_move)
-            for o2 in object_names:
-                # OccludesPre
-                is_o2_in_way_of_obj_to_move = state.binary_edges[(o2, obj_to_move)][1]
+    return len(objects_to_move)
 
-                # OccludesManip
-                region_names = ['loading_region', 'home_region']
-                for r in region_names:
-                    if state.ternary_edges[(obj_to_move, o2, r)][0]:
-                        print obj_to_move, o2, r, state.ternary_edges[(obj_to_move, o2, r)]
 
-                goal_region = 'home_region'
-                original_obj_region = 'loading_region'
-                if obj_to_move in state.goal_entities:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)]
-                else:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)]
+def compute_hcount_with_action(state, action, problem_env):
+    n_objs_to_move = compute_hcount(state, problem_env)
 
-                if is_o2_in_way_of_obj_to_move or is_o2_in_way_of_obj_to_move_to_region:
-                    potential_obj_to_move_queue.put(o2)
-    """
+    if 'two_arm' in problem_env.name:
+        a_obj = action.discrete_parameters['two_arm_place_object']
+        a_region = action.discrete_parameters['two_arm_place_region']
+    else:
+        a_obj = action.discrete_parameters['object'].GetName()
+        a_region = action.discrete_parameters['region'].name
 
-    return -len(objects_to_move)
+    # todo rename the following
+    if state.nodes[a_obj][9] and (a_obj not in state.goal_entities or a_region in state.goal_entities):
+        n_objs_to_move -= 1
+    return n_objs_to_move
