@@ -170,11 +170,17 @@ class PaPGNN(GNN):
         msg_aggregation_layer = aggregation_lambda_layer(msg_network)  # aggregates msgs from neighbors
 
         # rounds of msg passing
+        # todo There was something here that I needed to fix;
+        #  It was something about region agnostic is not really region agnostic.
         for i in range(config.n_msg_passing):
             if same_model_for_sender_and_dest:
                 vertex_network = vertex_model(msg_aggregation_layer)
                 concat_layer = concat_lambda_layer([vertex_network, vertex_network, edge_network])
             else:
+                # region_agnostic_msg_value is different for each region
+                # how to deal with that? What does the sender model expect as a size?
+                # If I remember correctly, the input node size is n_objs x n_objs x n_regions,
+                # so I think this should be fine?
                 region_agnostic_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='region_agnostic')
                 val = region_agnostic_msg_value(msg_aggregation_layer)
                 sender_network = sender_model(val)
@@ -225,10 +231,9 @@ class PaPGNN(GNN):
             # hinge_loss = action_ranking_cost
             return hinge_loss
 
-        def compute_mse_loss(msgs, target_msg, costs):
-            return tf.losses.mean_squared_error(target_msg, -costs)
+        def compute_mse_loss(msgs, target_msg, rewards):
+            return tf.losses.mean_squared_error(target_msg, rewards)
 
-        # https://storage.googleapis.com/deepmind-media/dqn/DQNNaturePaper.pdf
         def compute_dql_loss(msgs, target_msg, costs):
             msgs = tf.squeeze(msgs)
             msgs = tf.reshape(msgs, [-1, n_regions * n_entities])
