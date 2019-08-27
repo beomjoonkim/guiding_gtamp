@@ -66,8 +66,8 @@ def create_train_data(nodes, edges, actions, costs, num_training):
 def train(config):
     seed = config.seed
 
-    nodes, edges, actions, costs = data_traj.load_data(
-        './test_results/hpn_results_on_mover_domain/1/trajectory_data//',
+    nodes, edges, actions, rewards = data_traj.load_data(
+        './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
         desired_operator_type=config.operator)
 
     num_test = min(config.num_test, len(nodes))
@@ -77,7 +77,7 @@ def train(config):
     nodes = nodes[:, :, 6:]
     m = create_gnn_model(nodes, edges, config)
     callbacks = create_callbacks(m.weight_file_name)
-    training_inputs, training_targets = create_train_data(nodes, edges, actions, costs, num_training)
+    training_inputs, training_targets = create_train_data(nodes, edges, actions, rewards, num_training)
     tnodes = nodes[-num_test:]
     tedges = edges[-num_test:]
     tactions = actions[-num_test:]
@@ -112,8 +112,8 @@ def parse_args():
     parser.add_argument('-lr', type=float, default=1e-4)
     parser.add_argument('-optimizer', type=str, default='adam')
     parser.add_argument('-batch_size', type=int, default=32)
-    parser.add_argument('-num_test', type=int, default=1882)
-    parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-num_test', type=int, default=107)
+    parser.add_argument('-num_train', type=int, default=600)
     parser.add_argument('-val_portion', type=float, default=0.1)
     parser.add_argument('-top_k', type=int, default=1)
     parser.add_argument('-donttrain', action='store_true', default=False)
