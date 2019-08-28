@@ -457,7 +457,7 @@ def generate_training_data_single(config):
     if hostname in {'dell-XPS-15-9560', 'phaedra', 'shakey', 'lab', 'glaucus', 'luke-laptop-1'}:
         root_dir = './'
     else:
-        root_dir = '/data/public/rw/pass.port/tamp_q_results/'
+        root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
 
     solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d'\
                         % (config.domain, config.n_objs_pack)
