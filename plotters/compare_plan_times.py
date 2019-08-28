@@ -97,11 +97,13 @@ def main():
 
     # Customize the below
     algo_name = 'mcts'
+    algo_name = 'sahs'
     test_dir = './test_results/%s_results/domain_%s/n_objs_pack_%d/' % (algo_name, domain, n_objs)
-    #test_dir += 'hcount/'
+    test_dir += 'hcount/'
+    import pdb;pdb.set_trace()
     #test_dir += 'dql/n_train_5000/'
     #test_dir += 'sampling_strategy_uniform/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
-    test_dir += 'sampling_strategy_voo/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
+    #test_dir += 'sampling_strategy_voo/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
 
 
     test_files = os.listdir(test_dir)
