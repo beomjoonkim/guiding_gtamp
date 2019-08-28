@@ -87,7 +87,6 @@ def parse_mover_problem_parameters():
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
 
     parameters = parser.parse_args()
-    import pdb;pdb.set_trace()
     return parameters
 
 
