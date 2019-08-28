@@ -40,13 +40,31 @@ def get_configs():
                 'num_train': parameters.num_train,
                 'domain': parameters.domain,
                 'sampling_strategy': parameters.sampling_strategy,
-                'explr_p': parameters.explr_p
             }
-            if parameters.use_shaped_reward:
-                config['use_shaped_reward'] = ""
 
-            if parameters.hcount:
-                config['hcount'] = ""
             configs.append(config)
 
+    return parameters, configs
+
+
+def get_sahs_configs():
+    parameters, configs = get_configs()
+
+    for config in configs:
+        if parameters.hcount:
+            config['hcount'] = ""
+
     return configs
+
+
+def get_mcts_configs():
+    parameters, configs = get_configs()
+
+    for config in configs:
+        config['explr_p'] = parameters.explr_p
+        if parameters.use_shaped_reward:
+            config['use_shaped_reward'] = ""
+
+    return configs
+
+
