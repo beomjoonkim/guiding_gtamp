@@ -84,6 +84,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         o = action.discrete_parameters['object'].GetName()
         r = action.discrete_parameters['region'].name
 
+    """
     nodes, edges, actions, _ = extract_individual_example(state, action)
     nodes = nodes[..., 6:]
 
@@ -101,17 +102,12 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                     if is_r_goal_region:
                         number_in_goal += is_i_in_r
     number_in_goal += int(region_is_goal)
+    """
 
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
         print "%s %s %.4f" % (o, r, hcount)
         return hcount
-    elif config.dont_use_gnn:
-        return -number_in_goal
-    elif config.dont_use_h:
-        gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
-                                                            actions[None, ...])
-        return gnn_pred
     elif config.hadd:
         goal_regions = [goal_r for goal_r in state.goal_entities if 'region' in goal_r]
         assert len(goal_regions) == 1
@@ -173,12 +169,6 @@ def get_problem(mover, config):
         mover.env.SetViewer('qtcoin')
         set_viewer_options(mover.env)
 
-    pr = cProfile.Profile()
-    pr.enable()
-    state = statecls(mover, goal)
-    pr.disable()
-    pstats.Stats(pr).sort_stats('tottime').print_stats(30)
-    pstats.Stats(pr).sort_stats('cumtime').print_stats(30)
 
     #state.make_pklable()
 
@@ -224,7 +214,7 @@ def get_problem(mover, config):
 
     with tf.variable_scope('pap'):
         pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
-    pap_model.load_weights()
+    #pap_model.load_weights()
 
     mover.reset_to_init_state_stripstream()
     depth_limit = 60
@@ -246,6 +236,14 @@ def get_problem(mover, config):
             while node is not None:
                 yield node
                 node = node.parent
+
+    pr = cProfile.Profile()
+    pr.enable()
+    state = statecls(mover, goal)
+    pr.disable()
+    pstats.Stats(pr).sort_stats('tottime').print_stats(30)
+    pstats.Stats(pr).sort_stats('cumtime').print_stats(30)
+
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
