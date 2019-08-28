@@ -149,25 +149,25 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
             rewards.append(np.sum(traj.rewards[idx:]))
             print traj.rewards
             print traj.rewards[idx:]
-            if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
-                import pdb;pdb.set_trace()
+            #if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
+            #    import pdb;pdb.set_trace()
             idx += 1
 
     nodes = np.stack(nodes, axis=0)
     edges = np.stack(edges, axis=0)
     actions = np.stack(actions, axis=0)
     rewards = np.stack(rewards, axis=0)
-    if rewards[0] == 10:
-        import pdb;pdb.set_trace()
+    #if rewards[0] == 10:
+    #    import pdb;pdb.set_trace()
     return nodes, edges, actions, rewards
 
 
 # filename is a directory
 def load_data(dirname, desired_operator_type='two_arm_pick'):
     cachefile = "{}{}.pkl".format(dirname, desired_operator_type)
-    #if os.path.isfile(cachefile):
-    #    print "Loading the cached file:", cachefile
-    #    return pickle.load(open(cachefile, 'rb'))
+    if os.path.isfile(cachefile):
+        print "Loading the cached file:", cachefile
+        return pickle.load(open(cachefile, 'rb'))
 
     print "Caching file..."
     file_list = glob.glob("{}/pap_traj_*.pkl".format(dirname))

@@ -75,12 +75,14 @@ def train(config):
     config.num_train = num_training
     config.num_test = num_test
     nodes = nodes[:, :, 6:]
-    m = create_gnn_model(nodes, edges, config)
-    callbacks = create_callbacks(m.weight_file_name)
+    model = create_gnn_model(nodes, edges, config)
+    callbacks = create_callbacks(model.weight_file_name)
     training_inputs, training_targets = create_train_data(nodes, edges, actions, rewards, num_training)
     tnodes = nodes[-num_test:]
     tedges = edges[-num_test:]
     tactions = actions[-num_test:]
+
+    import pdb;pdb.set_trace()
 
     if not donttrain:
         m.loss_model.fit(

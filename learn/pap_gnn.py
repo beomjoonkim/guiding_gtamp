@@ -84,6 +84,8 @@ class PaPGNN(GNN):
 
             all_concat = tf.concat([repeated_src_dest_concatenated, edge_tensor], axis=-1)
 
+            # todo I think I could get away with not repeating srcs, by predicting
+            #   different values.
             # this should be of size n_data, n_entities, n_entities, dim_node
             # edge is of size n_data, n_entities, n_entities, n_region, dim_edge
             return all_concat
