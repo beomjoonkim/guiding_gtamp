@@ -23,6 +23,7 @@ def worker_wrapper_multi_input(multi_args):
 
 def main():
     configs = get_configs()
+
     n_workers = 1
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
