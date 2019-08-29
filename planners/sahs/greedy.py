@@ -84,8 +84,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         o = action.discrete_parameters['object'].GetName()
         r = action.discrete_parameters['region'].name
 
-    """
-    nodes, edges, actions, _ = extract_individual_example(state, action)
+    nodes, edges, actions  = extract_individual_example(state, action)
     nodes = nodes[..., 6:]
 
     region_is_goal = state.nodes[r][8]
@@ -102,7 +101,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                     if is_r_goal_region:
                         number_in_goal += is_i_in_r
     number_in_goal += int(region_is_goal)
-    """
 
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
@@ -126,8 +124,9 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             hadd += gnn_pred
         return hadd
     else:
+        hcount = compute_hcount_with_action(state, action, problem_env)
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = -number_in_goal + gnn_pred
+        hval = -number_in_goal + gnn_pred + hcount
         if not is_two_arm_domain:
             obj_name = action.discrete_parameters['object'].GetName()
             region_name = action.discrete_parameters['region'].name
@@ -214,7 +213,7 @@ def get_problem(mover, config):
 
     with tf.variable_scope('pap'):
         pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
-    #pap_model.load_weights()
+    pap_model.load_weights()
 
     mover.reset_to_init_state_stripstream()
     depth_limit = 60
