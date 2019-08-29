@@ -142,11 +142,11 @@ class MCTS:
                                        parent_action=parent_action,
                                        goal_entities=self.goal_entities)
             else:
+                """
                 if parent_node is None:
                     idx = -1
                 else:
                     idx = parent_node.idx
-
                 fname = './tmp_%d.pkl' % idx
                 if os.path.isfile(fname):
                     state = pickle.load(open(fname, 'r'))
@@ -164,7 +164,6 @@ class MCTS:
                                              parent_state=parent_state,
                                              parent_action=parent_action,
                                              goal_entities=self.goal_entities, planner='mcts')
-                """
         return state
 
     def get_current_state(self, parent_node, parent_action, is_parent_action_infeasible):
