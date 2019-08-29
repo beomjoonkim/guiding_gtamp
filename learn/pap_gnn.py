@@ -77,7 +77,6 @@ class PaPGNN(GNN):
             repeated_srcs = tf.tile(tf.expand_dims(src_node_tensor, -2), src_repetitons)
             dest_repetitons = [1, n_entities, 1, 1]  # repeat in the rows
             repeated_dests = tf.tile(tf.expand_dims(dest_node_tensor, 1), dest_repetitons)
-
             src_dest_concatenated = tf.concat([repeated_srcs, repeated_dests], axis=-1)
             repetitions = [1, 1, 1, self.n_regions, 1]
             repeated_src_dest_concatenated = tf.tile(tf.expand_dims(src_dest_concatenated, -2), repetitions)
@@ -91,6 +90,34 @@ class PaPGNN(GNN):
             return all_concat
 
         concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_src_dest_edge_fcn(*args), name='concat')
+        return concat_layer
+
+    def create_region_based_sender_dest_edge_concatenation_lambda_layer(self):
+        def concatenate_fcn(src_r1, src_r2, dest_r1, dest_r2, edge_tensor):
+            n_entities = self.num_entities
+            src_repetitons = [1, 1, n_entities, 1]  # repeat in the columns
+
+            src_r1_repeated = tf.tile(tf.expand_dims(src_r1, -2), src_repetitons)
+            src_r2_repeated = tf.tile(tf.expand_dims(src_r2, -2), src_repetitons)
+            src_r_concat = tf.concat([tf.expand_dims(src_r1_repeated, -2), tf.expand_dims(src_r2_repeated, -2)], axis=-2)
+
+            dest_repetitons = [1, n_entities, 1, 1]  # repeat in the rows
+            dest_r1_repeated = tf.tile(tf.expand_dims(dest_r1, 1), dest_repetitons)
+            dest_r2_repeated = tf.tile(tf.expand_dims(dest_r2, 1), dest_repetitons)
+            dest_r_concat = tf.concat([tf.expand_dims(dest_r1_repeated, -2), tf.expand_dims(dest_r2_repeated, -2)], axis=-2)
+
+            src_dest_concat = tf.concat([src_r_concat, dest_r_concat], axis=-1)
+
+
+            all_concat = tf.concat([src_dest_concat, edge_tensor], axis=-1)
+
+            # todo I think I could get away with not repeating srcs, by predicting
+            #   different values.
+            # this should be of size n_data, n_entities, n_entities, dim_node
+            # edge is of size n_data, n_entities, n_entities, n_region, dim_edge
+            return all_concat
+
+        concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_fcn(*args), name='r_based_concat')
         return concat_layer
 
     def create_concat_model_for_verification(self):
@@ -183,11 +210,29 @@ class PaPGNN(GNN):
                 # how to deal with that? What does the sender model expect as a size?
                 # If I remember correctly, the input node size is n_objs x n_objs x n_regions,
                 # so I think this should be fine?
+                r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1')
+                r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2')
+                val_r1 = r1_msg_value(msg_aggregation_layer)
+                val_r2 = r2_msg_value(msg_aggregation_layer)
+
+                sender_r1_network = sender_model(val_r1)
+                sender_r2_network = sender_model(val_r2)
+                dest_r1_network = dest_model(val_r1)
+                dest_r2_network = dest_model(val_r2)
+                region_concat_lambda_layer = self.create_region_based_sender_dest_edge_concatenation_lambda_layer()
+
+                concat_layer = region_concat_lambda_layer([sender_r1_network, sender_r2_network,
+                                                           dest_r1_network, dest_r2_network,
+                                                           edge_network])
+                """
+
                 region_agnostic_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='region_agnostic')
                 val = region_agnostic_msg_value(msg_aggregation_layer)
                 sender_network = sender_model(val)
                 dest_network = dest_model(val)
                 concat_layer = concat_lambda_layer([sender_network, dest_network, edge_network])
+                """
+
             msg_network = msg_model(concat_layer)
             msg_aggregation_layer = aggregation_lambda_layer(msg_network)  # aggregates msgs from neighbors
             # todo it is saturating here when I use relu?
@@ -272,12 +317,15 @@ class PaPGNN(GNN):
         alt_msg_layer = alt_msgs([value_layer, self.action_input])
 
         if self.config.loss == 'mse':
-            loss_layer = tf.keras.layers.Lambda(
-                lambda args: compute_mse_loss(*args))
+            loss_layer = tf.keras.layers.Lambda(lambda args: compute_mse_loss(*args))
         else:
-            loss_layer = tf.keras.layers.Lambda(
-                lambda args: compute_dql_loss(*args) if self.config.loss == 'dql' else (
-                        compute_rank_loss(*args) + self.config.mse_weight * compute_mse_loss(*args)))
+            if self.config.loss == 'dql':
+                loss_layer = tf.keras.layers.Lambda(lambda args: compute_dql_loss(*args))
+            else:
+                loss_layer = tf.keras.layers.Lambda(lambda args:
+                                                    compute_rank_loss(*args)
+                                                    + self.config.mse_weight * compute_mse_loss(*args))
+
         loss_layer = loss_layer([alt_msg_layer, q_layer, self.cost_input])
         loss_inputs = [self.node_input, self.edge_input, self.action_input, self.cost_input]
         loss_model = tf.keras.Model(loss_inputs, loss_layer)

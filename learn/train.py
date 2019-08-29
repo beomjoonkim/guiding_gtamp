@@ -67,7 +67,8 @@ def train(config):
     seed = config.seed
 
     nodes, edges, actions, rewards = data_traj.load_data(
-        './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
+        #'./planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
+        './',
         desired_operator_type=config.operator)
 
     num_test = min(config.num_test, len(nodes))
@@ -82,16 +83,15 @@ def train(config):
     tedges = edges[-num_test:]
     tactions = actions[-num_test:]
 
-    import pdb;pdb.set_trace()
 
     if not donttrain:
-        m.loss_model.fit(
+        model.loss_model.fit(
             training_inputs, training_targets, config.batch_size, epochs=500, verbose=2,
             callbacks=callbacks,
             validation_split=config.val_portion)
 
-    m.load_weights()
-    _, post_top_zero_acc, post_top_one_acc, post_top_two_acc = top_k_accuracy(m, tnodes, tedges, tactions,
+    model.load_weights()
+    _, post_top_zero_acc, post_top_one_acc, post_top_two_acc = top_k_accuracy(model, tnodes, tedges, tactions,
                                                                               config.top_k)
 
     write_test_results_in_csv(post_top_zero_acc, post_top_one_acc, post_top_two_acc, seed, num_training, config.loss)
@@ -114,8 +114,8 @@ def parse_args():
     parser.add_argument('-lr', type=float, default=1e-4)
     parser.add_argument('-optimizer', type=str, default='adam')
     parser.add_argument('-batch_size', type=int, default=32)
-    parser.add_argument('-num_test', type=int, default=107)
-    parser.add_argument('-num_train', type=int, default=600)
+    parser.add_argument('-num_test', type=int, default=1000)
+    parser.add_argument('-num_train', type=int, default=5000)
     parser.add_argument('-val_portion', type=float, default=0.1)
     parser.add_argument('-top_k', type=int, default=1)
     parser.add_argument('-donttrain', action='store_true', default=False)
