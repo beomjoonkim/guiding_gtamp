@@ -365,7 +365,7 @@ class MCTS:
                                                   self.problem_env.reward_function.infeasible_reward,
                                                   self.use_progressive_widening,
                                                   self.use_ucb):
-                # print "Sampling new action"
+                print "Sampling new action"
                 # stime = time.time()
                 new_continuous_parameters = self.sample_continuous_parameters(curr_node)
                 # print "Total sampling time", time.time() - stime
@@ -405,6 +405,7 @@ class MCTS:
             print "Is it time to pick?", self.problem_env.is_pick_time()
 
         action = self.choose_action(curr_node)
+
         is_action_feasible = self.apply_action(curr_node, action)
 
         if not curr_node.is_action_tried(action):
