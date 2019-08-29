@@ -59,7 +59,6 @@ class TwoArmPaPFeasibilityChecker(TwoArmPickFeasibilityChecker, TwoArmPlaceFeasi
         else:
             pap_continuous_parameters['pick'] = pick_parameters
             pap_continuous_parameters['place'] = place_parameters
-            pap_continuous_parameters['is_feasible'] = True
             return pap_continuous_parameters, 'HasSolution'
 
 
