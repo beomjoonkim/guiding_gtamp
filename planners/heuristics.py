@@ -62,7 +62,10 @@ def compute_hcount_with_action(state, action, problem_env):
         a_region = action.discrete_parameters['region'].name
 
     # todo rename the following
-    if state.nodes[a_obj][9] and (a_obj not in state.goal_entities or a_region in state.goal_entities):
+    is_a_obj_reachable = state.nodes[a_obj][9]
+    is_a_obj_manip_free_to_a_region = state.binary_edges[(a_obj, a_region)][-1]
+    if (is_a_obj_reachable and is_a_obj_manip_free_to_a_region):
+            #and (a_obj not in state.goal_entities or a_region in state.goal_entities):
         n_objs_to_move -= 1
     print n_objs_to_move
     return n_objs_to_move
