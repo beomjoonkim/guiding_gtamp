@@ -4,12 +4,12 @@ p1
 I20002
 sS'n_nodes'
 p2
-I3
+I2
 sS'search_time_to_reward'
 p3
 (lp4
 (lp5
-F1.930124044418335
+F1.9558329582214355
 aI1
 acnumpy.core.multiarray
 scalar
@@ -30,7 +30,7 @@ NNNI-1
 I-1
 I0
 tp12
-bS'\x00\x00\x00\x00\x00\x00"@'
+bS'\x00\x00\x00\x00\x00\x00$@'
 p13
 tp14
 Rp15

@@ -4,12 +4,12 @@ p1
 I20046
 sS'n_nodes'
 p2
-I3
+I5
 sS'search_time_to_reward'
 p3
 (lp4
 (lp5
-F4.0025060176849365
+F20.718546867370605
 aI1
 acnumpy.core.multiarray
 scalar
