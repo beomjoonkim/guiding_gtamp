@@ -328,9 +328,11 @@ def get_problem(mover, config):
                 newactions = get_actions(mover, goal, config)
                 print "Old h value", curr_hval
                 for newaction in newactions:
-                    hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
-                    print "New state h value %.4f for %s %s" % (
-                    hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
+                    # What's this?
+                    #hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
+                    hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
+                    #print "New state h value %.4f for %s %s" % (
+                    #hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
             #utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
