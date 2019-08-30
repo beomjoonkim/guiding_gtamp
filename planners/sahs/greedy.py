@@ -127,6 +127,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         hcount = compute_hcount_with_action(state, action, problem_env)
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         hval = -number_in_goal + gnn_pred + hcount
+        hval = gnn_pred + hcount
         if not is_two_arm_domain:
             obj_name = action.discrete_parameters['object'].GetName()
             region_name = action.discrete_parameters['region'].name
