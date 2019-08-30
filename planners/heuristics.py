@@ -36,8 +36,7 @@ def compute_hcount(state, problem_env):
                 if obj_to_move in state.goal_entities:
                     is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)][0]
                 else:
-                    #is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)][0]
-                    pass
+                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)][0]
 
                 if is_o2_in_way_of_obj_to_move_to_region:
                     n_occludes_manip += 1
