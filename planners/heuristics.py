@@ -30,29 +30,23 @@ def compute_hcount(state, problem_env):
                 if is_o2_in_way_of_obj_to_move:
                     n_occludes_pre += 1
 
-                goal_region = 'home_region'
-                original_obj_region = 'loading_region'
-                is_o2_in_way_of_obj_to_move_to_region = False
-                if obj_to_move in state.goal_entities:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, goal_region)][0]
-                else:
-                    is_o2_in_way_of_obj_to_move_to_region = state.ternary_edges[(obj_to_move, o2, original_obj_region)][0]
+                regions = ['home_region', 'loading_region']
+                is_o2_in_way_of_obj_to_move_to_region = any([state.ternary_edges[(obj_to_move, o2, r)][0] for r in regions])
 
                 if is_o2_in_way_of_obj_to_move_to_region:
                     n_occludes_manip += 1
 
                 if is_o2_in_way_of_obj_to_move or is_o2_in_way_of_obj_to_move_to_region:
                     n_occludes += 1
-                    print o2
                     potential_obj_to_move_queue.put(o2)
 
-    print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
-    print objects_to_move
-    return len(objects_to_move)
+    #print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
+    #print objects_to_move
+    return len(objects_to_move), objects_to_move
 
 
 def compute_hcount_with_action(state, action, problem_env):
-    n_objs_to_move = compute_hcount(state, problem_env)
+    n_objs_to_move, objects_to_move = compute_hcount(state, problem_env)
 
     if 'two_arm' in problem_env.name:
         a_obj = action.discrete_parameters['two_arm_place_object']
@@ -61,11 +55,10 @@ def compute_hcount_with_action(state, action, problem_env):
         a_obj = action.discrete_parameters['object'].GetName()
         a_region = action.discrete_parameters['region'].name
 
-    # todo rename the following
     is_a_obj_reachable = state.nodes[a_obj][9]
     is_a_obj_manip_free_to_a_region = state.binary_edges[(a_obj, a_region)][-1]
-    if (is_a_obj_reachable and is_a_obj_manip_free_to_a_region):
-            #and (a_obj not in state.goal_entities or a_region in state.goal_entities):
+    is_a_in_objects_to_move = a_obj in objects_to_move
+
+    if is_a_obj_reachable and is_a_obj_manip_free_to_a_region and is_a_in_objects_to_move:
         n_objs_to_move -= 1
-    print n_objs_to_move
     return n_objs_to_move
