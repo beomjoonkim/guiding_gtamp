@@ -147,8 +147,8 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
             edges.append(edge)
             actions.append(action)
             rewards.append(np.sum(traj.rewards[idx:]))
-            print traj.rewards
-            print traj.rewards[idx:]
+            #print traj.rewards
+            #print traj.rewards[idx:]
             #if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
             #    import pdb;pdb.set_trace()
             idx += 1
