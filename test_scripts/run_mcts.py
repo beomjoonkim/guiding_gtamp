@@ -80,6 +80,7 @@ def parse_mover_problem_parameters():
     parser.add_argument('-debug', action='store_true', default=False)
     parser.add_argument('-mcts_iter', type=int, default=1000)
     parser.add_argument('-use_learned_q', action='store_true', default=False)
+    parser.add_argument('-use_q_count', action='store_true', default=False)
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-use_ucb', action='store_true', default=False)
     parser.add_argument('-pw', action='store_true', default=False)
