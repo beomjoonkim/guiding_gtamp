@@ -32,7 +32,7 @@ from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from learn.data_traj import extract_individual_example
 from learn.pap_gnn import PaPGNN
 
-from planners.heuristics import compute_hcount_with_action
+from planners.heuristics import compute_hcount_with_action, compute_hcount
 import collections
 
 prm_vertices, prm_edges = pickle.load(open('prm.pkl', 'rb'))
@@ -79,6 +79,10 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
         print "%s %s %.4f" % (o, r, hcount)
+        return hcount
+    elif config.state_hcount:
+        hcount = compute_hcount(state, problem_env)
+        print "state_hcount %s %s %.4f" % (o, r, hcount)
         return hcount
     elif config.hadd:
         goal_regions = [goal_r for goal_r in state.goal_entities if 'region' in goal_r]
@@ -449,6 +453,8 @@ def generate_training_data_single(config):
         solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     elif config.hcount:
         solution_file_dir += '/new_hcount/'
+    elif config.state_hcount:
+        solution_file_dir += '/state_hcount/'
     elif config.hadd:
         solution_file_dir += '/gnn_hadd/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     else:
