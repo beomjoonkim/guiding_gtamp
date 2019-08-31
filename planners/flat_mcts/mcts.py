@@ -46,6 +46,7 @@ class MCTS:
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
         self.explr_p = parameters.explr_p
+        self.use_q_count = parameters.q_count
 
         # Hard-coded params
         self.check_reachability = True
@@ -170,7 +171,7 @@ class MCTS:
         # this needs to be factored
         # why do I need a parent node? Can I just get away with parent state?
         is_operator_skeleton_node = (parent_node is None) or (not parent_node.is_operator_skeleton_node)
-        if self.use_learned_q or self.use_shaped_reward:
+        if self.use_learned_q or self.use_shaped_reward or self.use_q_count:
             if is_parent_action_infeasible:
                 state = None
             elif is_operator_skeleton_node:
@@ -191,6 +192,7 @@ class MCTS:
 
         if is_operator_skeleton_node:
             applicable_op_skeletons = self.problem_env.get_applicable_ops(parent_action)
+            # todo here, define a prior q function. Dont call this learnedQ node, but a node with prior Q
             if self.use_learned_q:
                 node = PaPDiscreteTreeNodeWithLearnedQ(state,
                                                        self.ucb_parameter,
