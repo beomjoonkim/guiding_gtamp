@@ -91,7 +91,7 @@ def get_metrics(test_dir, test_files, n_objs, n_data=None):
 
 
 def main():
-    n_objs = 1
+    n_objs = 8
     t_limit = 300*n_objs
     domain = 'two_arm_mover'
 
@@ -100,12 +100,14 @@ def main():
     #algo_name = 'mcts'
     test_dir = './test_results/%s_results/domain_%s/n_objs_pack_%d/' % (algo_name, domain, n_objs)
     #test_dir += 'hcount_without_o2_in_way_of_non_goal_object/'
-    #test_dir += 'hcount/'
+    #test_dir += 'gnn/'
     #test_dir += 'dql/n_train_5000/'
-    #test_dir += 'sampling_strategy_uniform/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
+    #test_dir = test_dir+'sampling_strategy_uniform/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/'
     #test_dir += 'sampling_strategy_voo/n_mp_trials_3/widening_3/uct_0.1/reward_shaping_True/learned_q_False/explr_p_0.3/'
 
-    test_dir += 'gnn/loss_largemargin/num_train_5000/'
+    #test_dir += 'gnn/loss_largemargin/num_train_5000/'
+    test_dir = test_dir+'gnn_after_submission/loss_largemargin/num_train_5000/'
+    #test_dir = test_dir+'hcount/'
 
 
     test_files = os.listdir(test_dir)
