@@ -448,7 +448,7 @@ def generate_training_data_single(config):
     elif config.dont_use_h:
         solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     elif config.hcount:
-        solution_file_dir += '/hcount/'
+        solution_file_dir += '/new_hcount/'
     elif config.hadd:
         solution_file_dir += '/gnn_hadd/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     else:
@@ -479,6 +479,7 @@ def generate_training_data_single(config):
             trajectory = Trajectory(mover.seed, mover.seed)
         trajectory.states = [s.get_predicate_evaluations() for s in trajectory.states]
         trajectory.state_prime = None
+
         trajectory.metrics = {
             'n_objs_pack': config.n_objs_pack,
             'tottime': tottime,

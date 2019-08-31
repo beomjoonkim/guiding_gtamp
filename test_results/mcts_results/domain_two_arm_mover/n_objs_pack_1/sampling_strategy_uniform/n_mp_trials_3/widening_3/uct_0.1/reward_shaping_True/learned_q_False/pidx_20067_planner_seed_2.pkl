@@ -9,7 +9,7 @@ sS'search_time_to_reward'
 p3
 (lp4
 (lp5
-F1.7900540828704834
+F1.790356159210205
 aI1
 acnumpy.core.multiarray
 scalar
