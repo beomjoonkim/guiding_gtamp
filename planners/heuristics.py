@@ -1,7 +1,7 @@
 import Queue
 
 
-def compute_hcount(state, problem_env):
+def get_objects_to_move(state, problem_env):
     objects_to_move = set()
     potential_obj_to_move_queue = Queue.Queue()
     goal_r = [entity for entity in state.goal_entities if 'region' in entity][0]
@@ -31,7 +31,8 @@ def compute_hcount(state, problem_env):
                     n_occludes_pre += 1
 
                 regions = ['home_region', 'loading_region']
-                is_o2_in_way_of_obj_to_move_to_region = any([state.ternary_edges[(obj_to_move, o2, r)][0] for r in regions])
+                is_o2_in_way_of_obj_to_move_to_region = any(
+                    [state.ternary_edges[(obj_to_move, o2, r)][0] for r in regions])
 
                 if is_o2_in_way_of_obj_to_move_to_region:
                     n_occludes_manip += 1
@@ -40,13 +41,19 @@ def compute_hcount(state, problem_env):
                     n_occludes += 1
                     potential_obj_to_move_queue.put(o2)
 
-    #print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
-    #print objects_to_move
-    return len(objects_to_move), objects_to_move
+    # print "n occludes pre %d n occludes manip %d n_occludes %d" % (n_occludes_pre, n_occludes_manip, n_occludes)
+    # print objects_to_mov
+    return objects_to_move
+
+
+def compute_hcount(state, problem_env):
+    objects_to_move = get_objects_to_move(state, problem_env)
+    return len(objects_to_move)
 
 
 def compute_hcount_with_action(state, action, problem_env):
-    n_objs_to_move, objects_to_move = compute_hcount(state, problem_env)
+    objects_to_move = get_objects_to_move(state, problem_env)
+    n_objs_to_move = compute_hcount(state, problem_env)
 
     if 'two_arm' in problem_env.name:
         a_obj = action.discrete_parameters['two_arm_place_object']

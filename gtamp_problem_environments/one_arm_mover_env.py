@@ -109,6 +109,26 @@ class PaPOneArmMoverEnv(OneArmMover):
     def __init__(self, problem_idx):
         OneArmMover.__init__(self, problem_idx)
 
+    def get_applicable_ops(self, parent_op=None):
+        actions = []
+        for o in self.entity_names:
+            if 'region' in o:
+                continue
+            for r in self.entity_names:
+                if 'region' not in r:
+                    continue
+                if o not in goal and r in goal:
+                    # you cannot place non-goal object in the goal region
+                    continue
+
+                if 'entire' in r:  # and config.domain == 'two_arm_self':
+                    continue
+
+            action = Operator('one_arm_pick_one_arm_place',
+                              {'object': self.env.GetKinBody(o), 'region': self.regions[r]})
+
+            actions.append(action)
+        return actions
     """
     def get_applicable_ops(self, parent_op=None):
         # used by MCTS

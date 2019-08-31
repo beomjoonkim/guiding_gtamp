@@ -149,12 +149,15 @@ def load_learned_q(config, problem_env):
 
 def main():
     parameters = parse_mover_problem_parameters()
+    save_dir = make_and_get_save_dir(parameters)
     set_seed(parameters.pidx)
     problem_env = PaPMoverEnv(parameters.pidx)
-    save_dir = make_and_get_save_dir(parameters)
 
     goal_object_names = [obj.GetName() for obj in problem_env.objects[:parameters.n_objs_pack]]
     goal_region_name = [problem_env.regions['home_region'].name]
+    goal = goal_region_name + goal_object_names
+    problem_env.set_goal(goal)
+
     goal_entities = goal_object_names + goal_region_name
     if parameters.use_shaped_reward:
         reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0],

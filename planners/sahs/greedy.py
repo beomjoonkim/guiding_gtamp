@@ -7,7 +7,7 @@ import Queue
 
 import cProfile
 import pstats
-from gtamp_problem_environments.mover_env import Mover
+from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import OneArmMover
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
 
@@ -46,33 +46,7 @@ MAX_DISTANCE = 1.0
 
 
 def get_actions(mover, goal, config):
-    actions = []
-    for o in mover.entity_names:
-        if 'region' in o:
-            continue
-        for r in mover.entity_names:
-            if 'region' not in r:
-                continue
-            if o not in goal and r in goal:
-                # you cannot place non-goal object in the goal region
-                continue
-            if 'entire' in r: #and config.domain == 'two_arm_mover':
-                continue
-
-            if config.domain == 'two_arm_mover':
-                action = Operator('two_arm_pick_two_arm_place', {'two_arm_place_object': o, 'two_arm_place_region': r})
-                # following two lines are for legacy reasons, will fix later
-                action.discrete_parameters['object'] = action.discrete_parameters['two_arm_place_object']
-                action.discrete_parameters['region'] = action.discrete_parameters['two_arm_place_region']
-            elif config.domain == 'one_arm_mover':
-                action = Operator('one_arm_pick_one_arm_place',
-                                  {'object': mover.env.GetKinBody(o), 'region': mover.regions[r]})
-
-            else:
-                raise NotImplementedError
-            actions.append(action)
-
-    return actions
+    return mover.get_applicable_ops()
 
 
 def compute_heuristic(state, action, pap_model, problem_env, config):
@@ -84,7 +58,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         o = action.discrete_parameters['object'].GetName()
         r = action.discrete_parameters['region'].name
 
-    nodes, edges, actions  = extract_individual_example(state, action)
+    nodes, edges, actions = extract_individual_example(state, action)
     nodes = nodes[..., 6:]
 
     region_is_goal = state.nodes[r][8]
@@ -131,14 +105,15 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         if not is_two_arm_domain:
             obj_name = action.discrete_parameters['object'].GetName()
             region_name = action.discrete_parameters['region'].name
-            is_reachable = state.nodes[obj_name][-2] #state.is_entity_reachable(obj_name)
+            is_reachable = state.nodes[obj_name][-2]  # state.is_entity_reachable(obj_name)
             is_placeable = state.binary_edges[(obj_name, region_name)][2]
             is_goal = state.nodes[obj_name][-3]
             isgoal_region = state.nodes[region_name][-3]
             is_in_region = state.binary_edges[(obj_name, region_name)][0]
             in_way_of_goal_pap = obj_name in state.get_entities_in_way_to_goal_entities()
             print "%15s %35s reachable %d placeable_in_region %d isgoal %d isgoal_region %d is_in_region %d  num_in_goal %d in_way_of_goal_pap %d gnn %.4f hval %.4f" \
-                  % (obj_name, region_name, is_reachable, is_placeable, is_goal, isgoal_region, is_in_region, number_in_goal, in_way_of_goal_pap, -gnn_pred, hval)
+                  % (obj_name, region_name, is_reachable, is_placeable, is_goal, isgoal_region, is_in_region,
+                     number_in_goal, in_way_of_goal_pap, -gnn_pred, hval)
 
         return hval
 
@@ -151,7 +126,7 @@ def get_problem(mover, config):
 
     if config.domain == 'two_arm_mover':
         statecls = ShortestPathPaPState
-        goal = ['home_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
+        # goal = ['home_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
     elif config.domain == 'one_arm_mover':
         def create_one_arm_pap_state(*args, **kwargs):
             while True:
@@ -160,17 +135,18 @@ def get_problem(mover, config):
                     return state
                 else:
                     print('failed to find any paps, trying again')
+
         statecls = create_one_arm_pap_state
-        goal = ['rectangular_packing_box1_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
+        # goal = ['rectangular_packing_box1_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
     else:
         raise NotImplementedError
 
+    goal = mover.goal
     if config.visualize_plan:
         mover.env.SetViewer('qtcoin')
         set_viewer_options(mover.env)
 
-
-    #state.make_pklable()
+    # state.make_pklable()
 
     mconfig_type = collections.namedtuple('mconfig_type',
                                           'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion num_test mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss')
@@ -244,7 +220,6 @@ def get_problem(mover, config):
     pstats.Stats(pr).sort_stats('tottime').print_stats(30)
     pstats.Stats(pr).sort_stats('cumtime').print_stats(30)
 
-
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
     initnode = Node(None, None, state)
@@ -261,7 +236,7 @@ def get_problem(mover, config):
             return None, iter
 
         iter += 1
-        #if 'one_arm' in mover.name:
+        # if 'one_arm' in mover.name:
         #   time.sleep(3.5) # gauged using max_ik_attempts = 20
 
         if iter > 3000:
@@ -271,7 +246,8 @@ def get_problem(mover, config):
         if action_queue.empty():
             actions = get_actions(mover, goal, config)
             for a in actions:
-                action_queue.put((compute_heuristic(initial_state, a, pap_model, mover, config), float('nan'), a, initnode))  # initial q
+                action_queue.put((compute_heuristic(initial_state, a, pap_model, mover, config), float('nan'), a,
+                                  initnode))  # initial q
 
         curr_hval, _, action, node = action_queue.get()
         state = node.state
@@ -289,7 +265,7 @@ def get_problem(mover, config):
 
         # reset to state
         state.restore(mover)
-        #utils.set_color(action.discrete_parameters['object'], [1, 0, 0])  # visualization purpose
+        # utils.set_color(action.discrete_parameters['object'], [1, 0, 0])  # visualization purpose
 
         if action.type == 'two_arm_pick_two_arm_place':
             smpler = UniformPaPGenerator(None, action, mover, None,
@@ -303,7 +279,7 @@ def get_problem(mover, config):
                 print "Action executed"
             else:
                 print "Failed to sample an action"
-                #utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
+                # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
                 continue
 
             is_goal_achieved = \
@@ -312,7 +288,7 @@ def get_problem(mover, config):
             if is_goal_achieved:
                 print("found successful plan: {}".format(n_objs_pack))
                 trajectory = Trajectory(mover.seed, mover.seed)
-                plan = list(node.backtrack())[::-1] # plan of length 0 is possible I think
+                plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
                 trajectory.states = [nd.state for nd in plan]
                 trajectory.actions = [nd.action for nd in plan[1:]] + [action]
                 trajectory.rewards = [nd.reward for nd in plan[1:]] + [0]
@@ -329,13 +305,13 @@ def get_problem(mover, config):
                 print "Old h value", curr_hval
                 for newaction in newactions:
                     # What's this?
-                    #hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
+                    # hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
-                    #print "New state h value %.4f for %s %s" % (
-                    #hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
+                    # print "New state h value %.4f for %s %s" % (
+                    # hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
-            #utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
+            # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
 
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
@@ -351,7 +327,8 @@ def get_problem(mover, config):
             else:
                 mover.enable_objects()
                 current_region = mover.get_region_containing(obj).name
-                papg = OneArmPaPUniformGenerator(action, mover, cached_picks=(node.state.iksolutions[current_region], node.state.iksolutions[r]))
+                papg = OneArmPaPUniformGenerator(action, mover, cached_picks=(
+                node.state.iksolutions[current_region], node.state.iksolutions[r]))
                 pick_params, place_params, status = papg.sample_next_point(500)
                 if status == 'HasSolution':
                     pap_params = pick_params, place_params
@@ -439,8 +416,12 @@ import socket
 def generate_training_data_single(config):
     np.random.seed(config.pidx)
     random.seed(config.pidx)
+    n_objs_pack = config.n_objs_pack
+
     if config.domain == 'two_arm_mover':
-        mover = Mover(config.pidx, config.problem_type)
+        mover = PaPMoverEnv(config.pidx)
+        goal = ['home_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
+        mover.set_goal(goal)
     elif config.domain == 'one_arm_mover':
         mover = OneArmMover(config.pidx)
     else:
@@ -459,7 +440,7 @@ def generate_training_data_single(config):
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
 
-    solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d'\
+    solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d' \
                         % (config.domain, config.n_objs_pack)
 
     if config.dont_use_gnn:
@@ -510,6 +491,3 @@ def generate_training_data_single(config):
             pickle.dump(trajectory, f)
     print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, trajectory.metrics['plan_length'],
                                                                     trajectory.metrics['num_nodes'])
-
-
-
