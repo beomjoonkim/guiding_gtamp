@@ -47,6 +47,7 @@ class Mover(ProblemEnvironment):
         self.two_arm_pick_continuous_constraint = None
         self.two_arm_place_continuous_constraint = None
         self.objects_to_check_collision = None
+        self.goal = None
 
     def set_problem_type(self, problem_type):
         if problem_type == 'normal':
@@ -318,21 +319,30 @@ class PaPMoverEnv(Mover):
         Mover.__init__(self, problem_idx)
 
     def get_applicable_ops(self, parent_op=None):
-        applicable_ops = []
-        op_name = 'two_arm_pick_two_arm_place'
-
-        for region_name in self.region_names:
-            if region_name == 'entire_region':
+        actions = []
+        for o in self.entity_names:
+            if 'region' in o:
                 continue
-            for obj_name in self.object_names:
-                op = Operator(operator_type=op_name,
-                              discrete_parameters={'object': obj_name,
-                                                   'region': region_name,
-                                                   'two_arm_place_object': obj_name,
-                                                   'two_arm_place_region': region_name})
-                applicable_ops.append(op)
+            for r in self.entity_names:
+                if 'region' not in r or 'entire' in r:
+                    continue
 
-        return applicable_ops
+                if o not in self.goal and r in self.goal:
+                    # you cannot place non-goal object in the goal region
+                    continue
+
+                action = Operator('two_arm_pick_two_arm_place',
+                                  {'two_arm_place_object': o, 'two_arm_place_region': r})
+                # following two lines are for legacy reasons, will fix later
+                action.discrete_parameters['object'] = action.discrete_parameters['two_arm_place_object']
+                action.discrete_parameters['region'] = action.discrete_parameters['two_arm_place_region']
+
+                actions.append(action)
+
+        return actions
+
+    def set_goal(self, goal):
+        self.goal = goal
 
     def reset_to_init_state(self, node):
         saver = node.state_saver
