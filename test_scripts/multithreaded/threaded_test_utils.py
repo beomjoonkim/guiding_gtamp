@@ -53,7 +53,8 @@ def get_sahs_configs():
     for config in configs:
         if parameters.hcount:
             config['hcount'] = ""
-
+        elif parameters.state_hcount:
+            config['state_hcount'] = ""
     return configs
 
 

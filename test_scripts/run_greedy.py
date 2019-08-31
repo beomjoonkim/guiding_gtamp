@@ -21,6 +21,7 @@ if __name__ == '__main__':
     parser.add_argument('-problem_type', type=str, default='normal')  # supports normal, nonmonotonic
     parser.add_argument('-hcount', action='store_true', default=False)
     parser.add_argument('-hadd', action='store_true', default=False)
+    parser.add_argument('-state_hcount', action='store_true', default=False)
 
     config = parser.parse_args()
     generate_training_data_single(config)
