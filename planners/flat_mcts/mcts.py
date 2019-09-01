@@ -106,7 +106,6 @@ class MCTS:
         else:
             dont_check_motion_existence = False
         if self.sampling_strategy == 'uniform':
-            import pdb;pdb.set_trace()
             generator = UniformPaPGenerator(node, operator_skeleton, self.problem_env, None,
                                             n_candidate_params_to_smpl=self.n_motion_plan_trials,
                                             total_number_of_feasibility_checks=self.n_feasibility_checks,
@@ -465,12 +464,7 @@ class MCTS:
             if isinstance(node.state, StateWithoutCspacePredicates):
                 current_collides = None
             else:
-                try:
-                    import pdb;pdb.set_trace()
-                    current_collides = node.state.collides
-                except:
-                    import pdb;
-                    pdb.set_trace()
+                current_collides = node.state.collisions_at_current_obj_pose_pairs
 
             smpled_param = node.sampling_agent.sample_next_point(cached_collisions=current_collides,
                                                                  cached_holding_collisions=None)
