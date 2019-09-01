@@ -50,10 +50,22 @@ class ShortestPathPaPState(PaPState):
             if parent_state is None:
                 self.collisions_at_all_obj_pose_pairs, self.collisions_at_current_obj_pose_pairs = self.update_collisions_at_prm_vertices(None)
             else:
-                self.collisions_at_all_obj_pose_pairs, self.collisions_at_current_obj_pose_pairs = self.update_collisions_at_prm_vertices(parent_state.collides)
+                self.collisions_at_all_obj_pose_pairs, self.collisions_at_current_obj_pose_pairs = self.update_collisions_at_prm_vertices(parent_state.collisions_at_all_obj_pose_pairs)
 
             self.holding_collides = None
             self.current_holding_collides = None
+            """
+            test_col_1 = set()
+            for tmp in self.collisions_at_all_obj_pose_pairs.values():
+                test_col_1 = test_col_1.union(tmp)
+
+            test_col_2 = set()
+            for tmp in self.collisions_at_current_obj_pose_pairs.values():
+                test_col_2 = test_col_2.union(tmp)
+
+            if len(test_col_1) != len(test_col_2.intersection(test_col_1)):
+                import pdb;pdb.set_trace()
+            """
 
             # hold an object and check collisions
             """

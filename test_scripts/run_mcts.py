@@ -74,7 +74,7 @@ def parse_mover_problem_parameters():
     # MCTS parameters
     parser.add_argument('-n_switch', type=int, default=5)
     parser.add_argument('-ucb_parameter', type=float, default=0.1)
-    parser.add_argument('-widening_parameter', type=float, default=3)  # number of re-evals
+    parser.add_argument('-widening_parameter', type=float, default=1)  # number of re-evals
     parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
     parser.add_argument('-v', action='store_true', default=False)
     parser.add_argument('-debug', action='store_true', default=False)
@@ -187,8 +187,6 @@ def main():
     pickle.dump({"search_time_to_reward": search_time_to_reward,
                  "pidx": parameters.pidx,
                  'n_nodes': len(planner.tree.get_discrete_nodes())}, open(filename, 'wb'))
-
-
 
 if __name__ == '__main__':
     main()

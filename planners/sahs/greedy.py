@@ -276,7 +276,8 @@ def get_problem(mover, config):
                                          n_candidate_params_to_smpl=3,
                                          total_number_of_feasibility_checks=200,
                                          dont_check_motion_existence=False)
-            smpled_param = smpler.sample_next_point(cached_collisions=state.collides, cached_holding_collisions=None)
+            smpled_param = smpler.sample_next_point(cached_collisions=state.collisions_at_all_obj_pose_pairs,
+                                                    cached_holding_collisions=None)
             if smpled_param['is_feasible']:
                 action.continuous_parameters = smpled_param
                 action.execute()

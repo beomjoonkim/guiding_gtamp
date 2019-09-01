@@ -464,7 +464,7 @@ class MCTS:
             if isinstance(node.state, StateWithoutCspacePredicates):
                 current_collides = None
             else:
-                current_collides = node.state.collisions_at_current_obj_pose_pairs
+                current_collides = node.state.collisions_at_all_obj_pose_pairs
 
             smpled_param = node.sampling_agent.sample_next_point(cached_collisions=current_collides,
                                                                  cached_holding_collisions=None)
