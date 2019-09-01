@@ -46,7 +46,7 @@ class MCTS:
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
         self.explr_p = parameters.explr_p
-        self.use_q_count = parameters.q_count
+        self.use_q_count = parameters.use_q_count
 
         # Hard-coded params
         self.check_reachability = True
@@ -106,10 +106,8 @@ class MCTS:
         else:
             dont_check_motion_existence = False
         if self.sampling_strategy == 'uniform':
-            generator = UniformPaPGenerator(node,
-                                            operator_skeleton,
-                                            self.problem_env,
-                                            None,
+            import pdb;pdb.set_trace()
+            generator = UniformPaPGenerator(node, operator_skeleton, self.problem_env, None,
                                             n_candidate_params_to_smpl=self.n_motion_plan_trials,
                                             total_number_of_feasibility_checks=self.n_feasibility_checks,
                                             dont_check_motion_existence=dont_check_motion_existence)
@@ -468,11 +466,12 @@ class MCTS:
                 current_collides = None
             else:
                 try:
-                    current_collides = node.state.current_collides
+                    import pdb;pdb.set_trace()
+                    current_collides = node.state.collides
                 except:
                     import pdb;
                     pdb.set_trace()
 
-            current_holding_collides = None
-            feasible_param = node.sampling_agent.sample_next_point(current_collides, current_holding_collides)
-        return feasible_param
+            smpled_param = node.sampling_agent.sample_next_point(cached_collisions=current_collides,
+                                                                 cached_holding_collisions=None)
+        return smpled_param
