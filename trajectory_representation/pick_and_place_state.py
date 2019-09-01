@@ -67,25 +67,27 @@ class PaPState(State):
             for obj in self.problem_env.objects
         }
 
-        collides = {}
+        collisions_at_all_obj_pose_pairs = {}
         old_q = get_body_xytheta(self.problem_env.robot)
         for obj in self.problem_env.objects:
             obj_name_pose_tuple = (obj.GetName(), obj_name_to_pose[obj.GetName()])
             collisions_with_obj_did_not_change = parent_collides is not None and \
                                                  obj_name_pose_tuple in parent_collides
             if collisions_with_obj_did_not_change:
-                collides[obj_name_pose_tuple] = parent_collides[obj_name_pose_tuple]
+                collisions_at_all_obj_pose_pairs[obj_name_pose_tuple] = parent_collides[obj_name_pose_tuple]
             else:
                 prm_vertices_in_collision_with_obj = {i for i, q in enumerate(prm_vertices) if in_collision(q, obj)}
-                collides[obj_name_pose_tuple] = prm_vertices_in_collision_with_obj
+                collisions_at_all_obj_pose_pairs[obj_name_pose_tuple] = prm_vertices_in_collision_with_obj
         set_robot_config(old_q, self.problem_env.robot)
 
-        current_collides = {
-            obj.GetName(): collides[(obj.GetName(), obj_name_to_pose[obj.GetName()])]
+        # what's the diff between collides and curr collides?
+        # collides include entire set of obj and obj name pose tuple
+        collisions_at_current_obj_pose_pairs = {
+            obj.GetName(): collisions_at_all_obj_pose_pairs[(obj.GetName(), obj_name_to_pose[obj.GetName()])]
             for obj in self.problem_env.objects
         }
 
-        return collides, current_collides
+        return collisions_at_all_obj_pose_pairs, collisions_at_current_obj_pose_pairs
 
     def get_nodes(self):
         nodes = {}

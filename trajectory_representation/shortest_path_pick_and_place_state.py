@@ -48,14 +48,15 @@ class ShortestPathPaPState(PaPState):
             self.place_used = {}
         if self.use_prm:
             if parent_state is None:
-                self.collides, self.current_collides = self.update_collisions_at_prm_vertices(None)
+                self.collisions_at_all_obj_pose_pairs, self.collisions_at_current_obj_pose_pairs = self.update_collisions_at_prm_vertices(None)
             else:
-                self.collides, self.current_collides = self.update_collisions_at_prm_vertices(parent_state.collides)
+                self.collisions_at_all_obj_pose_pairs, self.collisions_at_current_obj_pose_pairs = self.update_collisions_at_prm_vertices(parent_state.collides)
 
             self.holding_collides = None
             self.current_holding_collides = None
 
             # hold an object and check collisions
+            """
             if planner == 'mcts':
                 self.holding_collides = None
                 self.current_holding_collides = None
@@ -67,6 +68,7 @@ class ShortestPathPaPState(PaPState):
                     self.holding_collides, self.current_holding_collides \
                         = self.update_collisions_at_prm_vertices(parent_state.holding_collides)
                 saver.Restore()
+            """
         else:
             self.holding_collides = None
             self.holding_current_collides = None
@@ -77,9 +79,13 @@ class ShortestPathPaPState(PaPState):
         self.set_cached_place_paths(parent_state, moved_obj)
 
         # predicates
-        self.pick_in_way = PickInWay(self.problem_env, collides=self.current_collides, pick_poses=self.pick_used,
+        self.pick_in_way = PickInWay(self.problem_env,
+                                     collides=self.collisions_at_current_obj_pose_pairs,
+                                     pick_poses=self.pick_used,
                                      use_shortest_path=True)
-        self.place_in_way = PlaceInWay(self.problem_env, collides=self.current_collides, pick_poses=self.pick_used,
+        self.place_in_way = PlaceInWay(self.problem_env,
+                                       collides=self.collisions_at_current_obj_pose_pairs,
+                                       pick_poses=self.pick_used,
                                        use_shortest_path=True)
         self.in_region = InRegion(self.problem_env)
         self.is_holding_goal_entity = IsHoldingGoalEntity(self.problem_env, goal_entities)
@@ -142,7 +148,8 @@ class ShortestPathPaPState(PaPState):
             assert len(motion_plan_goals) > 0
             self.cached_pick_paths[obj] = None
 
-            path, status = motion_planner.get_motion_plan(motion_plan_goals, cached_collisions=self.collides)
+            path, status = motion_planner.get_motion_plan(motion_plan_goals,
+                                                          cached_collisions=self.collisions_at_all_obj_pose_pairs)
             if status == 'HasSolution':
                 self.reachable_entities.append(obj)
             else:
@@ -177,7 +184,7 @@ class ShortestPathPaPState(PaPState):
                         path, status = motion_planner.get_motion_plan(region, cached_collisions=self.holding_collides)
                     else:
                         path, status = motion_planner.get_motion_plan(region,
-                                                                      cached_collisions=self.collides)
+                                                                      cached_collisions=self.collisions_at_all_obj_pose_pairs)
                     if status == 'HasSolution':
                         self.reachable_regions_while_holding.append((obj, region_name))
                     else:
