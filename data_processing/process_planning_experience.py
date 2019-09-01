@@ -100,7 +100,7 @@ def get_goal_entities(parameters):
 
 def get_raw_fname(parameters):
     if parameters.scenario is None:
-        return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
+        return str(parameters.pidx) +'.pkl' #'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
     else:
         if parameters.scenario == 0:
             scenario = 'reachable_goal_entities'
