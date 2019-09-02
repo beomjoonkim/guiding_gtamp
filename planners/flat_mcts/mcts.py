@@ -1,6 +1,6 @@
 from mcts_tree_continuous_node import ContinuousTreeNode
 from mcts_tree_discrete_node import DiscreteTreeNode
-from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithLearnedQ
+from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithPriorQ
 from mcts_tree import MCTSTree
 
 from generators.uniform import UniformPaPGenerator
@@ -12,6 +12,7 @@ from trajectory_representation.one_arm_pap_state import OneArmPaPState
 
 ## openrave helper libraries
 from gtamp_utils import utils
+
 
 import numpy as np
 import sys
@@ -31,7 +32,7 @@ if hostname == 'dell-XPS-15-9560':
 # todo
 #   create MCTS for each environment. Each one will have different compute_state functions
 class MCTS:
-    def __init__(self, parameters, problem_env, goal_entities, learned_q):
+    def __init__(self, parameters, problem_env, goal_entities, prior_q):
         # MCTS parameters
         self.widening_parameter = parameters.widening_parameter
         self.ucb_parameter = parameters.ucb_parameter
@@ -40,13 +41,12 @@ class MCTS:
         self.use_ucb = parameters.use_ucb
         self.use_progressive_widening = parameters.pw
         self.n_feasibility_checks = parameters.n_feasibility_checks
-        self.use_learned_q = parameters.use_learned_q
-        self.learned_q_function = learned_q
+        self.use_prior_q = parameters.use_q_count or parameters.use_learned_q
+        self.prior_q_function = prior_q
         self.use_shaped_reward = parameters.use_shaped_reward
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
         self.explr_p = parameters.explr_p
-        self.use_q_count = parameters.use_q_count
 
         # Hard-coded params
         self.check_reachability = True
@@ -168,7 +168,7 @@ class MCTS:
         # this needs to be factored
         # why do I need a parent node? Can I just get away with parent state?
         is_operator_skeleton_node = (parent_node is None) or (not parent_node.is_operator_skeleton_node)
-        if self.use_learned_q or self.use_shaped_reward or self.use_q_count:
+        if self.use_prior_q or self.use_shaped_reward or self.use_q_count:
             if is_parent_action_infeasible:
                 state = None
             elif is_operator_skeleton_node:
@@ -190,16 +190,16 @@ class MCTS:
         if is_operator_skeleton_node:
             applicable_op_skeletons = self.problem_env.get_applicable_ops(parent_action)
             # todo here, define a prior q function. Dont call this learnedQ node, but a node with prior Q
-            if self.use_learned_q:
-                node = PaPDiscreteTreeNodeWithLearnedQ(state,
-                                                       self.ucb_parameter,
-                                                       depth,
-                                                       state_saver,
-                                                       is_operator_skeleton_node,
-                                                       is_init_node,
-                                                       self.learned_q_function,
-                                                       applicable_op_skeletons,
-                                                       is_goal_reached=self.problem_env.is_goal_reached())
+            if self.use_prior_q:
+                node = PaPDiscreteTreeNodeWithPriorQ(state,
+                                                     self.ucb_parameter,
+                                                     depth,
+                                                     state_saver,
+                                                     is_operator_skeleton_node,
+                                                     is_init_node,
+                                                     self.prior_q_function,
+                                                     applicable_op_skeletons,
+                                                     is_goal_reached=self.problem_env.is_goal_reached())
             else:
                 node = DiscreteTreeNode(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
                                         is_init_node, applicable_op_skeletons)
@@ -355,7 +355,7 @@ class MCTS:
     def choose_action(self, curr_node):
         if curr_node.is_operator_skeleton_node:
             print "Skeleton node"
-            action = curr_node.perform_ucb_over_actions(self.learned_q_function)
+            action = curr_node.perform_ucb_over_actions(self.prior_q_function)
         else:
             print 'Instance node'
             if curr_node.sampling_agent is None:  # this happens if the tree has been pickled
@@ -417,12 +417,14 @@ class MCTS:
             next_node = curr_node.children[action]
             reward = next_node.parent_action_reward
 
+        print "Reward", reward
+
         if not is_action_feasible:
             # this (s,a) is a dead-end
             print "Infeasible action"
             # todo use the average of Q values here, instead of termination
-            if self.use_learned_q:
-                sum_rewards = reward + curr_node.parent.learned_q[curr_node.parent_action]
+            if self.use_prior_q:
+                sum_rewards = reward + curr_node.parent.prior_q[curr_node.parent_action]
                 print sum_rewards
             else:
                 sum_rewards = reward
