@@ -2,7 +2,11 @@ import numpy as np
 
 
 def upper_confidence_bound(n, n_sa):
-    return np.sqrt(2 * np.log(n+1) / float(n_sa + 1))
+    return np.sqrt(2 * np.log(n + 1) / float(n_sa + 1))
+
+
+def alpha_zero_ucb(n, n_sa):
+    return np.sqrt(n) / float(n_sa + 1)
 
 
 class TreeNode:
@@ -83,7 +87,8 @@ class TreeNode:
         return new_arm
 
     def compute_ucb_value(self, value, action):
-        return value + self.ucb_parameter * upper_confidence_bound(self.Nvisited, self.N[action])
+        import pdb;pdb.set_trace()
+        return value + self.ucb_parameter * alpha_zero_ucb(self.Nvisited, self.N[action])
 
     def get_action_with_highest_ucb_value(self, feasible_actions, feasible_q_values):
         best_value = -np.inf
