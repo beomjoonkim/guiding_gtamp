@@ -453,7 +453,7 @@ def generate_training_data_single(config):
     elif config.dont_use_h:
         solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     elif config.hcount:
-        solution_file_dir += '/new_hcount/'
+        solution_file_dir += '/no_reachable_regions_while_holding_state_computation_hcount/'
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.hadd:
