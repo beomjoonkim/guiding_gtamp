@@ -33,7 +33,8 @@ def make_and_get_save_dir(parameters):
                + 'widening_' + str(parameters.widening_parameter) + '/' \
                + 'uct_' + str(parameters.ucb_parameter) + '/' \
                + 'reward_shaping_' + str(parameters.use_shaped_reward) + '/' \
-               + 'learned_q_' + str(parameters.use_learned_q) + '/'
+               + 'learned_q_' + str(parameters.use_learned_q) + '/' \
+               + 'q_count_' + str(parameters.use_q_count) + '/'
 
     if 'uniform' not in parameters.sampling_strategy:
         save_dir += 'explr_p_' + str(parameters.explr_p) + '/'
@@ -190,6 +191,7 @@ def main():
     pickle.dump({"search_time_to_reward": search_time_to_reward,
                  "pidx": parameters.pidx,
                  'n_nodes': len(planner.tree.get_discrete_nodes())}, open(filename, 'wb'))
+
 
 if __name__ == '__main__':
     main()
