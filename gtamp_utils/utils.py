@@ -1,8 +1,6 @@
 from manipulation.primitives.transforms import *
 from manipulation.bodies.bodies import *
 import manipulation
-from manipulation.constants import PARALLEL_LEFT_ARM, REST_LEFT_ARM, HOLDING_LEFT_ARM, FOLDED_LEFT_ARM, \
-    FAR_HOLDING_LEFT_ARM, LOWER_TOP_HOLDING_LEFT_ARM, REGION_Z_OFFSET
 from manipulation.primitives.transforms import get_point, set_point, pose_from_quat_point, unit_quat
 
 from manipulation.primitives.utils import mirror_arm_config
@@ -10,6 +8,8 @@ import openravepy
 import numpy as np
 import math
 import time
+
+FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
 
 PR2_ARM_LENGTH = 0.9844
 

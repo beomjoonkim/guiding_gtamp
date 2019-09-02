@@ -14,6 +14,7 @@ from planners.subplanners.motion_planner import OperatorBaseMotionPlanner
 from gtamp_problem_environments.reward_functions.reward_function import GenericRewardFunction
 from gtamp_problem_environments.reward_functions.packing_problem.reward_function import ShapedRewardFunction
 from planners.flat_mcts.mcts import MCTS
+from planners.heuristics import compute_hcount_with_action
 
 
 def make_and_get_save_dir(parameters):
@@ -172,12 +173,14 @@ def main():
     problem_env.set_motion_planner(motion_planner)
 
     if parameters.use_learned_q:
-        learned_q = load_learned_q(parameters, problem_env)
+        prior_q = load_learned_q(parameters, problem_env)
+    elif parameters.use_q_count:
+        prior_q = lambda state, action: -compute_hcount_with_action(state, action, problem_env)
     else:
-        learned_q = None
+        prior_q = None
 
     if parameters.planner == 'mcts':
-        planner = MCTS(parameters, problem_env, goal_entities, learned_q)
+        planner = MCTS(parameters, problem_env, goal_entities, prior_q)
     else:
         raise NotImplementedError
 
