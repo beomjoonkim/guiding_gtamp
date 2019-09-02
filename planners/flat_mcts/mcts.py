@@ -1,5 +1,5 @@
 from mcts_tree_continuous_node import ContinuousTreeNode
-from mcts_tree_discrete_node import DiscreteTreeNode
+from mcts_tree_discrete_node import DiscreteTreeNode, DiscreteTreeNodeWithPsa
 from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithPriorQ
 from mcts_tree import MCTSTree
 
@@ -41,7 +41,7 @@ class MCTS:
         self.use_ucb = parameters.use_ucb
         self.use_progressive_widening = parameters.pw
         self.n_feasibility_checks = parameters.n_feasibility_checks
-        self.use_prior_q = parameters.use_q_count or parameters.use_learned_q
+        self.use_prior_q = parameters.use_learned_q
         self.prior_q_function = prior_q
         self.use_shaped_reward = parameters.use_shaped_reward
         self.planning_horizon = parameters.planning_horizon
@@ -201,7 +201,7 @@ class MCTS:
                                                      applicable_op_skeletons,
                                                      is_goal_reached=self.problem_env.is_goal_reached())
             else:
-                node = DiscreteTreeNode(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
+                node = DiscreteTreeNodeWithPsa(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
                                         is_init_node, applicable_op_skeletons)
         else:
             node = ContinuousTreeNode(state, parent_action, self.ucb_parameter, depth, state_saver,
@@ -268,7 +268,7 @@ class MCTS:
 
     def log_performance(self, time_to_search, iteration):
         best_traj_rwd, progress, best_node = self.tree.get_best_trajectory_sum_rewards_and_node(self.discount_rate)
-        self.search_time_to_reward.append([time_to_search, iteration, best_traj_rwd, self.found_solution])
+        self.search_time_to_reward.append([time_to_search, iteration, best_traj_rwd, progress, self.found_solution])
         self.progress_list.append(progress)
         self.best_leaf_node = best_node
 
@@ -365,9 +365,7 @@ class MCTS:
                                                   self.use_progressive_widening,
                                                   self.use_ucb):
                 print "Sampling new action"
-                # stime = time.time()
                 new_continuous_parameters = self.sample_continuous_parameters(curr_node)
-                # print "Total sampling time", time.time() - stime
                 curr_node.add_actions(new_continuous_parameters)
                 action = curr_node.A[-1]
             else:
@@ -376,7 +374,6 @@ class MCTS:
                     action = curr_node.perform_ucb_over_actions()
                 else:
                     action = curr_node.choose_new_arm()
-
         return action
 
     @staticmethod

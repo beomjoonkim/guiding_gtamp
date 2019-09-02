@@ -1,6 +1,6 @@
 import numpy as np
 from gtamp_utils.utils import get_body_xytheta, set_obj_xytheta, set_robot_config
-
+from planners.heuristics import get_objects_to_move
 
 class MCTSTree:
     def __init__(self, exploration_parameters):
@@ -75,11 +75,7 @@ class MCTSTree:
         for n in leaf_nodes:
             curr_node = n
 
-            if n.is_goal_node:
-                reward_list = []
-            else:
-                reward_list = []
-            #while curr_node.parent is not None:
+            reward_list = []
             while not curr_node.is_init_node and curr_node.parent is not None:
                 reward_list.append(curr_node.parent.reward_history[curr_node.parent_action][0])
                 curr_node = curr_node.parent
@@ -91,15 +87,20 @@ class MCTSTree:
             discount_rates = [np.power(discount_factor, i) for i in range(len(reward_list))]
             sumR = np.dot(discount_rates[::-1], reward_list)
 
-            # exclude the ones that are not the descendents of the current init node
-            # todo sumR should be -2 on a node that ended with an infeasible action
             sumR_list.append(sumR)
             leaf_nodes_for_curr_init_state.append(n)
 
-        progress = self.compute_number_of_boxes_packed_in_mover_domain(leaf_nodes, sumR_list)
+        #progress = self.compute_number_of_boxes_packed_in_mover_domain(leaf_nodes, sumR_list)
         best_node = leaf_nodes[np.argmax(sumR_list)]
-        # I want progress..
+        progress = self.get_node_hcount(best_node)
         return np.max(sumR_list), progress, best_node
+
+    def get_node_hcount(self, node):
+        is_infeasible_parent_action = node.state is None
+        if is_infeasible_parent_action:
+            return len(get_objects_to_move(node.parent.state, node.parent.state.problem_env))
+        else:
+            return len(get_objects_to_move(node.state, node.state.problem_env))
 
     def compute_number_of_boxes_packed_in_mover_domain(self, leaf_nodes, sumR_list):
         best_leaf_node = leaf_nodes[np.argmax(sumR_list)]

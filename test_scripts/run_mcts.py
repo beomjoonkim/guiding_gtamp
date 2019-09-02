@@ -14,6 +14,7 @@ from planners.subplanners.motion_planner import OperatorBaseMotionPlanner
 from gtamp_problem_environments.reward_functions.reward_function import GenericRewardFunction
 from gtamp_problem_environments.reward_functions.packing_problem.reward_function import ShapedRewardFunction
 from planners.flat_mcts.mcts import MCTS
+from planners.flat_mcts.mcts_with_leaf_strategy import MCTSWithLeafStrategy
 from planners.heuristics import compute_hcount_with_action
 
 
@@ -182,6 +183,8 @@ def main():
 
     if parameters.planner == 'mcts':
         planner = MCTS(parameters, problem_env, goal_entities, prior_q)
+    elif parameters.planner == 'mcts_with_leaf_strategy':
+        planner = MCTSWithLeafStrategy(parameters, problem_env, goal_entities, prior_q)
     else:
         raise NotImplementedError
 

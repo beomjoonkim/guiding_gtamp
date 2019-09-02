@@ -245,10 +245,11 @@ class ShortestPathPaPState(PaPState):
                 #for r in self.problem_env.regions:
                 for r in self.problem_env.entity_names:
                     key = (a, b, r)
-                    if r.find('entire') != -1:
-                        continue
-                    if r.find('region') == -1 or a == b:
+
+                    is_r_not_region = r.find('region') == -1
+                    if is_r_not_region or a == b:
                         edges[key] = [False]
+                        continue
 
                     if key not in edges.keys():
                         place_edge_features = self.get_ternary_edge_features(a, b, r)
@@ -293,7 +294,11 @@ class ShortestPathPaPState(PaPState):
             if key in self.cached_place_paths:
                 cached_path = self.cached_place_paths[key]
             else:
-                assert a.find('region') != -1
+                a_is_region = a.find('region') != -1
+                try:
+                    assert a_is_region
+                except:
+                    import pdb;pdb.set_trace()
                 cached_path = None
             """
             if key in self.reachable_regions_while_holding:
