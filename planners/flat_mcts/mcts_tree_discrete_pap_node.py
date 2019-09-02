@@ -6,16 +6,15 @@ from gtamp_utils.utils import visualize_path, set_color, viewer
 from gtamp_utils import utils
 
 
-class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
-    def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node, learned_q,
+class PaPDiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
+    def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node, prior_q,
                  actions, is_goal_reached=False):
         DiscreteTreeNode.__init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node,
                                   is_init_node, actions)
-        self.learned_q = learned_q
-        self.q_function = self.learned_q
+        self.prior_q = {}
+        self.q_function = prior_q
 
         is_infeasible_state = state is None
-        self.learned_q = {}
         if not is_infeasible_state and not is_goal_reached:
             self.initialize_mixed_q_values()
         self.mix_weight = 0.99
@@ -34,8 +33,8 @@ class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
 
     def initialize_mixed_q_values(self):
         for a in self.A:
-            self.Q[a] = self.q_function.predict(self.state, a)[0]
-            self.learned_q[a] = self.q_function.predict(self.state, a)[0]
+            self.Q[a] = self.q_function(self.state, a)
+            self.prior_q[a] = self.q_function(self.state, a)
 
     def update_node_statistics(self, action, sum_rewards, reward):
         is_action_never_tried = self.N[action] == 0
@@ -52,7 +51,7 @@ class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
         temperature_on_action = np.power(0.99, self.N[action])
         self.Q[action] = temperature_on_action*self.Q[action] + (1 - temperature_on_action)*self.max_sum_rewards[action]
 
-    def perform_ucb_over_actions(self, learned_q_functions=None):
+    def perform_ucb_over_actions(self, prior_q_functions=None):
         # why does this get called before initializing mixed q values
         # todo why does it ever have key error here?
         # it performs ucb_over_actions in an infeasible state?
@@ -61,8 +60,9 @@ class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
             q_vals.append(self.Q[a])
             obj_name = a.discrete_parameters['object']
             region_name = a.discrete_parameters['region']
-            print "%30s %30s Reachable? %d IsGoal? %d Q? %.5f UCB? %.5f" \
+            print "%30s %30s Reachable? %d  ManipFree? %d IsGoal? %d Q? %.5f UCB? %.5f" \
                   % (obj_name, region_name, self.state.is_entity_reachable(obj_name),
+                     self.state.binary_edges[(obj_name, region_name)][-1],
                      obj_name in self.state.goal_entities, self.Q[a], self.compute_ucb_value(self.Q[a], a))
 
         best_action = self.get_action_with_highest_ucb_value(self.A, q_vals)  # but your Nsa are all zero?
@@ -81,7 +81,7 @@ class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
         print self.state.get_entities_in_place_way('square_packing_box1', 'home_region')
         #print self.state.get_entities_in_pick_way('rectangular_packing_box1')
         #print self.state.get_entities_in_place_way('rectangular_packing_box1', 'home_region')
-        #import pdb;pdb.set_trace()
+        import pdb;pdb.set_trace()
         return best_action
 
     def is_obj_currently_in_goal_region(self, obj):
