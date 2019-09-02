@@ -10,6 +10,7 @@ import pstats
 from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import OneArmMover
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
+from generators.uniform import UniformPaPGenerator
 
 from trajectory_representation.operator import Operator
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
@@ -23,7 +24,7 @@ import numpy as np
 import tensorflow as tf
 import openravepy
 
-from generators.uniform import UniformPaPGenerator
+
 
 from mover_library import utils
 from manipulation.primitives.display import set_viewer_options, draw_line, draw_point, draw_line
@@ -122,7 +123,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         return hval
 
 
-def get_problem(mover, config):
+def search(mover, config):
     tt = time.time()
 
     obj_names = [obj.GetName() for obj in mover.objects]
@@ -255,6 +256,7 @@ def get_problem(mover, config):
 
         curr_hval, _, action, node = action_queue.get()
         state = node.state
+        print "Curr hval", curr_hval
 
         print('\n'.join([str(parent.action.discrete_parameters.values()) for parent in list(node.backtrack())[-2::-1]]))
         print("{}".format(action.discrete_parameters.values()))
@@ -276,6 +278,7 @@ def get_problem(mover, config):
                                          n_candidate_params_to_smpl=3,
                                          total_number_of_feasibility_checks=200,
                                          dont_check_motion_existence=False)
+
             smpled_param = smpler.sample_next_point(cached_collisions=state.collisions_at_all_obj_pose_pairs,
                                                     cached_holding_collisions=None)
             if smpled_param['is_feasible']:
@@ -307,7 +310,6 @@ def get_problem(mover, config):
                 newstate.make_pklable()
                 newnode = Node(node, action, newstate)
                 newactions = get_actions(mover, goal, config)
-                print "Old h value", curr_hval
                 for newaction in newactions:
                     # What's this?
                     # hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
@@ -316,6 +318,7 @@ def get_problem(mover, config):
                     # hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
+                import pdb;pdb.set_trace()
             # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
 
         elif action.type == 'one_arm_pick_one_arm_place':
@@ -408,94 +411,3 @@ def get_problem(mover, config):
         else:
             raise NotImplementedError
 
-
-##################################################
-
-
-##################################################
-
-from planners.subplanners.motion_planner import BaseMotionPlanner
-import socket
-
-
-def generate_training_data_single(config):
-    np.random.seed(config.pidx)
-    random.seed(config.pidx)
-    n_objs_pack = config.n_objs_pack
-
-    if config.domain == 'two_arm_mover':
-        mover = PaPMoverEnv(config.pidx)
-        goal = ['home_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
-        mover.set_goal(goal)
-    elif config.domain == 'one_arm_mover':
-        mover = OneArmMover(config.pidx)
-    else:
-        raise NotImplementedError
-    np.random.seed(config.planner_seed)
-    random.seed(config.planner_seed)
-    mover.set_motion_planner(BaseMotionPlanner(mover, 'prm'))
-    mover.seed = config.pidx
-
-    # todo change the root node
-    mover.init_saver = DynamicEnvironmentStateSaver(mover.env)
-
-    hostname = socket.gethostname()
-    if hostname in {'dell-XPS-15-9560', 'phaedra', 'shakey', 'lab', 'glaucus', 'luke-laptop-1'}:
-        root_dir = './'
-    else:
-        root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
-
-    solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d' \
-                        % (config.domain, config.n_objs_pack)
-
-    if config.dont_use_gnn:
-        solution_file_dir += '/no_gnn/'
-    elif config.dont_use_h:
-        solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
-    elif config.hcount:
-        solution_file_dir += '/no_reachable_regions_while_holding_state_computation_hcount/'
-    elif config.state_hcount:
-        solution_file_dir += '/state_hcount/'
-    elif config.hadd:
-        solution_file_dir += '/gnn_hadd/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
-    else:
-        solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
-
-    solution_file_name = 'pidx_' + str(config.pidx) + \
-                         '_planner_seed_' + str(config.planner_seed) + \
-                         '_train_seed_' + str(config.train_seed) + \
-                         '_domain_' + str(config.domain) + '.pkl'
-    if not os.path.isdir(solution_file_dir):
-        os.makedirs(solution_file_dir)
-
-    solution_file_name = solution_file_dir + solution_file_name
-
-    is_problem_solved_before = os.path.isfile(solution_file_name)
-    if is_problem_solved_before and not config.plan:
-        with open(solution_file_name, 'rb') as f:
-            trajectory = pickle.load(f)
-            success = trajectory.metrics['success']
-            tottime = trajectory.metrics['tottime']
-    else:
-        t = time.time()
-        trajectory, num_nodes = get_problem(mover, config)
-        tottime = time.time() - t
-        success = trajectory is not None
-        plan_length = len(trajectory.actions) if success else 0
-        if not success:
-            trajectory = Trajectory(mover.seed, mover.seed)
-        trajectory.states = [s.get_predicate_evaluations() for s in trajectory.states]
-        trajectory.state_prime = None
-
-        trajectory.metrics = {
-            'n_objs_pack': config.n_objs_pack,
-            'tottime': tottime,
-            'success': success,
-            'plan_length': plan_length,
-            'num_nodes': num_nodes,
-        }
-
-        with open(solution_file_name, 'wb') as f:
-            pickle.dump(trajectory, f)
-    print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, trajectory.metrics['plan_length'],
-                                                                    trajectory.metrics['num_nodes'])
