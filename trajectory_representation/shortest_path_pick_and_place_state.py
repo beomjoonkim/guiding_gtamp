@@ -34,7 +34,7 @@ class ShortestPathPaPState(PaPState):
             moved_obj = None
         problem_env.enable_objects_in_region('entire_region')
         self.reachable_entities = []
-        self.reachable_regions_while_holding = []
+        #self.reachable_regions_while_holding = []
         if paps_used_in_data is not None:
             self.pick_used = copy.deepcopy(paps_used_in_data[0])
             for obj in problem_env.objects:
@@ -103,8 +103,9 @@ class ShortestPathPaPState(PaPState):
         self.is_holding_goal_entity = IsHoldingGoalEntity(self.problem_env, goal_entities)
 
         self.nodes = self.get_nodes()
-        self.binary_edges = self.get_binary_edges()
+        # note: the ternary and binary edges must be computed in this particular order
         self.ternary_edges = self.get_ternary_edges()
+        self.binary_edges = self.get_binary_edges()
 
     def initialize_parent_predicates(self, moved_obj, parent_state, parent_action):
         assert parent_action is not None
@@ -180,27 +181,41 @@ class ShortestPathPaPState(PaPState):
                 continue
             for obj, pick_path in self.cached_pick_paths.items():
                 self.cached_place_paths[(obj, region_name)] = None
-                parent_state_has_cached_path_for_obj \
-                    = parent_state is not None and obj in parent_state.cached_place_paths and obj != moved_obj
-                cached_path_is_shortest_path = parent_state is not None and \
-                                               not (obj, region_name) in parent_state.reachable_regions_while_holding
 
                 saver = CustomStateSaver(self.problem_env.env)
                 pick_used = self.pick_used[obj]
                 pick_used.execute()
                 if region.contains(self.problem_env.env.GetKinBody(obj).ComputeAABB()):
                     path = [get_body_xytheta(self.problem_env.robot).squeeze()]
-                    self.reachable_regions_while_holding.append((obj, region_name))
+                    #self.reachable_regions_while_holding.append((obj, region_name))
                 else:
                     if self.holding_collides is not None:
                         path, status = motion_planner.get_motion_plan(region, cached_collisions=self.holding_collides)
                     else:
+                        # I think the trouble here is that we do not hold the object when checking collisions
+                        # So, the best way to solve this problem is to not keep reachable_regions_while_holding
+                        # and just use the cached path. But I am wondering how we got a colliding-path in
+                        # the first place. It must be from place_in_way? No, we execute this function first,
+                        # and then using the cached paths, compute the place_in_way.
+                        # Also, there is something wrong with the collision checking too.
+                        # I think this has to do with the fact that the collisions are computed using
+                        # the robot only, not with the object in hand.
+                        # So, here is what I propose:
+                        #   Plan motions here, but do not add to reachable regions while holding.
+                        # This way, it will plan motions as if it is not holding the object,
+                        # but check collisions inside place_in_way
                         path, status = motion_planner.get_motion_plan(region,
                                                                       cached_collisions=self.collisions_at_all_obj_pose_pairs)
                     if status == 'HasSolution':
-                        self.reachable_regions_while_holding.append((obj, region_name))
+                        pass
                     else:
-                        if parent_state_has_cached_path_for_obj and cached_path_is_shortest_path:
+                        obj_not_moved = obj != moved_obj
+                        parent_state_has_cached_path_for_obj = parent_state is not None \
+                                                               and obj in parent_state.cached_place_paths
+                        # todo: What is this logic here...?
+                        #  it is about re-using the parent place path;
+                        #  but this assumes that the object has not moved?
+                        if parent_state_has_cached_path_for_obj and obj_not_moved:
                             path = parent_state.cached_place_paths[(obj, region_name)]
                         else:
                             path, _ = motion_planner.get_motion_plan(region, cached_collisions={})
@@ -227,10 +242,14 @@ class ShortestPathPaPState(PaPState):
         edges = {}
         for a in self.problem_env.entity_names:
             for b in self.problem_env.entity_names:
-                for r in self.problem_env.regions:
+                #for r in self.problem_env.regions:
+                for r in self.problem_env.entity_names:
                     key = (a, b, r)
-                    if r.find('region') == -1 or r.find('entire') != -1:
+                    if r.find('entire') != -1:
                         continue
+                    if r.find('region') == -1 or a == b:
+                        edges[key] = [False]
+
                     if key not in edges.keys():
                         place_edge_features = self.get_ternary_edge_features(a, b, r)
                         edges[key] = place_edge_features
@@ -276,15 +295,20 @@ class ShortestPathPaPState(PaPState):
             else:
                 assert a.find('region') != -1
                 cached_path = None
+            """
             if key in self.reachable_regions_while_holding:
                 # if reachable then nothing is in the way
                 is_b_in_way_of_reaching_r_while_holding_a = False
             else:
-                is_b_in_way_of_reaching_r_while_holding_a = self.place_in_way(a, b, r, cached_path=cached_path)
+            """
+            is_b_in_way_of_reaching_r_while_holding_a = self.place_in_way(a, b, r, cached_path=cached_path)
             return [is_b_in_way_of_reaching_r_while_holding_a]
 
     def get_binary_edge_features(self, a, b):
-        is_place_in_b_reachable_while_holding_a = (a, b) in self.reachable_regions_while_holding
+        #is_place_in_b_reachable_while_holding_a = (a, b) in self.reachable_regions_while_holding
+        objs_occluding_moving_a_to_b = [occluding for occluding in self.object_names
+                                        if self.ternary_edges[(a, occluding, b)][0]]
+        is_place_in_b_reachable_while_holding_a = len(objs_occluding_moving_a_to_b) == 0
 
         if 'region' in b:
             cached_path = None
