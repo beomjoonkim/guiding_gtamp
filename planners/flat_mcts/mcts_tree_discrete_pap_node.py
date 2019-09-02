@@ -49,7 +49,7 @@ class PaPDiscreteTreeNodeWithLearnedQ(DiscreteTreeNode):
 
         self.Nvisited += 1
         self.N[action] += 1
-        temperature_on_action = np.power(0.99, self.N[action])
+        temperature_on_action = np.power(self.mix_weight, self.N[action])
         self.Q[action] = temperature_on_action*self.Q[action] + (1 - temperature_on_action)*self.max_sum_rewards[action]
 
     def perform_ucb_over_actions(self, learned_q_functions=None):
