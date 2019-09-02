@@ -83,7 +83,6 @@ class PaPDiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
         print self.state.get_entities_in_place_way('square_packing_box1', 'home_region')
         #print self.state.get_entities_in_pick_way('rectangular_packing_box1')
         #print self.state.get_entities_in_place_way('rectangular_packing_box1', 'home_region')
-        import pdb;pdb.set_trace()
         return best_action
 
     def is_obj_currently_in_goal_region(self, obj):
