@@ -153,6 +153,8 @@ class PaPState(State):
         inway = []
         entity_names = self.problem_env.object_names + self.problem_env.region_names
         for obj_name in entity_names:
+            if 'entire' in obj_name:
+                continue
             if (entity, obj_name) not in self.binary_edges:
                 continue
             if self.binary_edges[(entity, obj_name)][1]:

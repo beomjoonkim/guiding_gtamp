@@ -91,8 +91,8 @@ def get_metrics(test_dir, test_files, n_objs, n_data=None):
 
 
 def main():
-    n_objs = 1
-    t_limit = 1000*n_objs
+    n_objs = 8
+    t_limit = 300*n_objs
     domain = 'two_arm_mover'
 
     # Customize the below

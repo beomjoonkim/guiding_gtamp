@@ -131,7 +131,6 @@ def main():
 
     goal_entities = get_goal_entities(parameters)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, goal_entities, parameters)
-    import pdb;pdb.set_trace()
     save_traj(traj, save_dir + processed_fname)
 
 
