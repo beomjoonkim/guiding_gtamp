@@ -10,7 +10,8 @@ def parse_options():
     parser.add_argument('-pidxs', nargs=2, type=int, default=[0, 1])
     parser.add_argument('-num_train', type=int, default=5000)
     parser.add_argument('-domain', type=str, default='two_arm_mover')
-    parser.add_argument('-train_seed', nargs=2, type=int, default=[0, 1])
+    #parser.add_argument('-train_seed', nargs=2, type=int, default=[0, 1])
+    parser.add_argument('-train_seed', type=int, default=0)
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-use_q_count', action='store_true', default=False)
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
@@ -27,21 +28,18 @@ def get_configs():
     parameters = parse_options()
     pidx_begin = parameters.pidxs[0]
     pidx_end = parameters.pidxs[1]
-    train_seed_begin = parameters.train_seed[0]
-    train_seed_end = parameters.train_seed[1]
 
     configs = []
-    for train_seed in range(train_seed_begin, train_seed_end):
-        for pidx in range(pidx_begin, pidx_end):
-            config = {
-                'pidx': pidx,
-                'planner_seed': parameters.planner_seed,
-                'n_objs_pack': parameters.n_objs_pack,
-                'timelimit': parameters.timelimit,
-                'domain': parameters.domain,
-            }
+    for pidx in range(pidx_begin, pidx_end):
+        config = {
+            'pidx': pidx,
+            'planner_seed': parameters.planner_seed,
+            'n_objs_pack': parameters.n_objs_pack,
+            'timelimit': parameters.timelimit,
+            'domain': parameters.domain,
+        }
 
-            configs.append(config)
+        configs.append(config)
     return parameters, configs
 
 
