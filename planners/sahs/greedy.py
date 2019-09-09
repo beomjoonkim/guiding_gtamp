@@ -105,8 +105,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     else:
         hcount = compute_hcount_with_action(state, action, problem_env)
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = -number_in_goal + gnn_pred + hcount
-        hval = gnn_pred + hcount
+        hval = gnn_pred #- number_in_goal
         if not is_two_arm_domain:
             obj_name = action.discrete_parameters['object'].GetName()
             region_name = action.discrete_parameters['region'].name
@@ -119,7 +118,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             print "%15s %35s reachable %d placeable_in_region %d isgoal %d isgoal_region %d is_in_region %d  num_in_goal %d in_way_of_goal_pap %d gnn %.4f hval %.4f" \
                   % (obj_name, region_name, is_reachable, is_placeable, is_goal, isgoal_region, is_in_region,
                      number_in_goal, in_way_of_goal_pap, -gnn_pred, hval)
-
+        print "%s %s hval: %.4f hcount: %d" % (o, r, hval, hcount)
+        print "====================="
         return hval
 
 
@@ -218,12 +218,7 @@ def search(mover, config):
                 yield node
                 node = node.parent
 
-    pr = cProfile.Profile()
-    pr.enable()
     state = statecls(mover, goal)
-    pr.disable()
-    pstats.Stats(pr).sort_stats('tottime').print_stats(30)
-    pstats.Stats(pr).sort_stats('cumtime').print_stats(30)
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
@@ -389,12 +384,7 @@ def search(mover, config):
                     print(trajectory)
                     return trajectory, iter
                 else:
-                    pr = cProfile.Profile()
-                    pr.enable()
                     newstate = statecls(mover, goal, node.state, action)
-                    pr.disable()
-                    pstats.Stats(pr).sort_stats('tottime').print_stats(30)
-                    pstats.Stats(pr).sort_stats('cumtime').print_stats(30)
                     print "New state computed"
                     newnode = Node(node, action, newstate)
                     newactions = get_actions(mover, goal, config)

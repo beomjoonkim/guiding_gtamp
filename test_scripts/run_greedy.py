@@ -10,6 +10,7 @@ from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import OneArmMover
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from manipulation.primitives.savers import DynamicEnvironmentStateSaver
+from gtamp_utils import utils
 from trajectory_representation.trajectory import Trajectory
 from planners.sahs.greedy import search
 
@@ -42,7 +43,7 @@ def get_solution_file_name(config):
     elif config.dont_use_h:
         solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     elif config.hcount:
-        solution_file_dir += '/no_reachable_regions_while_holding_state_computation_hcount/'
+        solution_file_dir += '/hcount/'
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.hadd:

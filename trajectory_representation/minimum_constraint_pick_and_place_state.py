@@ -1,6 +1,5 @@
 from trajectory_representation.state import State
 from trajectory_representation.operator import Operator
-from generators.uniform import UniformGenerator
 from gtamp_utils.utils import CustomStateSaver, get_body_xytheta, set_robot_config, set_obj_xytheta
 
 from predicates.is_reachable import IsReachable

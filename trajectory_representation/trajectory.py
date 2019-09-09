@@ -148,7 +148,7 @@ class Trajectory:
         pick_used = paps_used[0]
         place_used = paps_used[1]
         reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region', 3*8)
-        #utils.viewer()
+        utils.viewer()
         state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
         for action_idx, action in enumerate(plan):
             if 'place' in action.type:
@@ -157,7 +157,7 @@ class Trajectory:
             target_obj = openrave_env.GetKinBody(action.discrete_parameters['object'])
             color_before = get_color(target_obj)
             set_color(target_obj, [1, 1, 1])
-            set_color(target_obj, color_before)
+
             pick_used, place_used = self.delete_moved_objects_from_pap_data(pick_used, place_used, target_obj)
             paps_used = [pick_used, place_used]
 
@@ -166,6 +166,7 @@ class Trajectory:
             pap_action = pap_action.merge_operators(plan[action_idx + 1])
             pap_action.is_skeleton = False
             pap_action.execute()
+            # set_color(target_obj, color_before)
 
             parent_state = state
             parent_action = pap_action
