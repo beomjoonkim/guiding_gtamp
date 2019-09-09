@@ -21,7 +21,7 @@ hostname = socket.gethostname()
 if hostname == 'dell-XPS-15-9560' or hostname == 'phaedra' or hostname == 'shakey' or hostname == 'lab':
     ROOTDIR = './'
 else:
-    ROOTDIR = '/data/public/rw/pass.port/tamp_q_results/'
+    ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'
 
 
 def make_and_get_save_dir(parameters):
