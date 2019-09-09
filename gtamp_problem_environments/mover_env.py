@@ -34,8 +34,8 @@ class Mover(ProblemEnvironment):
         self.placement_regions = {'home_region': self.problem_config['home_region'],
                                   'loading_region': self.problem_config['loading_region']}
 
-        self.entity_names = self.object_names + ['home_region', 'loading_region','entire_region']
-        #self.entity_names = self.object_names + ['home_region', 'loading_region']
+        #self.entity_names = self.object_names + ['home_region', 'loading_region','entire_region']
+        self.entity_names = self.object_names + ['home_region', 'loading_region']
         self.entity_idx = {name: idx for idx, name in enumerate(self.entity_names)}
 
         self.is_init_pick_node = True

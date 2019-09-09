@@ -25,7 +25,7 @@ def worker_wrapper_multi_input(multi_args):
 
 def main():
     _, configs = get_configs()
-    n_workers = multiprocessing.cpu_count()
+    n_workers = 10 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
 

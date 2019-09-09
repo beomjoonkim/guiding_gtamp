@@ -183,7 +183,6 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
             actions.append(factions)
             edges.append(fedges)
             rewards.append(frewards)
-
     nodes = np.vstack(nodes).squeeze()
     edges = np.vstack(edges).squeeze()
     actions = np.vstack(actions).squeeze()
