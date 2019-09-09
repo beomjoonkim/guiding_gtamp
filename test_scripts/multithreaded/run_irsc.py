@@ -16,7 +16,7 @@ def worker_p(config):
         command += option
 
     print command
-    os.system(command)
+    #os.system(command)
 
 
 def worker_wrapper_multi_input(multi_args):
@@ -24,7 +24,7 @@ def worker_wrapper_multi_input(multi_args):
 
 
 def main():
-    configs = get_configs()
+    _, configs = get_configs()
     n_workers = multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
