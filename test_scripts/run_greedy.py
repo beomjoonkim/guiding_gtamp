@@ -7,7 +7,7 @@ import random
 import os
 
 from gtamp_problem_environments.mover_env import PaPMoverEnv
-from gtamp_problem_environments.one_arm_mover_env import OneArmMover
+from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from gtamp_utils import utils
@@ -22,7 +22,9 @@ def get_problem_env(config):
         goal = ['home_region'] + [obj.GetName() for obj in problem_env.objects[:n_objs_pack]]
         problem_env.set_goal(goal)
     elif config.domain == 'one_arm_mover':
-        problem_env = OneArmMover(config.pidx)
+        problem_env = PaPOneArmMoverEnv(config.pidx)
+        goal = ['rectangular_packing_box1_region'] + [obj.GetName() for obj in problem_env.objects[:n_objs_pack]]
+        problem_env.set_goal(goal)
     else:
         raise NotImplementedError
     return problem_env

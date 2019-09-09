@@ -143,7 +143,6 @@ def search(mover, config):
                     print('failed to find any paps, trying again')
 
         statecls = create_one_arm_pap_state
-        # goal = ['rectangular_packing_box1_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
     else:
         raise NotImplementedError
 
