@@ -36,17 +36,12 @@ def get_configs():
             config = {
                 'pidx': pidx,
                 'planner_seed': parameters.planner_seed,
-                'train_seed': train_seed,
                 'n_objs_pack': parameters.n_objs_pack,
                 'timelimit': parameters.timelimit,
-                'loss': parameters.loss,
-                'num_train': parameters.num_train,
                 'domain': parameters.domain,
-                'sampling_strategy': parameters.sampling_strategy,
             }
 
             configs.append(config)
-
     return parameters, configs
 
 
@@ -58,6 +53,9 @@ def get_sahs_configs():
             config['hcount'] = ""
         elif parameters.state_hcount:
             config['state_hcount'] = ""
+        config['loss'] = parameters.loss
+        config['train_seed'] = parameters.train_seed
+        config['num_train'] = parameters.num_train
     return configs
 
 
@@ -71,6 +69,10 @@ def get_mcts_configs():
         if parameters.use_q_count:
             config['use_q_count'] = ""
         config['ucb_parameter'] = parameters.ucb_parameter
+        config['sampling_strategy'] = parameters.sampling_strategy
+        config['loss'] = parameters.loss
+        config['train_seed'] = parameters.train_seed
+        config['num_train'] = parameters.num_train
 
     return configs
 
