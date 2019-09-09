@@ -1,7 +1,6 @@
 from trajectory_representation.operator import Operator
 from generators.uniform import UniformGenerator
 from planners.subplanners.minimum_constraint_planner import MinimumConstraintPlanner
-from planners.subplanners.minimum_constraint_goal import MinimumConstraintGoalSampler
 from trajectory_representation.swept_volume import PickAndPlaceSweptVolume
 from manipulation.bodies.bodies import set_color, get_color
 
@@ -43,7 +42,6 @@ class ResolveSpatialConstraints:
         target_object.Enable(True)
         # todo I think it might be better to try to generate goals without disabling first?
         generator = UniformGenerator(operator_skeleton, self.problem_env, None)
-        print "Generating goals for ", target_object
         potential_motion_plan_goals = []
         n_iters = range(10, 500, 10)
         for n_iter_to_try in n_iters:
@@ -53,6 +51,18 @@ class ResolveSpatialConstraints:
             potential_motion_plan_goals = [op['q_goal'] for op in op_cont_params if op['q_goal'] is not None]
             if len(potential_motion_plan_goals) > 2:
                 break
+        """
+
+        # todo pickup from here
+        print "Generating goals for ", target_object
+        smpler = UniformPaPGenerator(None, operator_skeleton, self.problem_env, None,
+                                     n_candidate_params_to_smpl=n_pick_configs,
+                                     total_number_of_feasibility_checks=500,
+                                     dont_check_motion_existence=True)
+        potential_motion_plan_goals = smpler.sample_next_point()
+        """
+
+
         print "Done"
         self.problem_env.enable_objects_in_region('entire_region')
         is_op_skel_infeasible = len(potential_motion_plan_goals) == 0

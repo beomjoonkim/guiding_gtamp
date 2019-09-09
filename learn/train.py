@@ -70,6 +70,7 @@ def train(config):
         './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./',
         desired_operator_type=config.operator)
+    print "Total number of data", len(nodes)
     num_test = min(config.num_test, len(nodes))
     num_training = min(config.num_train, len(nodes) - num_test)
     config.num_train = num_training
@@ -113,8 +114,8 @@ def parse_args():
     parser.add_argument('-lr', type=float, default=1e-4)
     parser.add_argument('-optimizer', type=str, default='adam')
     parser.add_argument('-batch_size', type=int, default=32)
-    parser.add_argument('-num_test', type=int, default=116)
-    parser.add_argument('-num_train', type=int, default=600)
+    parser.add_argument('-num_test', type=int, default=1000)
+    parser.add_argument('-num_train', type=int, default=5000)
     parser.add_argument('-val_portion', type=float, default=0.1)
     parser.add_argument('-top_k', type=int, default=1)
     parser.add_argument('-donttrain', action='store_true', default=False)

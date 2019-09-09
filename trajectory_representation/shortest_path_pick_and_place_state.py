@@ -40,6 +40,7 @@ class ShortestPathPaPState(PaPState):
             for obj in problem_env.objects:
                 if obj.GetName() not in self.pick_used:
                     self.pick_used[obj.GetName()] = self.get_pick_poses(obj, moved_obj, parent_state)
+
             self.place_used = copy.deepcopy(paps_used_in_data[1])
         else:
             self.pick_used = {
@@ -132,7 +133,7 @@ class ShortestPathPaPState(PaPState):
                                         None,
                                         n_candidate_params_to_smpl=3,
                                         total_number_of_feasibility_checks=500,
-                                        dont_check_motion_existence=False)
+                                        dont_check_motion_existence=True)
         # we should disable objects, because we are getting shortest path that ignors all collisions anyways
         self.problem_env.disable_objects_in_region('entire_region')
 
@@ -150,15 +151,20 @@ class ShortestPathPaPState(PaPState):
         """
         self.problem_env.enable_objects_in_region('entire_region')
 
-        # assert len(motion_plan_goals) > 0 # if we can't find a pick pose then the object should be treated as unreachable
+        assert len(motion_plan_goals) > 0 # if we can't find a pick pose then the object should be treated as unreachable
         operator_skeleton.continuous_parameters['q_goal'] = motion_plan_goals  # to make it consistent with Dpl
+        if len(motion_plan_goals) == 0:
+            import pdb;pdb.set_trace()
         return operator_skeleton
 
     def set_cached_pick_paths(self, parent_state, moved_obj):
         motion_planner = BaseMotionPlanner(self.problem_env, 'prm')
         for obj, op_instance in self.pick_used.items():
             motion_plan_goals = op_instance.continuous_parameters['q_goal']
-            assert len(motion_plan_goals) > 0
+            try:
+                assert len(motion_plan_goals) > 0
+            except:
+                import pdb;pdb.set_trace()
             self.cached_pick_paths[obj] = None
 
             path, status = motion_planner.get_motion_plan(motion_plan_goals,
@@ -247,6 +253,10 @@ class ShortestPathPaPState(PaPState):
                     key = (a, b, r)
 
                     is_r_not_region = r.find('region') == -1
+                    if r.find('entire') != -1:
+                        edges[key] = [False]
+                        continue
+
                     if is_r_not_region or a == b:
                         edges[key] = [False]
                         continue

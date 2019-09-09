@@ -100,7 +100,7 @@ def get_goal_entities(parameters):
 
 def get_raw_fname(parameters):
     if parameters.scenario is None:
-        return str(parameters.pidx) +'.pkl' #'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
+        return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
     else:
         if parameters.scenario == 0:
             scenario = 'reachable_goal_entities'
@@ -127,10 +127,11 @@ def main():
     processed_fname = get_processed_fname(parameters, save_dir, raw_fname)
     print "Raw fname", raw_dir+raw_fname
     print "Processed fname ", save_dir+processed_fname
-    quit_if_already_done(save_dir + processed_fname)
+    #quit_if_already_done(save_dir + processed_fname)
 
     goal_entities = get_goal_entities(parameters)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, goal_entities, parameters)
+    import pdb;pdb.set_trace()
     save_traj(traj, save_dir + processed_fname)
 
 
