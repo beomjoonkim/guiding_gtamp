@@ -38,18 +38,20 @@ def get_objects_to_move(state, problem_env):
 
                 if is_o2_in_way_of_obj_to_move:
                     if obj_to_move in state.goal_entities:
-                        print "%s occludes goal entity" % o2
+                        #print "%s occludes goal entity" % o2
+                        pass
 
                     n_occludes_pre += 1
 
                 if is_o2_in_way_of_obj_to_move_to_any_region:
                     if obj_to_move in state.goal_entities:
-                        print "%s occludes manipfree of goal entity" % o2
+                        #print "%s occludes manipfree of goal entity" % o2
+                        pass
                     n_occludes_manip += 1
 
                 if is_o2_in_way_of_obj_to_move or is_o2_in_way_of_obj_to_move_to_any_region:
                     potential_obj_to_move_queue.put(o2)
-    print "n occludes pre %d n occludes manip %d" % (n_occludes_pre, n_occludes_manip)
+    #print "n occludes pre %d n occludes manip %d" % (n_occludes_pre, n_occludes_manip)
     return objects_to_move
 
 
@@ -71,7 +73,8 @@ def compute_hcount_with_action(state, action, problem_env):
 
     is_a_obj_manip_free_to_a_region = state.binary_edges[(a_obj, a_region)][-1]
     is_a_in_objects_to_move = a_obj in objects_to_move
+    is_a_obj_reachable = state.nodes[a_obj][9]
 
-    if is_a_in_objects_to_move and is_a_obj_manip_free_to_a_region:
+    if is_a_obj_reachable and is_a_in_objects_to_move and is_a_obj_manip_free_to_a_region:
         n_objs_to_move -= 1
     return n_objs_to_move

@@ -24,7 +24,7 @@ def worker_wrapper_multi_input(multi_args):
 
 def main():
     configs = []
-    for pidx in range(10000):
+    for pidx in range(5000):
         config = {'pidx': pidx}
         configs.append(config)
 

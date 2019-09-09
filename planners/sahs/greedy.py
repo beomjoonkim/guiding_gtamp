@@ -104,21 +104,22 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         return hadd
     else:
         hcount = compute_hcount_with_action(state, action, problem_env)
+
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = gnn_pred #- number_in_goal
-        if not is_two_arm_domain:
-            obj_name = action.discrete_parameters['object'].GetName()
-            region_name = action.discrete_parameters['region'].name
-            is_reachable = state.nodes[obj_name][-2]  # state.is_entity_reachable(obj_name)
-            is_placeable = state.binary_edges[(obj_name, region_name)][2]
-            is_goal = state.nodes[obj_name][-3]
-            isgoal_region = state.nodes[region_name][-3]
-            is_in_region = state.binary_edges[(obj_name, region_name)][0]
-            in_way_of_goal_pap = obj_name in state.get_entities_in_way_to_goal_entities()
-            print "%15s %35s reachable %d placeable_in_region %d isgoal %d isgoal_region %d is_in_region %d  num_in_goal %d in_way_of_goal_pap %d gnn %.4f hval %.4f" \
-                  % (obj_name, region_name, is_reachable, is_placeable, is_goal, isgoal_region, is_in_region,
-                     number_in_goal, in_way_of_goal_pap, -gnn_pred, hval)
-        print "%s %s hval: %.4f hcount: %d" % (o, r, hval, hcount)
+        hval = gnn_pred - number_in_goal
+
+        Vpre_free = state.nodes[action.discrete_parameters['object']][9]
+        Vmanip_free = state.binary_edges[(action.discrete_parameters['object'], action.discrete_parameters['region'])][2]
+        Vpre_occ = state.pick_entities_occluded_by(action.discrete_parameters['object'])
+        Vmanip_occ = state.place_entities_occluded_by(action.discrete_parameters['object'])
+        print "Vpre_free", Vpre_free
+        print "Vmanip_free", Vmanip_free
+        print "Vpre_occ ", Vpre_occ
+        print "Vmanip_occ ", Vmanip_occ
+        print "Total occ " + str(len(Vpre_occ + Vmanip_occ))
+        print "Occ place to goal " + str(len([objregion for objregion in Vmanip_occ if objregion[1] == 'home_region']))
+
+        print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         print "====================="
         return hval
 
@@ -292,17 +293,16 @@ def search(mover, config):
                 print("found successful plan: {}".format(n_objs_pack))
                 trajectory = Trajectory(mover.seed, mover.seed)
                 plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
-                trajectory.states = [nd.state for nd in plan]
+                #trajectory.states = [nd.state for nd in plan]
                 trajectory.actions = [nd.action for nd in plan[1:]] + [action]
-                trajectory.rewards = [nd.reward for nd in plan[1:]] + [0]
-                trajectory.state_prime = [nd.state for nd in plan[1:]]
+                #trajectory.rewards = [nd.reward for nd in plan[1:]] + [0]
+                #trajectory.state_prime = [nd.state for nd in plan[1:]]
                 trajectory.seed = mover.seed
                 print(trajectory)
                 return trajectory, iter
             else:
                 newstate = statecls(mover, goal, node.state, action)
                 print "New state computed"
-                newstate.make_pklable()
                 newnode = Node(node, action, newstate)
                 newactions = get_actions(mover, goal, config)
                 for newaction in newactions:
@@ -313,7 +313,6 @@ def search(mover, config):
                     # hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
-                import pdb;pdb.set_trace()
             # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
 
         elif action.type == 'one_arm_pick_one_arm_place':
