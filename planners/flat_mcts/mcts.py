@@ -1,5 +1,5 @@
 from mcts_tree_continuous_node import ContinuousTreeNode
-from mcts_tree_discrete_node import DiscreteTreeNode, DiscreteTreeNodeWithPsa
+from discrete_node_with_psa import DiscreteTreeNodeWithPsa
 from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithPriorQ
 from mcts_tree import MCTSTree
 
@@ -202,7 +202,7 @@ class MCTS:
                                                      is_goal_reached=self.problem_env.is_goal_reached())
             else:
                 node = DiscreteTreeNodeWithPsa(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
-                                        is_init_node, applicable_op_skeletons)
+                                                is_init_node, applicable_op_skeletons)
         else:
             node = ContinuousTreeNode(state, parent_action, self.ucb_parameter, depth, state_saver,
                                       is_operator_skeleton_node, is_init_node)

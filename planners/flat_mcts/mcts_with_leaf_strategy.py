@@ -69,6 +69,7 @@ class MCTSWithLeafStrategy(MCTS):
 
         print "Reward", reward
 
+        print "=============================================================================="
         if not is_action_feasible:
             # this (s,a) is a dead-end
             print "Infeasible action"
