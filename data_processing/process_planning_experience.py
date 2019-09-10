@@ -5,7 +5,6 @@ import os
 import argparse
 import socket
 
-
 hostname = socket.gethostname()
 if hostname == 'dell-XPS-15-9560' or hostname == 'phaedra' or hostname == 'shakey' or hostname == 'lab':
     ROOTDIR = './'
@@ -13,24 +12,18 @@ else:
     ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'
 
 
-
 def get_save_dir(parameters):
     if parameters.scenario is None:
-        save_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/'
+        save_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/'
     else:
-        save_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/special_cases/'
+        save_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/special_cases/'
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     return save_dir
 
 
 def get_raw_dir(parameters):
-    if parameters.scenario is None:
-        raw_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
-    else:
-        raw_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
-
-    #raw_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+    raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     return raw_dir
 
 
@@ -125,13 +118,16 @@ def main():
     raw_fname = get_raw_fname(parameters)
     save_dir = get_save_dir(parameters)
     processed_fname = get_processed_fname(parameters, save_dir, raw_fname)
-    print "Raw fname", raw_dir+raw_fname
-    print "Processed fname ", save_dir+processed_fname
-    #quit_if_already_done(save_dir + processed_fname)
+    print "Raw fname", raw_dir + raw_fname
+    print "Processed fname ", save_dir + processed_fname
+    # quit_if_already_done(save_dir + processed_fname)
 
     goal_entities = get_goal_entities(parameters)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, goal_entities, parameters)
-    save_traj(traj, save_dir + processed_fname)
+    from_cloud = pickle.load(open(save_dir + 'pap_traj_seed_0_pidx_0.pkl', 'r'))
+
+    import pdb;pdb.set_trace()
+    #save_traj(traj, save_dir + processed_fname)
 
 
 if __name__ == '__main__':

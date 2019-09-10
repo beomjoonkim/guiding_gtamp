@@ -43,7 +43,7 @@ class ResolveSpatialConstraints:
         # todo I think it might be better to try to generate goals without disabling first?
         generator = UniformGenerator(operator_skeleton, self.problem_env, None)
         potential_motion_plan_goals = []
-        n_iters = range(10, 200, 10)
+        n_iters = range(10, 500, 10)
         for n_iter_to_try in n_iters:
             op_cont_params, _ = generator.sample_feasible_op_parameters(operator_skeleton,
                                                                         n_iter=n_iter_to_try,
@@ -71,7 +71,7 @@ class ResolveSpatialConstraints:
         generator = UniformGenerator(operator_skeleton, self.problem_env, swept_volume_constraint=swept_volumes)
         print "Generating goals for ", target_object
         potential_motion_plan_goals = []
-        n_iters = range(10, 200, 10)
+        n_iters = range(10, 500, 10)
         for n_iter_to_try in n_iters:
             op_cont_params, _ = generator.sample_feasible_op_parameters(operator_skeleton,
                                                                         n_iter=n_iter_to_try,

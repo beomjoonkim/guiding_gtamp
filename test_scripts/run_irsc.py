@@ -198,6 +198,7 @@ def main():
     total_time_taken = 0
     found_solution = False
     timelimit = parameters.timelimit
+    timelimit = np.inf
     while total_n_nodes < 1000 and total_time_taken < timelimit:
         goal_obj_name = goal_object_names[idx]
         plan, n_nodes, status = find_plan_for_obj(goal_obj_name, high_level_plan[idx], environment, stime, timelimit)
