@@ -30,7 +30,7 @@ def get_raw_dir(parameters):
     else:
         raw_dir = ROOTDIR+'/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
 
-    raw_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+    #raw_dir = './planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     return raw_dir
 
 
