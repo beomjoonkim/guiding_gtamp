@@ -19,9 +19,6 @@ def extract_example(state, pick_action, place_action, pick_reward, place_reward,
     return nodes, edges, actions, operators, costs
 
 
-import copy
-
-
 def encode_in_one_hot(predicate_eval):
     if predicate_eval == 1:
         return [0, 1]
@@ -60,7 +57,7 @@ def get_edges(state, region_nodes, entity_names):
             ab_binary_edge = make_one_hot_encoded_edge(state.binary_edges[(a, b)])
             ba_binary_edge = make_one_hot_encoded_edge(state.binary_edges[(b, a)])
             for ridx, r in enumerate(regions):
-                ar_binary_edge = make_one_hot_encoded_edge(state.binary_edges[(a, r)]) # do we need this?
+                ar_binary_edge = make_one_hot_encoded_edge(state.binary_edges[(a, r)])  # do we need this?
                 br_binary_edge = make_one_hot_encoded_edge(state.binary_edges[(b, r)])
                 ternary_edge1 = make_one_hot_encoded_edge(state.ternary_edges[(a, b, r)])
                 ternary_edge2 = make_one_hot_encoded_edge(state.ternary_edges[(b, a, r)])
@@ -118,7 +115,7 @@ def extract_individual_example(state, op_instance):
     for name in entity_names:
         onehot = make_one_hot_encoded_node(state.nodes[name])
         nodes.append(onehot)
-        if name.find('region') != -1 and name.find('entire') ==-1:
+        if name.find('region') != -1 and name.find('entire') == -1:
             region_nodes[name] = onehot
 
     nodes = np.vstack(nodes)
@@ -147,9 +144,9 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
             edges.append(edge)
             actions.append(action)
             rewards.append(np.sum(traj.rewards[idx:]))
-            #print traj.rewards
-            #print traj.rewards[idx:]
-            #if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
+            # print traj.rewards
+            # print traj.rewards[idx:]
+            # if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
             #    import pdb;pdb.set_trace()
             idx += 1
 
@@ -157,7 +154,7 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
     edges = np.stack(edges, axis=0)
     actions = np.stack(actions, axis=0)
     rewards = np.stack(rewards, axis=0)
-    #if rewards[0] == 10:
+    # if rewards[0] == 10:
     #    import pdb;pdb.set_trace()
     return nodes, edges, actions, rewards
 
@@ -167,6 +164,7 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
     cachefile = "{}{}.pkl".format(dirname, desired_operator_type)
     if os.path.isfile(cachefile):
         print "Loading the cached file:", cachefile
+        import pdb;pdb.set_trace()
         return pickle.load(open(cachefile, 'rb'))
 
     print "Caching file..."
@@ -176,6 +174,9 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
     actions = []
     rewards = []
     edges = []
+
+    n_probs_attempt = len(file_list)
+    n_not_solved = 0
     for filename in file_list:
         fnodes, fedges, factions, frewards = extract_file(filename, desired_operator_type)
         if fnodes is not None:
@@ -183,6 +184,9 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
             actions.append(factions)
             edges.append(fedges)
             rewards.append(frewards)
+        else:
+            n_not_solved += 1
+            print "percent not solved = %.5f" % (n_not_solved / float(n_probs_attempt))
     nodes = np.vstack(nodes).squeeze()
     edges = np.vstack(edges).squeeze()
     actions = np.vstack(actions).squeeze()

@@ -68,13 +68,13 @@ def train(config):
 
     nodes, edges, actions, rewards = data_traj.load_data(
         './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
-        #'./',
         desired_operator_type=config.operator)
     print "Total number of data", len(nodes)
     num_test = min(config.num_test, len(nodes))
     num_training = min(config.num_train, len(nodes) - num_test)
     config.num_train = num_training
     config.num_test = num_test
+
     nodes = nodes[:, :, 6:]
     model = create_gnn_model(nodes, edges, config)
     callbacks = create_callbacks(model.weight_file_name)
@@ -82,7 +82,6 @@ def train(config):
     tnodes = nodes[-num_test:]
     tedges = edges[-num_test:]
     tactions = actions[-num_test:]
-
 
     if not donttrain:
         model.loss_model.fit(
@@ -101,7 +100,7 @@ def train(config):
 
 
 def write_test_results_in_csv(top0, top1, top2, seed, num_training, loss_fcn):
-    with open('./learn/top_k_results/' + loss_fcn + '_seed_'+str(seed)+'.csv', 'a') as csvfile:
+    with open('./learn/top_k_results/' + loss_fcn + '_seed_' + str(seed) + '.csv', 'a') as csvfile:
         writer = csv.writer(csvfile, delimiter=',')
         writer.writerow([num_training, top0, top1, top2])
 
@@ -124,6 +123,7 @@ def parse_args():
     parser.add_argument('-operator', type=str, default='two_arm_pick_two_arm_place')
     parser.add_argument('-num_fc_layers', type=int, default=2)
     parser.add_argument('-no_goal_nodes', action='store_true', default=False)
+    parser.add_argument('-use_region_agnostic', action='store_true', default=False)
     parser.add_argument('-f', action='store_true', default=False)
     parser.add_argument('-n_msg_passing', type=int, default=1)
     parser.add_argument('-weight_initializer', type=str, default='glorot_uniform')
@@ -143,4 +143,3 @@ if __name__ == '__main__':
     donttrain = configs.donttrain
 
     train(configs)
-

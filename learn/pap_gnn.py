@@ -211,27 +211,29 @@ class PaPGNN(GNN):
                 # If I remember correctly, the input node size is n_objs x n_objs x n_regions,
                 # so I think this should be fine?
                 """
-                r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1')
-                r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2')
-                val_r1 = r1_msg_value(msg_aggregation_layer)
-                val_r2 = r2_msg_value(msg_aggregation_layer)
-
-                sender_r1_network = sender_model(val_r1)
-                sender_r2_network = sender_model(val_r2)
-                dest_r1_network = dest_model(val_r1)
-                dest_r2_network = dest_model(val_r2)
-                region_concat_lambda_layer = self.create_region_based_sender_dest_edge_concatenation_lambda_layer()
-
-                concat_layer = region_concat_lambda_layer([sender_r1_network, sender_r2_network,
-                                                           dest_r1_network, dest_r2_network,
-                                                           edge_network])
+                
                 """
+                if config.use_region_agnostic:
+                    region_agnostic_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='region_agnostic')
+                    val = region_agnostic_msg_value(msg_aggregation_layer)
+                    sender_network = sender_model(val)
+                    dest_network = dest_model(val)
+                    concat_layer = concat_lambda_layer([sender_network, dest_network, edge_network])
+                else:
+                    r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1')
+                    r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2')
+                    val_r1 = r1_msg_value(msg_aggregation_layer)
+                    val_r2 = r2_msg_value(msg_aggregation_layer)
 
-                region_agnostic_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='region_agnostic')
-                val = region_agnostic_msg_value(msg_aggregation_layer)
-                sender_network = sender_model(val)
-                dest_network = dest_model(val)
-                concat_layer = concat_lambda_layer([sender_network, dest_network, edge_network])
+                    sender_r1_network = sender_model(val_r1)
+                    sender_r2_network = sender_model(val_r2)
+                    dest_r1_network = dest_model(val_r1)
+                    dest_r2_network = dest_model(val_r2)
+                    region_concat_lambda_layer = self.create_region_based_sender_dest_edge_concatenation_lambda_layer()
+
+                    concat_layer = region_concat_lambda_layer([sender_r1_network, sender_r2_network,
+                                                               dest_r1_network, dest_r2_network,
+                                                               edge_network])
 
             msg_network = msg_model(concat_layer)
             msg_aggregation_layer = aggregation_lambda_layer(msg_network)  # aggregates msgs from neighbors

@@ -356,6 +356,7 @@ class GNN(object):
             'num_train',
             # 'num_test',
             # 'val_portion',
+            'use_region_agnostic',
             'loss',
         ])
         filename += '.hdf5'
