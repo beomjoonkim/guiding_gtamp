@@ -59,7 +59,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         o = action.discrete_parameters['object'].GetName()
         r = action.discrete_parameters['region'].name
 
-    nodes, edges, actions = extract_individual_example(state, action)
+    nodes, edges, actions, _= extract_individual_example(state, action)
     nodes = nodes[..., 6:]
 
     region_is_goal = state.nodes[r][8]
@@ -155,49 +155,52 @@ def search(mover, config):
 
     # state.make_pklable()
 
-    mconfig_type = collections.namedtuple('mconfig_type',
-                                          'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion num_test mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss')
+    if not config.hcount:
+        mconfig_type = collections.namedtuple('mconfig_type',
+                                              'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion num_test mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss')
 
-    assert config.num_train <= 5000
-    pap_mconfig = mconfig_type(
-        operator='two_arm_pick_two_arm_place',
-        n_msg_passing=1,
-        n_layers=2,
-        num_fc_layers=2,
-        n_hidden=32,
-        no_goal_nodes=False,
+        assert config.num_train <= 5000
+        pap_mconfig = mconfig_type(
+            operator='two_arm_pick_two_arm_place',
+            n_msg_passing=1,
+            n_layers=2,
+            num_fc_layers=2,
+            n_hidden=32,
+            no_goal_nodes=False,
 
-        top_k=1,
-        optimizer='adam',
-        lr=1e-4,
-        use_mse=True,
+            top_k=1,
+            optimizer='adam',
+            lr=1e-4,
+            use_mse=True,
 
-        batch_size='32',
-        seed=config.train_seed,
-        num_train=config.num_train,
-        val_portion=.1,
-        num_test=1882,
-        mse_weight=1.0,
-        diff_weight_msg_passing=False,
-        same_vertex_model=False,
-        weight_initializer='glorot_uniform',
-        loss=config.loss,
-    )
-    if config.domain == 'two_arm_mover':
-        num_entities = 11
-        n_regions = 2
-    elif config.domain == 'one_arm_mover':
-        num_entities = 12
-        n_regions = 2
+            batch_size='32',
+            seed=config.train_seed,
+            num_train=config.num_train,
+            val_portion=.1,
+            num_test=1882,
+            mse_weight=1.0,
+            diff_weight_msg_passing=False,
+            same_vertex_model=False,
+            weight_initializer='glorot_uniform',
+            loss=config.loss,
+        )
+        if config.domain == 'two_arm_mover':
+            num_entities = 11
+            n_regions = 2
+        elif config.domain == 'one_arm_mover':
+            num_entities = 12
+            n_regions = 2
+        else:
+            raise NotImplementedError
+        num_node_features = 10
+        num_edge_features = 44
+        entity_names = mover.entity_names
+
+        with tf.variable_scope('pap'):
+            pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
+        pap_model.load_weights()
     else:
-        raise NotImplementedError
-    num_node_features = 10
-    num_edge_features = 44
-    entity_names = mover.entity_names
-
-    with tf.variable_scope('pap'):
-        pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
-    pap_model.load_weights()
+        pap_model = None
 
     mover.reset_to_init_state_stripstream()
     depth_limit = 60

@@ -108,6 +108,81 @@ def get_actions(op_skeleton, entity_names):
     return action
 
 
+def extract_individual_example(state, op_instance, remaining_steps=0):
+    entity_names = list(state.nodes.keys())[::-1]
+    nodes = []
+    region_nodes = {}
+    for name in entity_names:
+        onehot = make_one_hot_encoded_node(state.nodes[name])
+        nodes.append(onehot)
+        if name.find('region') != -1 and name.find('entire') ==-1:
+            region_nodes[name] = onehot
+
+    nodes = np.vstack(nodes)
+    edges = get_edges(state, region_nodes, entity_names)
+    actions = get_actions(op_instance, entity_names)
+
+    costs = remaining_steps
+    return nodes, edges, actions, costs
+
+
+def extract_file(filename, desired_operator_type='two_arm_pick'):
+    traj = pickle.load(open(filename, 'rb'))
+
+    nodes = []
+    edges = []
+    actions = []
+    costs = []
+    if len(traj.actions) == 0:
+        print filename, 'was not solvable'
+        return None, None, None, None
+
+    for state, action, reward in zip(traj.states, traj.actions, traj.rewards):
+        if action.type == desired_operator_type:
+            node, edge, action, cost = extract_individual_example(state, action, reward)
+            nodes.append(node)
+            edges.append(edge)
+            actions.append(action)
+            costs.append(cost)
+    nodes = np.stack(nodes, axis=0)
+    edges = np.stack(edges, axis=0)
+    actions = np.stack(actions, axis=0)
+    costs = np.stack(costs, axis=0)
+    return nodes, edges, actions, costs
+
+
+# filename is a directory
+def load_data(dirname, desired_operator_type='two_arm_pick'):
+    cachefile = "{}{}.pkl".format(dirname, desired_operator_type)
+    if os.path.isfile(cachefile):
+        print "Loading the cached file:", cachefile
+        return pickle.load(open(cachefile, 'rb'))
+
+    print "Caching file..."
+    file_list = glob.glob("{}/pap_traj_*.pkl".format(dirname))
+
+    nodes = []
+    actions = []
+    costs = []
+    edges = []
+    for filename in file_list:
+        fnodes, fedges, factions, fcosts = extract_file(filename, desired_operator_type)
+        if fnodes is not None:
+            nodes.append(fnodes)
+            actions.append(factions)
+            edges.append(fedges)
+            costs.append(fcosts)
+
+    nodes = np.vstack(nodes).squeeze()
+    edges = np.vstack(edges).squeeze()
+    actions = np.vstack(actions).squeeze()
+    costs = np.hstack(costs).squeeze()
+
+    data = (nodes, edges, actions, costs)
+    pickle.dump(data, open(cachefile, 'wb'))
+    return data
+
+"""
 def extract_individual_example(state, op_instance):
     entity_names = list(state.nodes.keys())[::-1]
     nodes = []
@@ -149,7 +224,7 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
             # if idx == 0 and traj.rewards[idx] >= 10 and len(traj.rewards) > 1:
             #    import pdb;pdb.set_trace()
             idx += 1
-
+    import pdb;pdb.set_trace()
     nodes = np.stack(nodes, axis=0)
     edges = np.stack(edges, axis=0)
     actions = np.stack(actions, axis=0)
@@ -164,8 +239,7 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
     cachefile = "{}{}.pkl".format(dirname, desired_operator_type)
     if os.path.isfile(cachefile):
         print "Loading the cached file:", cachefile
-        import pdb;pdb.set_trace()
-        return pickle.load(open(cachefile, 'rb'))
+        #return pickle.load(open(cachefile, 'rb'))
 
     print "Caching file..."
     file_list = glob.glob("{}/pap_traj_*.pkl".format(dirname))
@@ -195,10 +269,6 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
     data = (nodes, edges, actions, rewards)
     pickle.dump(data, open(cachefile, 'wb'))
     return data
+"""
 
 
-if __name__ == '__main__':
-    pick_data = load_data('./test_results/hpn_results_on_mover_domain/1/trajectory_data/special_cases/',
-                          desired_operator_type='two_arm_pick_two_arm_place')
-    # place_data = load_data('./test_results/mcts_results_on_mover_domain/widening_5/uct_1.0/trajectory_data',
-    #                       desired_operator_type='two_arm_place')

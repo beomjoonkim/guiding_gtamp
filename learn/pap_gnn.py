@@ -199,21 +199,15 @@ class PaPGNN(GNN):
         msg_aggregation_layer = aggregation_lambda_layer(msg_network)  # aggregates msgs from neighbors
 
         # rounds of msg passing
-        # todo There was something here that I needed to fix;
-        #  It was something about region agnostic is not really region agnostic.
         for i in range(config.n_msg_passing):
             if same_model_for_sender_and_dest:
                 vertex_network = vertex_model(msg_aggregation_layer)
                 concat_layer = concat_lambda_layer([vertex_network, vertex_network, edge_network])
             else:
-                # region_agnostic_msg_value is different for each region
-                # how to deal with that? What does the sender model expect as a size?
-                # If I remember correctly, the input node size is n_objs x n_objs x n_regions,
-                # so I think this should be fine?
-                """
-                
-                """
                 if config.use_region_agnostic:
+                    # Region_agnostic_msg_value is not actually region agnostic.
+                    # This was a bug in our initial submission, but I still need to make sure the
+                    # below is better, so it is here for testing purpose.
                     region_agnostic_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='region_agnostic')
                     val = region_agnostic_msg_value(msg_aggregation_layer)
                     sender_network = sender_model(val)
