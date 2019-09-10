@@ -20,6 +20,7 @@ def parse_options():
     parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
     parser.add_argument('-ucb_parameter', type=float, default=1)  # number of re-evals
     parser.add_argument('-widening_parameter', type=float, default=10)  # number of re-evals
+    parser.add_argument('-planner', type=str, default='mcts_with_leaf_strategy')
 
     parameters = parser.parse_args()
     return parameters
@@ -67,12 +68,14 @@ def get_mcts_configs():
             config['use_shaped_reward'] = ""
         if parameters.use_q_count:
             config['use_q_count'] = ""
+
         config['ucb_parameter'] = parameters.ucb_parameter
         config['sampling_strategy'] = parameters.sampling_strategy
         config['loss'] = parameters.loss
         config['train_seed'] = parameters.train_seed
         config['num_train'] = parameters.num_train
         config['widening_parameter'] = parameters.widening_parameter
+        config['planner'] = parameters.planner
 
     return configs
 
