@@ -18,7 +18,7 @@ from planners.flat_mcts.mcts_with_leaf_strategy import MCTSWithLeafStrategy
 from planners.heuristics import compute_hcount_with_action
 
 
-def make_and_get_save_dir(parameters):
+def make_and_get_save_dir(parameters, filename):
     hostname = socket.gethostname()
     if hostname == 'dell-XPS-15-9560' or hostname == 'phaedra' or hostname == 'shakey' or hostname == 'lab' or \
             hostname == 'glaucus':
@@ -43,12 +43,10 @@ def make_and_get_save_dir(parameters):
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
 
-    pidx = parameters.pidx
-    if os.path.isfile(save_dir + '/' + str(pidx) + '.pkl'):
+    if os.path.isfile(save_dir + '/' + filename):
         print "Already done"
         if not parameters.f:
             sys.exit(-1)
-
     return save_dir
 
 
@@ -153,7 +151,9 @@ def load_learned_q(config, problem_env):
 
 def main():
     parameters = parse_mover_problem_parameters()
-    save_dir = make_and_get_save_dir(parameters)
+    filename = 'pidx_%d_planner_seed_%d.pkl' % (parameters.pidx, parameters.planner_seed)
+    save_dir = make_and_get_save_dir(parameters, filename)
+
     set_seed(parameters.pidx)
     problem_env = PaPMoverEnv(parameters.pidx)
 
@@ -190,10 +190,8 @@ def main():
 
     set_seed(parameters.planner_seed)
     search_time_to_reward, plan = planner.search(max_time=parameters.timelimit)
-    filename = save_dir + 'pidx_%d_planner_seed_%d.pkl' % (parameters.pidx, parameters.planner_seed)
-    pickle.dump({"search_time_to_reward": search_time_to_reward,
-                 "pidx": parameters.pidx,
-                 'n_nodes': len(planner.tree.get_discrete_nodes())}, open(filename, 'wb'))
+    pickle.dump({"search_time_to_reward": search_time_to_reward, 'plan': plan,
+                 'n_nodes': len(planner.tree.get_discrete_nodes())}, open(save_dir+filename, 'wb'))
 
 
 if __name__ == '__main__':
