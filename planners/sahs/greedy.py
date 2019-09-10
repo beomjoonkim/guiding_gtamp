@@ -103,11 +103,12 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             hadd += gnn_pred
         return hadd
     else:
-        hcount = compute_hcount_with_action(state, action, problem_env)
+        #hcount = compute_hcount_with_action(state, action, problem_env)
 
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         hval = gnn_pred - number_in_goal
 
+        """
         Vpre_free = state.nodes[action.discrete_parameters['object']][9]
         Vmanip_free = state.binary_edges[(action.discrete_parameters['object'], action.discrete_parameters['region'])][2]
         Vpre_occ = state.pick_entities_occluded_by(action.discrete_parameters['object'])
@@ -121,6 +122,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
         print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         print "====================="
+        """
         return hval
 
 
