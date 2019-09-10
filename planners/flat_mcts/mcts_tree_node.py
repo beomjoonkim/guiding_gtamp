@@ -4,9 +4,6 @@ def upper_confidence_bound(n, n_sa):
     return np.sqrt(2 * np.log(n + 1) / float(n_sa + 1))
 
 
-def alpha_zero_ucb(n, n_sa, psa):
-    return psa * np.sqrt(n+1) / float(n_sa + 1)
-
 
 class TreeNode:
     def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node):
@@ -85,11 +82,8 @@ class TreeNode:
             pdb.set_trace()
         return new_arm
 
-    def compute_ucb_value(self, value, action, psa=None):
-        if psa is None:
-            return value + self.ucb_parameter * upper_confidence_bound(self.Nvisited, self.N[action])
-        else:
-            return value + self.ucb_parameter * alpha_zero_ucb(self.Nvisited, self.N[action], psa)
+    def compute_ucb_value(self, value, action):
+        return value + self.ucb_parameter * upper_confidence_bound(self.Nvisited, self.N[action])
 
     def get_action_with_highest_ucb_value(self, feasible_actions, feasible_q_values):
         best_value = -np.inf

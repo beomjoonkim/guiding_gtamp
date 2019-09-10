@@ -32,7 +32,7 @@ class GenericRewardFunction(AbstractRewardFunction):
             elif is_infeasible_action:
                 return -1*remaining_steps
             else:
-                return -1
+                return 0
 
     def is_goal_reached(self):
         # todo udpate self.achieved?
