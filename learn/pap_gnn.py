@@ -210,6 +210,7 @@ class PaPGNN(GNN):
                 # how to deal with that? What does the sender model expect as a size?
                 # If I remember correctly, the input node size is n_objs x n_objs x n_regions,
                 # so I think this should be fine?
+                """
                 r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1')
                 r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2')
                 val_r1 = r1_msg_value(msg_aggregation_layer)
@@ -231,7 +232,6 @@ class PaPGNN(GNN):
                 sender_network = sender_model(val)
                 dest_network = dest_model(val)
                 concat_layer = concat_lambda_layer([sender_network, dest_network, edge_network])
-                """
 
             msg_network = msg_model(concat_layer)
             msg_aggregation_layer = aggregation_lambda_layer(msg_network)  # aggregates msgs from neighbors
