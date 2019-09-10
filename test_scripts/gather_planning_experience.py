@@ -85,6 +85,7 @@ def set_problem_env_config(problem_env, config):
 def main():
     config = parse_arguments()
     config.hcount = True
+    config.timelimit = np.inf
 
     np.random.seed(config.pidx)
     random.seed(config.pidx)

@@ -237,6 +237,7 @@ def search(mover, config):
     iter = 0
     # beginning of the planner
     while True:
+        print "Time limit is ", config.timelimit
         if time.time() - tt > config.timelimit:
             return None, iter
 
