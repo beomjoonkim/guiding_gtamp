@@ -156,7 +156,7 @@ class Trajectory:
         pick_used = paps_used[0]
         place_used = paps_used[1]
         reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region', 3 * 8)
-        utils.viewer()
+        #utils.viewer()
         state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
         for action_idx, action in enumerate(plan):
             if 'place' in action.type:
