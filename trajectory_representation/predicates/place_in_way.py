@@ -77,9 +77,10 @@ class PlaceInWay(TernaryPredicate, InWay):
         # why does it ever enter here?
         assert motion is not None
 
+
         if obj.GetName() not in self.pick_used:
             # import pdb;pdb.set_trace()
-            operator.continuous_parameters = {'q_goal': motion[-1]}
+            operator.continuous_parameters = {'q_goal': motion_plan_goals}
             self.pick_used[obj.GetName()] = operator
 
         operator.execute()

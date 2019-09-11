@@ -198,6 +198,7 @@ class PaPGenerator(Generator):
         # sample parameters whose feasibility have been checked except the existence of collision-free motion
         candidate_op_parameters, status = self.sample_candidate_params_with_increasing_iteration_limit()
         if status == "NoSolution":
+            candidate_op_parameters[0]['is_feasible'] = False
             return candidate_op_parameters[0]
         if self.dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(candidate_op_parameters, status)
