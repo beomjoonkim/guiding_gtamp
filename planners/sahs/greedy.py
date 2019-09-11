@@ -64,18 +64,15 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
     region_is_goal = state.nodes[r][8]
     number_in_goal = 0
-
-    for i in state.nodes:
-        if i == o:
-            continue
-        for tmpr in problem_env.regions:
-            if tmpr in state.nodes:
-                is_r_goal_region = state.nodes[tmpr][8]
-                if is_r_goal_region:
-                    is_i_in_r = state.binary_edges[(i, tmpr)][0]
-                    if is_r_goal_region:
-                        number_in_goal += is_i_in_r
-    number_in_goal += int(region_is_goal)
+    goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
+    if 'two_arm' in problem_env.name:
+        goal_region = 'home_region'
+        for obj_name in goal_objs:
+            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
+            if is_obj_in_goal_region:
+                number_in_goal += 1
+    else:
+        raise NotImplementedError
 
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
@@ -85,28 +82,20 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         hcount = compute_hcount(state, problem_env)
         print "state_hcount %s %s %.4f" % (o, r, hcount)
         return hcount
-    elif config.hadd:
-        goal_regions = [goal_r for goal_r in state.goal_entities if 'region' in goal_r]
-        assert len(goal_regions) == 1
-        goal_r = goal_regions[0]
-        goal_objects = [goal_o for goal_o in state.goal_entities if 'region' not in goal_o]
-        hadd = 0
-        for goal_o in goal_objects:
-            for entity, features in state.nodes.items():
-                features[8] = False
-            state.nodes[goal_o][8] = True
-            state.nodes[goal_r][8] = True
+    elif config.qlearned_hcount:
+        all_actions = get_actions(problem_env, None, None)
+        q_vals = [np.exp(pap_model.predict(state, a)) for a in all_actions]
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
+                                                                  actions[None, ...])
+        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
 
-            nodes, edges, actions, _ = extract_individual_example(state, action)
-            nodes = nodes[..., 6:]
-            gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-            hadd += gnn_pred
-        return hadd
+        # hval = -number_in_goal + gnn_pred
+        hcount = compute_hcount(state, problem_env)
+        hval = hcount - config.mixrate*q_bonus
+        return hval
     else:
-        #hcount = compute_hcount_with_action(state, action, problem_env)
-
-        gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = gnn_pred - number_in_goal
+        qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
+        hval = -number_in_goal - qval
 
         """
         Vpre_free = state.nodes[action.discrete_parameters['object']][9]
@@ -123,6 +112,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         print "====================="
         """
+        print 'n_in_goal %d %s %s gnn_pred %.4f hval %.4f' % (number_in_goal, o, r, qval, hval)
         return hval
 
 
@@ -157,9 +147,8 @@ def search(mover, config):
 
     if not config.hcount:
         mconfig_type = collections.namedtuple('mconfig_type',
-                                              'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion num_test mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss')
+                                              'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss use_region_agnostic')
 
-        assert config.num_train <= 5000
         pap_mconfig = mconfig_type(
             operator='two_arm_pick_two_arm_place',
             n_msg_passing=1,
@@ -177,15 +166,15 @@ def search(mover, config):
             seed=config.train_seed,
             num_train=config.num_train,
             val_portion=.1,
-            num_test=1882,
-            mse_weight=1.0,
+            mse_weight=0.0,
             diff_weight_msg_passing=False,
             same_vertex_model=False,
             weight_initializer='glorot_uniform',
             loss=config.loss,
+            use_region_agnostic=False
         )
         if config.domain == 'two_arm_mover':
-            num_entities = 11
+            num_entities = 10
             n_regions = 2
         elif config.domain == 'one_arm_mover':
             num_entities = 12
@@ -259,9 +248,6 @@ def search(mover, config):
         state = node.state
         print "Curr hval", curr_hval
 
-        print('\n'.join([str(parent.action.discrete_parameters.values()) for parent in list(node.backtrack())[-2::-1]]))
-        print("{}".format(action.discrete_parameters.values()))
-
         if node.depth >= 2 and action.type == 'two_arm_pick' and node.parent.action.discrete_parameters['object'] == \
                 action.discrete_parameters['object']:  # and plan[-1][1] == r:
             print('skipping because repeat', action.discrete_parameters['object'])
@@ -275,6 +261,10 @@ def search(mover, config):
         # utils.set_color(action.discrete_parameters['object'], [1, 0, 0])  # visualization purpose
 
         if action.type == 'two_arm_pick_two_arm_place':
+            print("Sampling for {}".format(action.discrete_parameters.values()))
+            a_obj = action.discrete_parameters['two_arm_place_object']
+            a_region = action.discrete_parameters['two_arm_place_region']
+
             smpler = UniformPaPGenerator(None, action, mover, None,
                                          n_candidate_params_to_smpl=3,
                                          total_number_of_feasibility_checks=200,
