@@ -39,14 +39,7 @@ def save_traj(traj, save_fname):
 
 
 def process_plan_file(filename, pidx, goal_entities, parameters):
-    if parameters.scenario == 0:
-        scenario = 'reachable_goal_entities'
-    elif parameters.scenario == 1:
-        scenario = 'reachable_goal_object_unreachable_goal_region'
-    elif parameters.scenario == 2:
-        scenario = 'unreachable_goal_object_unreachable_goal_region'
-    else:
-        scenario = ''
+    scenario = ''
 
     print "Plan file name", filename
     plan_data = pickle.load(open(filename, 'r'))
@@ -68,7 +61,6 @@ def process_plan_file(filename, pidx, goal_entities, parameters):
 def parse_parameters():
     parser = argparse.ArgumentParser(description='parameters')
     parser.add_argument('-pidx', type=int, default=0)
-    parser.add_argument('-scenario', type=int, default=None)
     parser.add_argument('-planner', type=str, default="hcount")
     parser.add_argument('-statetype', type=str, default="shortest")
     parameters = parser.parse_args()
@@ -84,38 +76,16 @@ def get_processed_fname(parameters, save_dir, raw_fname):
 
 
 def get_goal_entities(parameters):
-    if parameters.scenario is None:
-        goal_entities = ['square_packing_box1', 'home_region']
-    else:
-        if parameters.scenario == 0:
-            goal_obj = 'rectangular_packing_box1'
-        elif parameters.scenario == 1:
-            goal_obj = 'rectangular_packing_box2'
-        elif parameters.scenario == 2:
-            goal_obj = 'square_packing_box3'
-        else:
-            raise ValueError
-        goal_entities = [goal_obj, 'home_region']
+    goal_entities = ['square_packing_box1', 'home_region']
 
     return goal_entities
 
 
 def get_raw_fname(parameters):
-    if parameters.scenario is None:
-        if parameters.planner == 'hcount':
-            return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
-        else:
-            return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
+    if parameters.planner == 'hcount':
+        return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
     else:
-        if parameters.scenario == 0:
-            scenario = 'reachable_goal_entities'
-        elif parameters.scenario == 1:
-            scenario = 'reachable_goal_object_unreachable_goal_region'
-        elif parameters.scenario == 2:
-            scenario = 'unreachable_goal_object_unreachable_goal_region'
-        else:
-            raise ValueError
-        return scenario + '.pkl'
+        return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
 
 
 def quit_if_already_done(fpath):
