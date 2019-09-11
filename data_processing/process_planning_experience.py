@@ -120,14 +120,12 @@ def main():
     processed_fname = get_processed_fname(parameters, save_dir, raw_fname)
     print "Raw fname", raw_dir + raw_fname
     print "Processed fname ", save_dir + processed_fname
-    # quit_if_already_done(save_dir + processed_fname)
+    quit_if_already_done(save_dir + processed_fname)
 
     goal_entities = get_goal_entities(parameters)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, goal_entities, parameters)
-    from_cloud = pickle.load(open(save_dir + 'pap_traj_seed_0_pidx_0.pkl', 'r'))
 
-    import pdb;pdb.set_trace()
-    #save_traj(traj, save_dir + processed_fname)
+    save_traj(traj, save_dir + processed_fname)
 
 
 if __name__ == '__main__':
