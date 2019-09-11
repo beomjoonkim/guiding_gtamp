@@ -10,6 +10,7 @@ import os
 from . import data_traj
 from .pap_gnn import PaPGNN
 import csv
+import pickle
 
 
 def top_k_accuracy(q_model, nodes, edges, actions, k):
@@ -67,11 +68,19 @@ def train(config):
     seed = config.seed
 
     nodes, edges, actions, rewards = data_traj.load_data(
-        './planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
+        #'./planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
+        #'./planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
+        './planning_experience/irsc/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         desired_operator_type=config.operator)
+
+    nodes, edges, actions, rewards = pickle.load(
+        open('planning_experience/two_arm_pick_two_arm_place_before_submission.pkl', 'r'))
+
     print "Total number of data", len(nodes)
-    num_test = min(config.num_test, len(nodes))
-    num_training = min(config.num_train, len(nodes) - num_test)
+    #num_test = min(config.num_test, len(nodes))
+    num_training = config.num_train
+    num_test = len(nodes) - num_training
+    assert num_training > 0
     config.num_train = num_training
     config.num_test = num_test
 
@@ -114,7 +123,7 @@ def parse_args():
     parser.add_argument('-optimizer', type=str, default='adam')
     parser.add_argument('-batch_size', type=int, default=32)
     parser.add_argument('-num_test', type=int, default=1000)
-    parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-num_train', type=int, default=7000)
     parser.add_argument('-val_portion', type=float, default=0.1)
     parser.add_argument('-top_k', type=int, default=1)
     parser.add_argument('-donttrain', action='store_true', default=False)

@@ -157,7 +157,6 @@ def load_data(dirname, desired_operator_type='two_arm_pick'):
     if os.path.isfile(cachefile):
         print "Loading the cached file:", cachefile
         return pickle.load(open(cachefile, 'rb'))
-
     print "Caching file..."
     file_list = glob.glob("{}/pap_traj_*.pkl".format(dirname))
 
