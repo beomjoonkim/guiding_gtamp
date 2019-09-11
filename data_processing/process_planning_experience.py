@@ -1,4 +1,4 @@
-from trajectory_representation.trajectory import Trajectory
+from trajectory_representation.trajectory import Trajectory, HCountExpTrajectory
 
 import pickle
 import os
@@ -13,17 +13,17 @@ else:
 
 
 def get_save_dir(parameters):
-    if parameters.scenario is None:
-        save_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/'
-    else:
-        save_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/special_cases/'
+    save_dir = ROOTDIR + '/planning_experience/%s/domain_two_arm_mover/n_objs_pack_1/trajectory_data/' % parameters.planner
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     return save_dir
 
 
 def get_raw_dir(parameters):
-    raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+    if parameters.planner == 'hcount':
+        raw_dir = ROOTDIR + '/planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
+    else:
+        raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     return raw_dir
 
 
@@ -49,11 +49,17 @@ def process_plan_file(filename, pidx, goal_entities, parameters):
 
     print "Plan file name", filename
     plan_data = pickle.load(open(filename, 'r'))
-    if plan_data['plan'] is None:
-        raise IOError
+    #if plan_data['plan'] is None:
+    #    raise IOError
+    if parameters.planner == 'hcount':
+        plan = plan_data.actions
+    else:
+        plan = plan_data['plan']
 
-    plan = plan_data['plan']
-    traj = Trajectory(pidx, scenario)
+    if parameters.planner == 'hcount':
+        traj = HCountExpTrajectory(pidx, scenario)
+    else:
+        traj = Trajectory(pidx, scenario)
     traj.add_trajectory(plan, goal_entities)
     return traj
 
@@ -62,6 +68,7 @@ def parse_parameters():
     parser = argparse.ArgumentParser(description='parameters')
     parser.add_argument('-pidx', type=int, default=0)
     parser.add_argument('-scenario', type=int, default=None)
+    parser.add_argument('-planner', type=str, default="hcount")
     parameters = parser.parse_args()
 
     return parameters
@@ -93,7 +100,10 @@ def get_goal_entities(parameters):
 
 def get_raw_fname(parameters):
     if parameters.scenario is None:
-        return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
+        if parameters.planner == 'hcount':
+            return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
+        else:
+            return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
     else:
         if parameters.scenario == 0:
             scenario = 'reachable_goal_entities'

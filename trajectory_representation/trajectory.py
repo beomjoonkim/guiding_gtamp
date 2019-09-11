@@ -3,6 +3,7 @@ from gtamp_utils.utils import visualize_path
 from manipulation.bodies.bodies import set_color, get_color
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
+from trajectory_representation.operator import Operator
 from gtamp_problem_environments.reward_functions.packing_problem.reward_function import ShapedRewardFunction
 
 from trajectory_representation.minimum_constraint_pick_and_place_state import MinimiumConstraintPaPState
@@ -100,7 +101,8 @@ class Trajectory:
                             assert np.all(np.isclose(state.place_in_way.mc_path_to_entity[key][0],
                                                      paps_used[0][key[0]].continuous_parameters['q_goal']))
                         except:
-                            import pdb;pdb.set_trace()
+                            import pdb;
+                            pdb.set_trace()
                         # did I use the path given in the path?
 
     @staticmethod
@@ -125,9 +127,9 @@ class Trajectory:
         if parent_action is not None:
             parent_action.discrete_parameters['two_arm_place_object'] = parent_action.discrete_parameters['object']
         state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
-        #state.make_pklable()  # removing openrave files to pkl
-        #pickle.dump(state, open(fstate, 'wb'))
-        #state.make_plannable(problem_env)
+        # state.make_pklable()  # removing openrave files to pkl
+        # pickle.dump(state, open(fstate, 'wb'))
+        # state.make_plannable(problem_env)
         # End of debugging
 
         return state
@@ -147,7 +149,7 @@ class Trajectory:
         paps_used = self.get_pap_used_in_plan(plan)
         pick_used = paps_used[0]
         place_used = paps_used[1]
-        reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region', 3*8)
+        reward_function = ShapedRewardFunction(problem_env, ['square_packing_box1'], 'home_region', 3 * 8)
         utils.viewer()
         state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
         for action_idx, action in enumerate(plan):
@@ -185,7 +187,8 @@ class Trajectory:
 
     def delete_moved_objects_from_pap_data(self, pick_used, place_used, moved_obj):
         moved_obj_name = moved_obj.GetName()
-        new_pick_used = {key: value for key, value in zip(pick_used.keys(), pick_used.values()) if key != moved_obj_name}
+        new_pick_used = {key: value for key, value in zip(pick_used.keys(), pick_used.values()) if
+                         key != moved_obj_name}
 
         new_place_used = {}
         for key, value in zip(place_used.keys(), place_used.values()):
@@ -203,3 +206,85 @@ class Trajectory:
         for a in self.actions:
             visualize_path(problem_env.robot, a.low_level_motion)
             a.execute()
+
+
+class HCountExpTrajectory(Trajectory):
+    def __init__(self, problem_idx, filename):
+        Trajectory.__init__(self, problem_idx, filename)
+
+    def get_pap_used_in_plan(self, plan):
+        """
+        picks = plan[::2]
+        places = plan[1::2]
+        obj_to_pick = {p.discrete_parameters['object']: p for p in picks}
+        obj_to_place = {(p.discrete_parameters['object'], p.discrete_parameters['region']): p for p in places}
+        """
+        obj_to_pick = {}
+        obj_to_place = {}
+        for op in plan:
+            pick_cont_param = op.continuous_parameters['pick']
+            pick_disc_param = {'object': op.discrete_parameters['object']}
+            pick_op = Operator('two_arm_pick', pick_disc_param, pick_cont_param)
+            pick_op.low_level_motion = pick_cont_param['motion']
+            obj_to_pick[op.discrete_parameters['object']] = pick_op
+
+            place_cont_param = op.continuous_parameters['place']
+            place_disc_param = {'object': op.discrete_parameters['object'],
+                               'region': op.discrete_parameters['region']}
+            place_op = Operator('two_arm_pick', place_disc_param, place_cont_param)
+            place_op.low_level_motion = place_cont_param['motion']
+            obj_to_place[(op.discrete_parameters['object'], op.discrete_parameters['region'])] = place_op
+
+        return [obj_to_pick, obj_to_place]
+
+    def add_trajectory(self, plan, goal_entities):
+        print "Problem idx", self.problem_idx
+        self.set_seed(self.problem_idx)
+        problem_env, openrave_env = self.create_environment()
+        motion_planner = BaseMotionPlanner(problem_env, 'prm')
+        problem_env.set_motion_planner(motion_planner)
+
+        idx = 0
+        parent_state = None
+        parent_action = None
+
+        paps_used = self.get_pap_used_in_plan(plan)
+        pick_used = paps_used[0]
+        place_used = paps_used[1]
+        #utils.viewer()
+        state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
+
+        for action_idx, action in enumerate(plan):
+            target_obj = openrave_env.GetKinBody(action.discrete_parameters['object'])
+            color_before = get_color(target_obj)
+            set_color(target_obj, [1, 1, 1])
+
+            pick_used, place_used = self.delete_moved_objects_from_pap_data(pick_used, place_used, target_obj)
+            paps_used = [pick_used, place_used]
+
+            action.is_skeleton = False
+            #pap_action = pap_action.merge_operators(plan[action_idx + 1])
+            #pap_action.is_skeleton = False
+            pap_action = copy.deepcopy(action)
+            pap_action.execute()
+            # set_color(target_obj, color_before)
+
+            parent_state = state
+            parent_action = pap_action
+            state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, action_idx)
+
+            # execute the pap action
+            if action == plan[-1]:
+                reward = 0
+            else:
+                reward = -1
+
+            print "The reward is ", reward
+
+            self.add_sar_tuples(parent_state, pap_action, reward)
+            print "Executed", action.discrete_parameters
+
+        self.add_state_prime()
+        openrave_env.Destroy()
+        openravepy.RaveDestroy()
+
