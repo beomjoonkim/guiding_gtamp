@@ -5,6 +5,7 @@ import multiprocessing
 import argparse
 import time
 
+from process_planning_experience import parse_parameters
 
 def worker_p(config):
     command = 'python ./data_processing/process_planning_experience.py'
@@ -23,9 +24,13 @@ def worker_wrapper_multi_input(multi_args):
 
 
 def main():
+    params = parse_parameters()
+    param_vals = vars(params)
     configs = []
+
     for pidx in range(5000):
-        config = {'pidx': pidx}
+        config = {key: value for key, value in zip(param_vals.keys(), param_vals.values())}
+        config['pidx'] = pidx
         configs.append(config)
 
     n_workers = multiprocessing.cpu_count()

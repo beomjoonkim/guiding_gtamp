@@ -78,7 +78,7 @@ class PickInWay(BinaryPredicate, InWay):
             if not is_mc_path_to_b_already_computed:
                 #print 'Computing mc path for ', a, b
                 self.mc_calls += 1
-                assert cached_path is not None # we assume we always have cached path, with caching-based states
+                #assert cached_path is not None # we assume we always have cached path, with caching-based states
                 path = cached_path
                 if path is None:
                     self.evaluations[(a, b)] = False

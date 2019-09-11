@@ -4,7 +4,7 @@ from gtamp_utils.utils import two_arm_pick_object
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from planners.subplanners.minimum_constraint_planner import MinimumConstraintPlanner
 from trajectory_representation.operator import Operator
-from generators.uniform import UniformPaPGenerator
+from generators.uniform import UniformPaPGenerator, UniformGenerator
 import pickle
 
 from gtamp_utils.utils import *

@@ -13,7 +13,8 @@ else:
 
 
 def get_save_dir(parameters):
-    save_dir = ROOTDIR + '/planning_experience/%s/domain_two_arm_mover/n_objs_pack_1/trajectory_data/' % parameters.planner
+    save_dir = ROOTDIR + '/planning_experience/%s/%s/domain_two_arm_mover/n_objs_pack_1/trajectory_data/' \
+                %(parameters.planner, parameters.statetype)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     return save_dir
@@ -57,9 +58,9 @@ def process_plan_file(filename, pidx, goal_entities, parameters):
         plan = plan_data['plan']
 
     if parameters.planner == 'hcount':
-        traj = HCountExpTrajectory(pidx, scenario)
+        traj = HCountExpTrajectory(pidx, scenario, parameters.statetype)
     else:
-        traj = Trajectory(pidx, scenario)
+        traj = Trajectory(pidx, scenario, parameters.statetype)
     traj.add_trajectory(plan, goal_entities)
     return traj
 
@@ -69,6 +70,7 @@ def parse_parameters():
     parser.add_argument('-pidx', type=int, default=0)
     parser.add_argument('-scenario', type=int, default=None)
     parser.add_argument('-planner', type=str, default="hcount")
+    parser.add_argument('-statetype', type=str, default="shortest")
     parameters = parser.parse_args()
 
     return parameters
