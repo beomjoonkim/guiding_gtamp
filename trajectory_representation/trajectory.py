@@ -3,6 +3,7 @@ from gtamp_utils.utils import visualize_path
 from manipulation.bodies.bodies import set_color, get_color
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
+from trajectory_representation.minimum_constraint_pick_and_place_state import MinimiumConstraintPaPState
 from trajectory_representation.operator import Operator
 from gtamp_problem_environments.reward_functions.packing_problem.reward_function import ShapedRewardFunction
 
@@ -18,7 +19,7 @@ import os
 
 
 class Trajectory:
-    def __init__(self, problem_idx, filename):
+    def __init__(self, problem_idx, filename, statetype):
         self.states = []
         self.actions = []
         self.rewards = []
@@ -26,6 +27,7 @@ class Trajectory:
         self.seed = None  # this defines the initial state
         self.problem_idx = problem_idx
         self.filename = filename
+        self.statetype = statetype
 
     def add_sar_tuples(self, s, a, r):
         self.states.append(s)
@@ -126,7 +128,11 @@ class Trajectory:
         """
         if parent_action is not None:
             parent_action.discrete_parameters['two_arm_place_object'] = parent_action.discrete_parameters['object']
-        state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
+
+        if self.statetype == 'shortest':
+            state = ShortestPathPaPState(problem_env, goal_entities, parent_state, parent_action, 'irsc', paps_used)
+        elif self.statetype == 'mc':
+            state = MinimiumConstraintPaPState(problem_env, goal_entities, parent_state, parent_action, paps_used)
         # state.make_pklable()  # removing openrave files to pkl
         # pickle.dump(state, open(fstate, 'wb'))
         # state.make_plannable(problem_env)
@@ -209,8 +215,8 @@ class Trajectory:
 
 
 class HCountExpTrajectory(Trajectory):
-    def __init__(self, problem_idx, filename):
-        Trajectory.__init__(self, problem_idx, filename)
+    def __init__(self, problem_idx, filename, statetype):
+        Trajectory.__init__(self, problem_idx, filename, statetype)
 
     def get_pap_used_in_plan(self, plan):
         """
