@@ -92,6 +92,10 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         # hval = -number_in_goal + gnn_pred
         hcount = compute_hcount(state, problem_env)
         hval = hcount - config.mixrate*q_bonus
+        o_reachable = state.is_entity_reachable(o)
+        o_r_manip_free = state.binary_edges[(o, r)][-1]
+
+        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d gnn_pred %.4f hval %.4f' % (number_in_goal, o, r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
     else:
         qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
