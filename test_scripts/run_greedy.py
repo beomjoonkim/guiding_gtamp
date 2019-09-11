@@ -48,8 +48,9 @@ def get_solution_file_name(config):
         solution_file_dir += '/hcount/'
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
-    elif config.hadd:
-        solution_file_dir += '/gnn_hadd/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
+    elif config.qlearned_hcount:
+        solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
+                             + '/' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
 
@@ -70,8 +71,9 @@ def parse_arguments():
     parser.add_argument('-train_seed', type=int, default=0)
     parser.add_argument('-planner_seed', type=int, default=0)
     parser.add_argument('-n_objs_pack', type=int, default=1)
-    parser.add_argument('-num_train', type=int, default=5000)
-    parser.add_argument('-timelimit', type=float, default=600)
+    parser.add_argument('-num_train', type=int, default=7000)
+    parser.add_argument('-timelimit', type=float, default=300)
+    parser.add_argument('-mixrate', type=float, default=1)
     parser.add_argument('-visualize_plan', action='store_true', default=False)
     parser.add_argument('-visualize_sim', action='store_true', default=False)
     parser.add_argument('-dontsimulate', action='store_true', default=False)
@@ -82,7 +84,7 @@ def parse_arguments():
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     parser.add_argument('-problem_type', type=str, default='normal')  # supports normal, nonmonotonic
     parser.add_argument('-hcount', action='store_true', default=False)
-    parser.add_argument('-hadd', action='store_true', default=False)
+    parser.add_argument('-qlearned_hcount', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
     config = parser.parse_args()
     return config

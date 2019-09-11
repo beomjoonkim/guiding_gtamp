@@ -8,7 +8,7 @@ def parse_options():
     parser.add_argument('-timelimit', type=int, default=300)
     parser.add_argument('-loss', type=str, default='largemargin')
     parser.add_argument('-pidxs', nargs=2, type=int, default=[0, 1])
-    parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-num_train', type=int, default=7000)
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     #parser.add_argument('-train_seed', nargs=2, type=int, default=[0, 1])
     parser.add_argument('-train_seed', type=int, default=0)
@@ -21,6 +21,8 @@ def parse_options():
     parser.add_argument('-ucb_parameter', type=float, default=1)  # number of re-evals
     parser.add_argument('-widening_parameter', type=float, default=10)  # number of re-evals
     parser.add_argument('-planner', type=str, default='mcts_with_leaf_strategy')
+    parser.add_argument('-mixrate', type=float, default=1)
+    parser.add_argument('-qlearned_hcount', action='store_true', default=False)
 
     parameters = parser.parse_args()
     return parameters
@@ -53,9 +55,12 @@ def get_sahs_configs():
             config['hcount'] = ""
         elif parameters.state_hcount:
             config['state_hcount'] = ""
+        elif parameters.qlearned_hcount:
+            config['qlearned_hcount'] = ""
         config['loss'] = parameters.loss
         config['train_seed'] = parameters.train_seed
         config['num_train'] = parameters.num_train
+        config['mixrate'] = parameters.mixrate
     return configs
 
 
