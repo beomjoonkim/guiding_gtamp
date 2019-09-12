@@ -55,7 +55,7 @@ class PlaceInWay(TernaryPredicate, InWay):
         obj = self.problem_env.env.GetKinBody(obj_name)
 
         # this assumes we have pick
-        if obj_name in self.pick_used:
+        if obj_name in self.pick_used: # where does self.pick_used get updated?
             # we cannot use the pick path used in data because q_init is different
             motion_plan_goals = self.pick_used[obj_name].continuous_parameters['q_goal']
             # todo check if pick_used is still valid
@@ -75,8 +75,10 @@ class PlaceInWay(TernaryPredicate, InWay):
         motion_planner = MinimumConstraintPlanner(self.problem_env, obj, 'prm')
         motion, status = motion_planner.get_motion_plan(motion_plan_goals, cached_collisions=self.collides)
         # why does it ever enter here?
-        assert motion is not None
-
+        try:
+            assert motion is not None
+        except:
+            import pdb;pdb.set_trace()
 
         if obj.GetName() not in self.pick_used:
             # import pdb;pdb.set_trace()
@@ -139,7 +141,7 @@ class PlaceInWay(TernaryPredicate, InWay):
             return motion, 'HasSolution', place_op
 
         if obj_region_key in self.place_used:
-            print "Using the place data"
+            print "Using the place data" # todo but this depends on which state...
             motion = self.place_used[obj_region_key].low_level_motion
             status = 'HasSolution'
         else:

@@ -59,8 +59,7 @@ class MinimiumConstraintPaPState(State):
                 for (a, b), v in parent_state.binary_edges.items()
                 if a != moved_obj and b != moved_obj
             }
-
-        self.use_shortest_path = use_shortest_path and paps_used_in_data is None
+        self.use_shortest_path = False
 
         self.cached_place_paths = {}
         if paps_used_in_data is None:
@@ -69,7 +68,6 @@ class MinimiumConstraintPaPState(State):
         else:
             self.pick_used = paps_used_in_data[0]
             self.place_used = paps_used_in_data[1]
-
         self.mc_pick_path = {}
         self.mc_place_path = {}
         self.reachable_entities = []

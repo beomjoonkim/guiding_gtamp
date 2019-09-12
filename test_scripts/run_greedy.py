@@ -55,8 +55,8 @@ def get_solution_file_name(config):
         solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
                              + '/mse_weight_' + str(config.mse_weight) + '/mix_rate_' + str(config.mixrate) + '/'
     else:
-        solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/' + \
-                                'mse_weight_' + str(config.mse_weight) + '/'
+        solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
+                              + '/mse_weight_' + str(config.mse_weight) + '/'
 
     solution_file_name = 'pidx_' + str(config.pidx) + \
                          '_planner_seed_' + str(config.planner_seed) + \
@@ -72,7 +72,7 @@ def get_solution_file_name(config):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Greedy planner')
     parser.add_argument('-pidx', type=int, default=0)
-    parser.add_argument('-train_seed', type=int, default=1)
+    parser.add_argument('-train_seed', type=int, default=0)
     parser.add_argument('-planner_seed', type=int, default=0)
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_train', type=int, default=7000)
