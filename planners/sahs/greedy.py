@@ -1,40 +1,16 @@
-import os
 import time
 import pickle
-import random
-import argparse
 import Queue
+import numpy as np
+from node import Node
 
-import cProfile
-import pstats
-from gtamp_problem_environments.mover_env import PaPMoverEnv
-from gtamp_problem_environments.one_arm_mover_env import OneArmMover
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
 from generators.uniform import UniformPaPGenerator
 
 from trajectory_representation.operator import Operator
-from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
-from trajectory_representation.one_arm_pap_state import OneArmPaPState
 from trajectory_representation.trajectory import Trajectory
 
-from mover_library.utils import set_robot_config, set_obj_xytheta, visualize_path, two_arm_pick_object, \
-    two_arm_place_object, get_body_xytheta, grab_obj, release_obj, fold_arms, one_arm_pick_object, one_arm_place_object
-
-import numpy as np
-import tensorflow as tf
-import openravepy
-
-
-
-from mover_library import utils
-from manipulation.primitives.display import set_viewer_options, draw_line, draw_point, draw_line
-from manipulation.primitives.savers import DynamicEnvironmentStateSaver
-
-from learn.data_traj import extract_individual_example
-from learn.pap_gnn import PaPGNN
-
-from planners.heuristics import compute_hcount_with_action, compute_hcount
-import collections
+from helper import get_actions, compute_heuristic, get_state_class
 
 prm_vertices, prm_edges = pickle.load(open('prm.pkl', 'rb'))
 # prm_edges = [set(l) - {i} for i,l in enumerate(prm_edges)]
@@ -46,176 +22,15 @@ DISABLE_COLLISIONS = False
 MAX_DISTANCE = 1.0
 
 
-def get_actions(mover, goal, config):
-    return mover.get_applicable_ops()
-
-
-def compute_heuristic(state, action, pap_model, problem_env, config):
-    is_two_arm_domain = 'two_arm_place_object' in action.discrete_parameters
-    if is_two_arm_domain:
-        o = action.discrete_parameters['two_arm_place_object']
-        r = action.discrete_parameters['two_arm_place_region']
-    else:
-        o = action.discrete_parameters['object'].GetName()
-        r = action.discrete_parameters['region'].name
-
-    nodes, edges, actions, _= extract_individual_example(state, action)
-    nodes = nodes[..., 6:]
-
-    region_is_goal = state.nodes[r][8]
-    number_in_goal = 0
-    goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
-    if 'two_arm' in problem_env.name:
-        goal_region = 'home_region'
-        for obj_name in goal_objs:
-            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
-            if is_obj_in_goal_region:
-                number_in_goal += 1
-    else:
-        raise NotImplementedError
-
-    if config.hcount:
-        hcount = compute_hcount_with_action(state, action, problem_env)
-        print "%s %s %.4f" % (o, r, hcount)
-        return hcount
-    elif config.state_hcount:
-        hcount = compute_hcount(state, problem_env)
-        print "state_hcount %s %s %.4f" % (o, r, hcount)
-        return hcount
-    elif config.qlearned_hcount:
-        all_actions = get_actions(problem_env, None, None)
-        q_vals = [np.exp(pap_model.predict(state, a)) for a in all_actions]
-        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
-
-        # hval = -number_in_goal + gnn_pred
-        hcount = compute_hcount(state, problem_env)
-        hval = hcount - config.mixrate*q_bonus
-        o_reachable = state.is_entity_reachable(o)
-        o_r_manip_free = state.binary_edges[(o, r)][-1]
-
-        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d gnn_pred %.4f hval %.4f' % (number_in_goal, o, r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
-        return hval
-    else:
-        qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = -number_in_goal - qval
-        o_reachable = state.is_entity_reachable(o)
-        o_r_manip_free = state.binary_edges[(o, r)][-1]
-
-        """
-        Vpre_free = state.nodes[action.discrete_parameters['object']][9]
-        Vmanip_free = state.binary_edges[(action.discrete_parameters['object'], action.discrete_parameters['region'])][2]
-        Vpre_occ = state.pick_entities_occluded_by(action.discrete_parameters['object'])
-        Vmanip_occ = state.place_entities_occluded_by(action.discrete_parameters['object'])
-        print "Vpre_free", Vpre_free
-        print "Vmanip_free", Vmanip_free
-        print "Vpre_occ ", Vpre_occ
-        print "Vmanip_occ ", Vmanip_occ
-        print "Total occ " + str(len(Vpre_occ + Vmanip_occ))
-        print "Occ place to goal " + str(len([objregion for objregion in Vmanip_occ if objregion[1] == 'home_region']))
-
-        print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
-        print "====================="
-        """
-        print 'n_in_goal %d %s %s prefree %d manipfree %d qval %.4f hval %.4f' % (number_in_goal, o, r, o_reachable, o_r_manip_free, qval, hval)
-        return hval
-
-
-def search(mover, config):
+def search(mover, config, pap_model):
     tt = time.time()
 
     obj_names = [obj.GetName() for obj in mover.objects]
     n_objs_pack = config.n_objs_pack
-
-    if config.domain == 'two_arm_mover':
-        statecls = ShortestPathPaPState
-        # goal = ['home_region'] + [obj.GetName() for obj in mover.objects[:n_objs_pack]]
-    elif config.domain == 'one_arm_mover':
-        def create_one_arm_pap_state(*args, **kwargs):
-            while True:
-                state = OneArmPaPState(*args, **kwargs)
-                if len(state.nocollision_place_op) > 0:
-                    return state
-                else:
-                    print('failed to find any paps, trying again')
-
-        statecls = create_one_arm_pap_state
-    else:
-        raise NotImplementedError
-
+    statecls = get_state_class(config.domain)
     goal = mover.goal
-    if config.visualize_plan:
-        mover.env.SetViewer('qtcoin')
-        set_viewer_options(mover.env)
-
-    # state.make_pklable()
-
-    if not config.hcount:
-        mconfig_type = collections.namedtuple('mconfig_type',
-                                              'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss use_region_agnostic')
-
-        pap_mconfig = mconfig_type(
-            operator='two_arm_pick_two_arm_place',
-            n_msg_passing=1,
-            n_layers=2,
-            num_fc_layers=2,
-            n_hidden=32,
-            no_goal_nodes=False,
-
-            top_k=1,
-            optimizer='adam',
-            lr=1e-4,
-            use_mse=True,
-
-            batch_size='32',
-            seed=config.train_seed,
-            num_train=config.num_train,
-            val_portion=.1,
-            mse_weight=0.0,
-            diff_weight_msg_passing=False,
-            same_vertex_model=False,
-            weight_initializer='glorot_uniform',
-            loss=config.loss,
-            use_region_agnostic=False
-        )
-        if config.domain == 'two_arm_mover':
-            num_entities = 10
-            n_regions = 2
-        elif config.domain == 'one_arm_mover':
-            num_entities = 12
-            n_regions = 2
-        else:
-            raise NotImplementedError
-        num_node_features = 10
-        num_edge_features = 44
-        entity_names = mover.entity_names
-
-        with tf.variable_scope('pap'):
-            pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
-        pap_model.load_weights()
-    else:
-        pap_model = None
-
     mover.reset_to_init_state_stripstream()
     depth_limit = 60
-
-    class Node(object):
-        def __init__(self, parent, action, state, reward=0):
-            self.parent = parent  # parent.state is initial state
-            self.action = action
-            self.state = state  # resulting state
-            self.reward = reward  # resulting reward
-
-            if parent is None:
-                self.depth = 1
-            else:
-                self.depth = parent.depth + 1
-
-        def backtrack(self):
-            node = self
-            while node is not None:
-                yield node
-                node = node.parent
 
     state = statecls(mover, goal)
 
@@ -291,30 +106,19 @@ def search(mover, config):
                         obj_names[:n_objs_pack]])
             if is_goal_achieved:
                 print("found successful plan: {}".format(n_objs_pack))
-                trajectory = Trajectory(mover.seed, mover.seed)
                 plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
-                #trajectory.states = [nd.state for nd in plan]
-                trajectory.actions = [nd.action for nd in plan[1:]] + [action]
-                #trajectory.rewards = [nd.reward for nd in plan[1:]] + [0]
-                #trajectory.state_prime = [nd.state for nd in plan[1:]]
-                trajectory.seed = mover.seed
-                print(trajectory)
-                return trajectory, iter
+                #states = [nd.state for nd in plan]
+                plan = [nd.action for nd in plan[1:]] + [action]
+                return plan, iter
             else:
                 newstate = statecls(mover, goal, node.state, action)
                 print "New state computed"
                 newnode = Node(node, action, newstate)
                 newactions = get_actions(mover, goal, config)
                 for newaction in newactions:
-                    # What's this?
-                    # hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
-                    # print "New state h value %.4f for %s %s" % (
-                    # hval, newaction.discrete_parameters['object'], newaction.discrete_parameters['region'])
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
-            # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
-
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
 
@@ -330,7 +134,7 @@ def search(mover, config):
                 mover.enable_objects()
                 current_region = mover.get_region_containing(obj).name
                 papg = OneArmPaPUniformGenerator(action, mover, cached_picks=(
-                node.state.iksolutions[current_region], node.state.iksolutions[r]))
+                    node.state.iksolutions[current_region], node.state.iksolutions[r]))
                 pick_params, place_params, status = papg.sample_next_point(500)
                 if status == 'HasSolution':
                     pap_params = pick_params, place_params
@@ -399,4 +203,3 @@ def search(mover, config):
 
         else:
             raise NotImplementedError
-
