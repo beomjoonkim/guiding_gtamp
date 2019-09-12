@@ -1,6 +1,7 @@
 from mcts_tree_continuous_node import ContinuousTreeNode
 from discrete_node_with_psa import DiscreteTreeNodeWithPsa
 from mcts_tree_discrete_pap_node import PaPDiscreteTreeNodeWithPriorQ
+from discrete_node_with_prior_q import DiscreteTreeNodeWithPriorQ
 from mcts_tree import MCTSTree
 
 from generators.uniform import UniformPaPGenerator
@@ -32,17 +33,19 @@ if hostname == 'dell-XPS-15-9560':
 # todo
 #   create MCTS for each environment. Each one will have different compute_state functions
 class MCTS:
-    def __init__(self, parameters, problem_env, goal_entities, prior_q):
+    def __init__(self, parameters, problem_env, goal_entities, v_fcn, learned_q):
         # MCTS parameters
         self.widening_parameter = parameters.widening_parameter
         self.ucb_parameter = parameters.ucb_parameter
         self.time_limit = parameters.timelimit
         self.n_motion_plan_trials = parameters.n_motion_plan_trials
         self.use_ucb = parameters.use_ucb
+        self.use_q_count = parameters.use_q_count
         self.use_progressive_widening = parameters.pw
         self.n_feasibility_checks = parameters.n_feasibility_checks
-        self.use_prior_q = parameters.use_learned_q
-        self.prior_q_function = prior_q
+        self.use_v_fcn = parameters.use_learned_q
+        self.v_fcn = v_fcn
+        self.learned_q = learned_q
         self.use_shaped_reward = parameters.use_shaped_reward
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
@@ -168,18 +171,13 @@ class MCTS:
         # this needs to be factored
         # why do I need a parent node? Can I just get away with parent state?
         is_operator_skeleton_node = (parent_node is None) or (not parent_node.is_operator_skeleton_node)
-        if self.use_prior_q or self.use_shaped_reward or self.use_q_count:
-            if is_parent_action_infeasible:
-                state = None
-            elif is_operator_skeleton_node:
-                state = self.compute_state(parent_node, parent_action)
-            else:
-                state = parent_node.state
+        if is_parent_action_infeasible:
+            state = None
+        elif is_operator_skeleton_node:
+            state = self.compute_state(parent_node, parent_action)
         else:
-            state = StateWithoutCspacePredicates(self.problem_env,
-                                                 parent_state=None,
-                                                 parent_action=parent_action,
-                                                 goal_entities=self.goal_entities)
+            state = parent_node.state
+
         return state
 
     def create_node(self, parent_action, depth, parent_node, is_parent_action_infeasible, is_init_node=False):
@@ -189,20 +187,8 @@ class MCTS:
 
         if is_operator_skeleton_node:
             applicable_op_skeletons = self.problem_env.get_applicable_ops(parent_action)
-            # todo here, define a prior q function. Dont call this learnedQ node, but a node with prior Q
-            if self.use_prior_q:
-                node = PaPDiscreteTreeNodeWithPriorQ(state,
-                                                     self.ucb_parameter,
-                                                     depth,
-                                                     state_saver,
-                                                     is_operator_skeleton_node,
-                                                     is_init_node,
-                                                     self.prior_q_function,
-                                                     applicable_op_skeletons,
-                                                     is_goal_reached=self.problem_env.is_goal_reached())
-            else:
-                node = DiscreteTreeNodeWithPsa(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
-                                                is_init_node, applicable_op_skeletons)
+            node = DiscreteTreeNodeWithPriorQ(state, self.ucb_parameter, depth, state_saver, is_operator_skeleton_node,
+                                              is_init_node, applicable_op_skeletons, self.learned_q)
         else:
             node = ContinuousTreeNode(state, parent_action, self.ucb_parameter, depth, state_saver,
                                       is_operator_skeleton_node, is_init_node)
@@ -355,7 +341,8 @@ class MCTS:
     def choose_action(self, curr_node):
         if curr_node.is_operator_skeleton_node:
             print "Skeleton node"
-            action = curr_node.perform_ucb_over_actions(self.prior_q_function)
+            # here, perform psa with the learned q
+            action = curr_node.perform_ucb_over_actions()
         else:
             print 'Instance node'
             if curr_node.sampling_agent is None:  # this happens if the tree has been pickled
@@ -419,9 +406,8 @@ class MCTS:
         if not is_action_feasible:
             # this (s,a) is a dead-end
             print "Infeasible action"
-            # todo use the average of Q values here, instead of termination
-            if self.use_prior_q:
-                sum_rewards = reward + curr_node.parent.prior_q[curr_node.parent_action]
+            if self.use_v_fcn:
+                sum_rewards = reward + curr_node.parent.v_fcn[curr_node.parent_action]
                 print sum_rewards
             else:
                 sum_rewards = reward

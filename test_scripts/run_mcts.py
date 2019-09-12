@@ -15,7 +15,7 @@ from gtamp_problem_environments.reward_functions.reward_function import GenericR
 from gtamp_problem_environments.reward_functions.packing_problem.reward_function import ShapedRewardFunction
 from planners.flat_mcts.mcts import MCTS
 from planners.flat_mcts.mcts_with_leaf_strategy import MCTSWithLeafStrategy
-from planners.heuristics import compute_hcount_with_action
+from planners.heuristics import compute_hcount_with_action, get_objects_to_move
 
 
 def make_and_get_save_dir(parameters, filename):
@@ -56,7 +56,7 @@ def parse_mover_problem_parameters():
     # Problem-specific parameters
     parser.add_argument('-pidx', type=int, default=0)
     parser.add_argument('-n_objs_pack', type=int, default=1)
-    parser.add_argument('-planner', type=str, default='mcts')
+    parser.add_argument('-planner', type=str, default='mcts_with_leaf_strategy')
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     parser.add_argument('-planner_seed', type=int, default=0)
 
@@ -70,23 +70,25 @@ def parse_mover_problem_parameters():
     # Learning-related parameters
     parser.add_argument('-train_seed', type=int, default=0)
     parser.add_argument('-loss', type=str, default='largemargin')
-    parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-num_train', type=int, default=7000)
+    parser.add_argument('-use_region_agnostic', action='store_true', default=False)
 
     # MCTS parameters
     parser.add_argument('-n_switch', type=int, default=5)
     parser.add_argument('-ucb_parameter', type=float, default=0.1)
-    parser.add_argument('-widening_parameter', type=float, default=10)  # number of re-evals
+    parser.add_argument('-widening_parameter', type=float, default=50)  # number of re-evals
     parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
     parser.add_argument('-v', action='store_true', default=False)
     parser.add_argument('-debug', action='store_true', default=False)
     parser.add_argument('-mcts_iter', type=int, default=1000)
     parser.add_argument('-use_learned_q', action='store_true', default=False)
-    parser.add_argument('-use_q_count', action='store_true', default=False)
-    parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-use_ucb', action='store_true', default=False)
     parser.add_argument('-pw', action='store_true', default=False)
     parser.add_argument('-f', action='store_true', default=False)  # what was this?
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
+
+    parser.add_argument('-use_q_count', action='store_true', default=False)
+    parser.add_argument('-use_shaped_reward', action='store_true', default=False)
 
     parameters = parser.parse_args()
     return parameters
@@ -99,11 +101,8 @@ def set_seed(seed):
 
 def load_learned_q(config, problem_env):
     mconfig_type = collections.namedtuple('mconfig_type',
-                                          'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k '
-                                          'optimizer lr use_mse batch_size seed num_train val_portion num_test mse_'
-                                          'weight diff_weight_msg_passing same_vertex_model weight_initializer loss')
+                                          'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss use_region_agnostic')
 
-    assert config.num_train <= 5000
     pap_mconfig = mconfig_type(
         operator='two_arm_pick_two_arm_place',
         n_msg_passing=1,
@@ -121,23 +120,21 @@ def load_learned_q(config, problem_env):
         seed=config.train_seed,
         num_train=config.num_train,
         val_portion=.1,
-        num_test=1882,
-        mse_weight=1.0,
+        mse_weight=0.0,
         diff_weight_msg_passing=False,
         same_vertex_model=False,
         weight_initializer='glorot_uniform',
         loss=config.loss,
+        use_region_agnostic=False
     )
-
     if config.domain == 'two_arm_mover':
-        num_entities = 11
+        num_entities = 10
         n_regions = 2
     elif config.domain == 'one_arm_mover':
-        num_entities = 17
-        n_regions = 3
+        num_entities = 12
+        n_regions = 2
     else:
         raise NotImplementedError
-
     num_node_features = 10
     num_edge_features = 44
     entity_names = problem_env.entity_names
@@ -167,24 +164,28 @@ def main():
         reward_function = ShapedRewardFunction(problem_env, goal_object_names, goal_region_name[0],
                                                parameters.planning_horizon)
     else:
-        reward_function = GenericRewardFunction(problem_env, goal_object_names, goal_region_name[0])
+        reward_function = GenericRewardFunction(problem_env, goal_object_names, goal_region_name[0],
+                                                parameters.planning_horizon)
 
     motion_planner = OperatorBaseMotionPlanner(problem_env, 'prm')
 
     problem_env.set_reward_function(reward_function)
     problem_env.set_motion_planner(motion_planner)
 
+    learned_q = None
+    prior_q = None
     if parameters.use_learned_q:
-        prior_q = load_learned_q(parameters, problem_env)
-    elif parameters.use_q_count:
-        prior_q = lambda state, action: -compute_hcount_with_action(state, action, problem_env)
-    else:
-        prior_q = None
+        learned_q = load_learned_q(parameters, problem_env)
+
+    #if parameters.use_q_count:
+    #    prior_q = lambda state, action: -compute_hcount_with_action(state, action, problem_env)
+
+    v_fcn = lambda state: -len(get_objects_to_move(state, problem_env))
 
     if parameters.planner == 'mcts':
-        planner = MCTS(parameters, problem_env, goal_entities, prior_q)
+        planner = MCTS(parameters, problem_env, goal_entities, prior_q, learned_q)
     elif parameters.planner == 'mcts_with_leaf_strategy':
-        planner = MCTSWithLeafStrategy(parameters, problem_env, goal_entities, prior_q)
+        planner = MCTSWithLeafStrategy(parameters, problem_env, goal_entities, v_fcn, learned_q)
     else:
         raise NotImplementedError
 

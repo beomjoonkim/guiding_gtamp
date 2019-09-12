@@ -63,6 +63,7 @@ class PaPDiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
             print "%30s %30s Reachable? %d  ManipFree? %d IsGoal? %d Q? %.5f Q+UCB? %.5f" \
                   % (obj_name, region_name, self.state.is_entity_reachable(obj_name),
                      self.state.binary_edges[(obj_name, region_name)][-1],
+
                      obj_name in self.state.goal_entities, self.Q[a], self.compute_ucb_value(self.Q[a], a))
 
         best_action = self.get_action_with_highest_ucb_value(self.A, qucb_vals)  # but your Nsa are all zero?

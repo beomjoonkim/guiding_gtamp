@@ -8,14 +8,20 @@ def alpha_zero_ucb(n, n_sa):
     return np.sqrt(n + 1) / float(n_sa + 1)
 
 
-class DiscreteTreeNodeWithPsa(DiscreteTreeNode):
+class DiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
     def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node, actions,
                  learned_q):
         # psa is based on the number of objs to move
         DiscreteTreeNode.__init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node,
                                   is_init_node, actions, learned_q)
-        for a in self.A:
-            self.Q[a] = 0
+        is_infeasible_state = self.state is None
+        if is_infeasible_state:
+            for a in self.A:
+                self.Q[a] = 0
+        else:
+            objs_to_move = get_objects_to_move(self.state, self.state.problem_env)
+            for a in self.A:
+                self.Q[a] = -len(objs_to_move)
 
     def perform_ucb_over_actions(self):
         # todo this function is to be deleted once everything has been implemented
@@ -51,33 +57,32 @@ class DiscreteTreeNodeWithPsa(DiscreteTreeNode):
             exp_sum = np.sum([np.exp(q) for q in init_q_values])
         else:
             objects_to_move = get_objects_to_move(self.state, self.state.problem_env)
-            init_q_values = q_values  # dummy
-
-        action_ucb_values = []
-
-        for action, value, learned_value in zip(actions, q_values, init_q_values):
-            if self.learned_q is not None:
-                psa = np.exp(learned_value) / float(exp_sum)
-            else:
-                obj_name = action.discrete_parameters['object']
-                region_name = action.discrete_parameters['region']
+            init_q_values = []
+            for a in actions:
+                obj_name = a.discrete_parameters['object']
+                region_name = a.discrete_parameters['region']
                 o_reachable = self.state.is_entity_reachable(obj_name)
                 o_r_manip_free = self.state.binary_edges[(obj_name, region_name)][-1]
                 o_needs_to_be_moved = obj_name in objects_to_move
                 if o_reachable and o_r_manip_free and o_needs_to_be_moved:
-                    psa = 1 # Is this the best parameterization
+                    val = 1
                 else:
-                    psa = 0.1
-                import pdb;pdb.set_trace()
+                    val = 0
+                init_q_values.append(val)
+            exp_sum = np.sum([np.exp(q) for q in init_q_values])
 
-            ucb_value = value + psa * self.compute_ucb_value(action)
+        action_ucb_values = []
+
+        for action, value, learned_value in zip(actions, q_values, init_q_values):
+            q_bonus = np.exp(learned_value) / float(exp_sum)
+            ucb_value = value + q_bonus + self.compute_ucb_value(action)
 
             obj_name = action.discrete_parameters['object']
             region_name = action.discrete_parameters['region']
-            print "%30s %30s Reachable? %d  ManipFree? %d IsGoal? %d Q? %.5f Q+UCB? %.5f" \
+            print "%30s %30s Reachable? %d  ManipFree? %d IsGoal? %d Q? %.5f QBonus? %.5f Q+UCB? %.5f" \
                   % (obj_name, region_name, self.state.is_entity_reachable(obj_name),
                      self.state.binary_edges[(obj_name, region_name)][-1],
-                     obj_name in self.state.goal_entities, self.Q[action],
+                     obj_name in self.state.goal_entities, self.Q[action], q_bonus,
                      ucb_value)
 
             action_ucb_values.append(ucb_value)
@@ -87,6 +92,7 @@ class DiscreteTreeNodeWithPsa(DiscreteTreeNode):
         boolean_idxs_with_highest_ucb = (np.max(action_ucb_values) == action_ucb_values).squeeze()
         best_action_idx = np.random.randint(np.sum(boolean_idxs_with_highest_ucb))
         best_action = np.array(actions)[boolean_idxs_with_highest_ucb][best_action_idx]
+        import pdb;pdb.set_trace()
         return best_action
 
     def compute_ucb_value(self, action):

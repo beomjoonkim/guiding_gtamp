@@ -7,7 +7,8 @@ from planners.heuristics import get_objects_to_move
 
 
 class DiscreteTreeNode(TreeNode):
-    def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node, actions):
+    def __init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node, actions, learned_q):
+        self.learned_q = learned_q
         TreeNode.__init__(self, state, ucb_parameter, depth, state_saver, is_operator_skeleton_node, is_init_node)
         self.add_actions(actions)
 
@@ -32,38 +33,11 @@ class DiscreteTreeNode(TreeNode):
             if sum_rewards > self.Q[action]:
                 self.Q[action] = sum_rewards
 
-    def perform_ucb_over_actions(self, learned_q_functions=None):
-        never_executed_actions_exist = len(self.Q) != len(self.A)
-
-        if never_executed_actions_exist:
-            best_action = self.get_never_evaluated_action()
-            print "Executing the never executed action"
-        else:
-            # why is it never coming down here? Because there are actions that have not been tried.
-            if self.is_operator_skeleton_node:
-                feasible_actions = self.A
-            else:
-                feasible_actions = [a for a in self.A if a.continuous_parameters['is_feasible']]
-            feasible_q_values = [self.Q[a] for a in feasible_actions]
-
-            if not self.is_operator_skeleton_node:
-                assert (len(feasible_actions) > 1)
-
-            for a, q in zip(feasible_actions, feasible_q_values):
-                obj_name = a.discrete_parameters['object']
-                region_name = a.discrete_parameters['region']
-                obj_a_reachable = self.state.is_entity_reachable(obj_name)
-                a_r_manip_free = self.state.binary_edges[(obj_name, region_name)][-1]
-                psa = obj_a_reachable and a_r_manip_free
-                objects_to_move = get_objects_to_move(self.state, self.state.problem_env)
-                print "%30s %30s Reachable? %d  ManipFree? %d IsGoal? %d Q? %.5f Q+UCB? %.5f" \
-                      % (obj_name, region_name, self.state.is_entity_reachable(obj_name),
-                         self.state.binary_edges[(obj_name, region_name)][-1],
-                         obj_name in self.state.goal_entities, self.Q[a], self.compute_ucb_value(self.Q[a], a))
-
-                #print a.discrete_parameters['region'], a.discrete_parameters['object'], q,  self.compute_ucb_value(q, a)
-            best_action = self.get_action_with_highest_ucb_value(feasible_actions, feasible_q_values)
-
+    def perform_ucb_over_actions(self):
+        assert self.is_operator_skeleton_node
+        actions = self.A
+        q_values = [self.Q[a] for a in self.A]
+        best_action = self.get_action_with_highest_ucb_value(actions, q_values)
         return best_action
 
 
