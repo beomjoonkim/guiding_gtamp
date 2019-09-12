@@ -91,7 +91,7 @@ def get_metrics(test_dir, test_files, n_objs, n_data=None):
 
 
 def main():
-    n_objs = 8
+    n_objs = 1
     t_limit = 300*n_objs
     domain = 'two_arm_mover'
 
@@ -99,15 +99,17 @@ def main():
     #test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/state_hcount/' % (domain, n_objs)
     #test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/new_hcount/' % (domain, n_objs)
 
-    test_dir = './test_results/mcts_results/domain_%s/n_objs_pack_%d/' \
-               'sampling_strategy_uniform/n_mp_trials_3/widening_30.0/uct_0.1/' \
-               'reward_shaping_True/learned_q_False/q_count_True/' % (domain, n_objs)
+
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/state_hcount/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn_and_hcount/loss_largemargin/num_train_5000/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount_after_submission/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qbonus_and_hcount/loss_largemargin/num_train_5000/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn_after_submission/loss_largemargin/num_train_5000/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+
+    test_dir = './test_results/mcts_results/domain_%s/n_objs_pack_%d/' \
+               'sampling_strategy_uniform/n_mp_trials_3/widening_50.0/uct_1.0/' \
+               'reward_shaping_True/learned_q_False/q_count_True/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
 

@@ -67,11 +67,13 @@ def create_train_data(nodes, edges, actions, costs, num_training):
 def train(config):
     seed = config.seed
 
+    """
     nodes, edges, actions, rewards = data_traj.load_data(
         #'./planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         './planning_experience/irsc/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         desired_operator_type=config.operator)
+    """
 
     nodes, edges, actions, rewards = pickle.load(
         open('planning_experience/two_arm_pick_two_arm_place_before_submission.pkl', 'r'))
@@ -137,7 +139,7 @@ def parse_args():
     parser.add_argument('-n_msg_passing', type=int, default=1)
     parser.add_argument('-weight_initializer', type=str, default='glorot_uniform')
     parser.add_argument('-loss', type=str, default='largemargin')
-    parser.add_argument('-mse_weight', type=float, default=1.0)
+    parser.add_argument('-mse_weight', type=float, default=0.0)
 
     configs = parser.parse_args()
     return configs

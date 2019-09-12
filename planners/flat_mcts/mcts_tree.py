@@ -92,7 +92,7 @@ class MCTSTree:
 
         #progress = self.compute_number_of_boxes_packed_in_mover_domain(leaf_nodes, sumR_list)
         best_node = leaf_nodes[np.argmax(sumR_list)]
-        progress = self.get_node_hcount(best_node)
+        progress = np.min([self.get_node_hcount(n) for n in leaf_nodes])
         return np.max(sumR_list), progress, best_node
 
     def get_node_hcount(self, node):

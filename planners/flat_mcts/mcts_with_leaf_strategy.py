@@ -32,8 +32,8 @@ if hostname == 'dell-XPS-15-9560':
 # todo
 #   create MCTS for each environment. Each one will have different compute_state functions
 class MCTSWithLeafStrategy(MCTS):
-    def __init__(self, parameters, problem_env, goal_entities, prior_q):
-        MCTS.__init__(self, parameters, problem_env, goal_entities, prior_q)
+    def __init__(self, parameters, problem_env, goal_entities, v_fcn, learned_q):
+        MCTS.__init__(self, parameters, problem_env, goal_entities, v_fcn, learned_q)
 
     def simulate(self, curr_node, node_to_search_from, depth, new_traj):
         if self.problem_env.reward_function.is_goal_reached():
@@ -79,7 +79,7 @@ class MCTSWithLeafStrategy(MCTS):
                 sum_rewards = reward + self.discount_rate * self.simulate(next_node, node_to_search_from, depth + 1,
                                                                           new_traj)
             else:
-                next_state_value = np.max([self.prior_q_function(next_node.state, aprime) for aprime in next_node.A])
+                next_state_value = self.v_fcn(next_node.state)
                 print "Next state value", next_state_value
                 sum_rewards = reward + next_state_value
 

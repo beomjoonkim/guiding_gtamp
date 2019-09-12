@@ -85,8 +85,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     elif config.qlearned_hcount:
         all_actions = get_actions(problem_env, None, None)
         q_vals = [np.exp(pap_model.predict(state, a)) for a in all_actions]
-        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
-                                                                  actions[None, ...])
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
 
         # hval = -number_in_goal + gnn_pred
@@ -100,6 +99,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     else:
         qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         hval = -number_in_goal - qval
+        o_reachable = state.is_entity_reachable(o)
+        o_r_manip_free = state.binary_edges[(o, r)][-1]
 
         """
         Vpre_free = state.nodes[action.discrete_parameters['object']][9]
@@ -116,7 +117,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         print "====================="
         """
-        print 'n_in_goal %d %s %s gnn_pred %.4f hval %.4f' % (number_in_goal, o, r, qval, hval)
+        print 'n_in_goal %d %s %s prefree %d manipfree %d qval %.4f hval %.4f' % (number_in_goal, o, r, o_reachable, o_r_manip_free, qval, hval)
         return hval
 
 

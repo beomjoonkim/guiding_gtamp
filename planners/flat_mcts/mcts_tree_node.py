@@ -40,7 +40,7 @@ class TreeNode:
     def set_objects_in_collision(self, objects_in_collision):
         self.objects_in_collision = objects_in_collision
 
-    def perform_ucb_over_actions(self, learned_q_functions=None):
+    def perform_ucb_over_actions(self):
         raise NotImplementedError
 
     def add_actions(self, actions):
