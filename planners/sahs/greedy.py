@@ -11,6 +11,7 @@ from trajectory_representation.operator import Operator
 from trajectory_representation.trajectory import Trajectory
 
 from helper import get_actions, compute_heuristic, get_state_class
+from gtamp_utils import utils
 
 prm_vertices, prm_edges = pickle.load(open('prm.pkl', 'rb'))
 # prm_edges = [set(l) - {i} for i,l in enumerate(prm_edges)]
@@ -119,7 +120,6 @@ def search(mover, config, pap_model):
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
-                import pdb;pdb.set_trace()
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
 
