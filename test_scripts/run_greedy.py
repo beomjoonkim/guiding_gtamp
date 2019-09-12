@@ -52,7 +52,7 @@ def get_solution_file_name(config):
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:
-        solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
+        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
                              + '/mse_weight_' + str(config.mse_weight) + '/mix_rate_' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \

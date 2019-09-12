@@ -51,8 +51,8 @@ class DiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
     def get_action_with_highest_ucb_value(self, actions, q_values):
         best_value = -np.inf
 
-        # todo compute psa value here
         if self.learned_q is not None:
+            # todo make this more efficient by calling predict_with_raw_*
             init_q_values = [self.learned_q.predict(self.state, a) for a in actions]
             exp_sum = np.sum([np.exp(q) for q in init_q_values])
         else:
