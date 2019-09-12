@@ -26,7 +26,7 @@ def make_and_get_save_dir(parameters, filename):
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
 
-    save_dir = root_dir + '/test_results/mcts_results/' \
+    save_dir = root_dir + '/test_results/mcts_results_with_q_bonus/' \
                + 'domain_' + str(parameters.domain) + '/' \
                + 'n_objs_pack_' + str(parameters.n_objs_pack) + '/' \
                + 'sampling_strategy_' + str(parameters.sampling_strategy) + '/' \
@@ -34,8 +34,7 @@ def make_and_get_save_dir(parameters, filename):
                + 'widening_' + str(parameters.widening_parameter) + '/' \
                + 'uct_' + str(parameters.ucb_parameter) + '/' \
                + 'reward_shaping_' + str(parameters.use_shaped_reward) + '/' \
-               + 'learned_q_' + str(parameters.use_learned_q) + '/' \
-               + 'q_count_' + str(parameters.use_q_count) + '/'
+               + 'learned_q_' + str(parameters.use_learned_q) + '/'
 
     if 'uniform' not in parameters.sampling_strategy:
         save_dir += 'explr_p_' + str(parameters.explr_p) + '/'
@@ -86,8 +85,6 @@ def parse_mover_problem_parameters():
     parser.add_argument('-pw', action='store_true', default=False)
     parser.add_argument('-f', action='store_true', default=False)  # what was this?
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
-
-    parser.add_argument('-use_q_count', action='store_true', default=False)
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
 
     parameters = parser.parse_args()
@@ -176,9 +173,6 @@ def main():
     prior_q = None
     if parameters.use_learned_q:
         learned_q = load_learned_q(parameters, problem_env)
-
-    #if parameters.use_q_count:
-    #    prior_q = lambda state, action: -compute_hcount_with_action(state, action, problem_env)
 
     v_fcn = lambda state: -len(get_objects_to_move(state, problem_env))
 

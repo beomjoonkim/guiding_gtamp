@@ -12,17 +12,18 @@ def parse_options():
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     #parser.add_argument('-train_seed', nargs=2, type=int, default=[0, 1])
     parser.add_argument('-train_seed', type=int, default=0)
-    parser.add_argument('-use_shaped_reward', action='store_true', default=False)
-    parser.add_argument('-use_q_count', action='store_true', default=False)
     parser.add_argument('-sampling_strategy', type=str, default='uniform')
     parser.add_argument('-hcount', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
     parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
-    parser.add_argument('-ucb_parameter', type=float, default=1)  # number of re-evals
-    parser.add_argument('-widening_parameter', type=float, default=10)  # number of re-evals
     parser.add_argument('-planner', type=str, default='mcts_with_leaf_strategy')
     parser.add_argument('-mixrate', type=float, default=1)
+
+    # MCTS
+    parser.add_argument('-use_shaped_reward', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount', action='store_true', default=False)
+    parser.add_argument('-widening_parameter', type=float, default=50)  # number of re-evals
+    parser.add_argument('-ucb_parameter', type=float, default=0.1)
 
     parameters = parser.parse_args()
     return parameters
@@ -71,8 +72,6 @@ def get_mcts_configs():
         config['explr_p'] = parameters.explr_p
         if parameters.use_shaped_reward:
             config['use_shaped_reward'] = ""
-        if parameters.use_q_count:
-            config['use_q_count'] = ""
 
         config['ucb_parameter'] = parameters.ucb_parameter
         config['sampling_strategy'] = parameters.sampling_strategy

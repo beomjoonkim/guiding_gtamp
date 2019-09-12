@@ -92,7 +92,6 @@ class DiscreteTreeNodeWithPriorQ(DiscreteTreeNode):
         boolean_idxs_with_highest_ucb = (np.max(action_ucb_values) == action_ucb_values).squeeze()
         best_action_idx = np.random.randint(np.sum(boolean_idxs_with_highest_ucb))
         best_action = np.array(actions)[boolean_idxs_with_highest_ucb][best_action_idx]
-        import pdb;pdb.set_trace()
         return best_action
 
     def compute_ucb_value(self, action):

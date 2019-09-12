@@ -40,7 +40,6 @@ class MCTS:
         self.time_limit = parameters.timelimit
         self.n_motion_plan_trials = parameters.n_motion_plan_trials
         self.use_ucb = parameters.use_ucb
-        self.use_q_count = parameters.use_q_count
         self.use_progressive_widening = parameters.pw
         self.n_feasibility_checks = parameters.n_feasibility_checks
         self.use_v_fcn = parameters.use_learned_q
