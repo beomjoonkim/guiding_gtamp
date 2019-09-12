@@ -7,7 +7,10 @@ def get_time_taken(test_dir, stat):
     if test_dir.find('irsc') != -1:
         return stat['time_taken']
     elif test_dir.find('sahs') != -1:
-        return stat.metrics['tottime']
+        if isinstance(stat, dict):
+            return stat['tottime']
+        else:
+            return stat.metrics['tottime']
     elif test_dir.find('mcts') != -1:
         return stat['search_time_to_reward'][-1][0]
 
@@ -16,7 +19,10 @@ def get_success(test_dir, stat):
     if test_dir.find('irsc') != -1:
         return stat['found_solution']
     elif test_dir.find('sahs') != -1:
-        return stat.metrics['success']
+        if isinstance(stat, dict):
+            return stat['success']
+        else:
+            return stat.metrics['success']
     elif test_dir.find('mcts') != -1:
         return stat['search_time_to_reward'][-1][-1]
 
@@ -44,6 +50,9 @@ def get_plan_times(test_dir, test_files, t_limit):
         if pidx < 20000 or pidx > 20100:
             continue
 
+        if 'train_seed_1' in filename:
+            continue
+
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
         fsuccess = get_success(test_dir, stat)
@@ -56,6 +65,7 @@ def get_plan_times(test_dir, test_files, t_limit):
             successes.append(False)
 
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
+    print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
     print "Success rate %.3f" % np.mean(successes)
 
@@ -110,6 +120,7 @@ def main():
     test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
                'sampling_strategy_uniform/n_mp_trials_3/widening_40.0/uct_0.1/switch_frequency_50/' \
                'reward_shaping_False/learned_q_False/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_7000/mse_weight_1.0/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
 
