@@ -129,25 +129,14 @@ class PaPVOOGenerator(PaPGenerator):
 
     def is_time_to_sample_from_best_v_region(self):
         is_more_than_one_action_in_node = len(self.evaled_actions) > 1
-        # print len(self.evaled_actions)
         if is_more_than_one_action_in_node:
-            stime = time.time()
             feasible_actions = [a for a in self.node.A if a.continuous_parameters['is_feasible']]
             we_have_feasible_action = len(feasible_actions) > 0
-            #print 'action existence time check: ', time.time() - stime
         else:
             we_have_feasible_action = False
 
         rnd = np.random.random()
         is_sample_from_best_v_region = rnd < (1 - self.explr_p) and we_have_feasible_action
-
-        if is_sample_from_best_v_region:
-            # self.node.best_v += 1
-            #print 'Sample from the best region'
-            pass
-        else:
-            maxrwd = None if len(self.evaled_actions) == 0 else np.max(self.node.reward_history.values())
-            # print 'Sample ' + self.node.operator_skeleton.type + ' from uniform, max rwd: ', maxrwd
 
         return is_sample_from_best_v_region
 
