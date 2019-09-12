@@ -5,14 +5,17 @@ import numpy as np
 import socket
 import random
 import os
+import tensorflow as tf
 
 from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from gtamp_utils import utils
-from trajectory_representation.trajectory import Trajectory
 from planners.sahs.greedy import search
+from learn.pap_gnn import PaPGNN
+import collections
+
 
 
 def get_problem_env(config):
@@ -68,7 +71,7 @@ def get_solution_file_name(config):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Greedy planner')
     parser.add_argument('-pidx', type=int, default=0)
-    parser.add_argument('-train_seed', type=int, default=0)
+    parser.add_argument('-train_seed', type=int, default=1)
     parser.add_argument('-planner_seed', type=int, default=0)
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_train', type=int, default=7000)
@@ -98,6 +101,56 @@ def set_problem_env_config(problem_env, config):
     problem_env.init_saver = DynamicEnvironmentStateSaver(problem_env.env)
 
 
+def get_pap_gnn_model(mover, config):
+    if not config.hcount:
+        mconfig_type = collections.namedtuple('mconfig_type',
+                                              'operator n_msg_passing n_layers num_fc_layers n_hidden no_goal_nodes top_k optimizer lr use_mse batch_size seed num_train val_portion mse_weight diff_weight_msg_passing same_vertex_model weight_initializer loss use_region_agnostic')
+
+        pap_mconfig = mconfig_type(
+            operator='two_arm_pick_two_arm_place',
+            n_msg_passing=1,
+            n_layers=2,
+            num_fc_layers=2,
+            n_hidden=32,
+            no_goal_nodes=False,
+
+            top_k=1,
+            optimizer='adam',
+            lr=1e-4,
+            use_mse=True,
+
+            batch_size='32',
+            seed=config.train_seed,
+            num_train=config.num_train,
+            val_portion=.1,
+            mse_weight=0.0,
+            diff_weight_msg_passing=False,
+            same_vertex_model=False,
+            weight_initializer='glorot_uniform',
+            loss=config.loss,
+            use_region_agnostic=False
+        )
+        if config.domain == 'two_arm_mover':
+            num_entities = 10
+            n_regions = 2
+        elif config.domain == 'one_arm_mover':
+            num_entities = 12
+            n_regions = 2
+        else:
+            raise NotImplementedError
+        num_node_features = 10
+        num_edge_features = 44
+        entity_names = mover.entity_names
+
+        with tf.variable_scope('pap'):
+            pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
+        pap_model.load_weights()
+    else:
+        pap_model = None
+
+    return pap_model
+
+
 def main():
     config = parse_arguments()
 
@@ -107,37 +160,36 @@ def main():
     problem_env = get_problem_env(config)
     set_problem_env_config(problem_env, config)
 
+    pap_model = get_pap_gnn_model(problem_env, config)
     solution_file_name = get_solution_file_name(config)
 
     is_problem_solved_before = os.path.isfile(solution_file_name)
+    plan_length = 0
+    num_nodes = 0
     if is_problem_solved_before and not config.plan:
         with open(solution_file_name, 'rb') as f:
             trajectory = pickle.load(f)
-            success = trajectory.metrics['success']
-            tottime = trajectory.metrics['tottime']
+            success = trajectory['success']
+            tottime = trajectory['tottime']
     else:
         t = time.time()
-        trajectory, num_nodes = search(problem_env, config)
+        plan, num_nodes = search(problem_env, config, pap_model)
         tottime = time.time() - t
-        success = trajectory is not None
-        plan_length = len(trajectory.actions) if success else 0
-        if not success:
-            trajectory = Trajectory(config.pidx, config.pidx)
-        trajectory.states = [s.get_predicate_evaluations() for s in trajectory.states]
-        trajectory.state_prime = None
+        success = plan is not None
+        plan_length = len(plan) if success else 0
 
-        trajectory.metrics = {
+        data = {
             'n_objs_pack': config.n_objs_pack,
             'tottime': tottime,
             'success': success,
             'plan_length': plan_length,
             'num_nodes': num_nodes,
+            'plan': plan
         }
 
         with open(solution_file_name, 'wb') as f:
-            pickle.dump(trajectory, f)
-    print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, trajectory.metrics['plan_length'],
-                                                                    trajectory.metrics['num_nodes'])
+            pickle.dump(data, f)
+    print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, plan_length, num_nodes)
 
 
 if __name__ == '__main__':
