@@ -55,7 +55,8 @@ def get_solution_file_name(config):
         solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
                              + '/' + str(config.mixrate) + '/'
     else:
-        solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
+        solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/' + \
+                                'mse_weight_' + str(config.mse_weight) + '/'
 
     solution_file_name = 'pidx_' + str(config.pidx) + \
                          '_planner_seed_' + str(config.planner_seed) + \
@@ -77,6 +78,7 @@ def parse_arguments():
     parser.add_argument('-num_train', type=int, default=7000)
     parser.add_argument('-timelimit', type=float, default=300)
     parser.add_argument('-mixrate', type=float, default=1)
+    parser.add_argument('-mse_weight', type=float, default=1)
     parser.add_argument('-visualize_plan', action='store_true', default=False)
     parser.add_argument('-visualize_sim', action='store_true', default=False)
     parser.add_argument('-dontsimulate', action='store_true', default=False)
@@ -123,7 +125,7 @@ def get_pap_gnn_model(mover, config):
             seed=config.train_seed,
             num_train=config.num_train,
             val_portion=.1,
-            mse_weight=0.0,
+            mse_weight=config.mse_weight,
             diff_weight_msg_passing=False,
             same_vertex_model=False,
             weight_initializer='glorot_uniform',

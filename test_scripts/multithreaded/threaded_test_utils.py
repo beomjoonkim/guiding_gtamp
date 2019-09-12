@@ -26,6 +26,7 @@ def parse_options():
     parser.add_argument('-ucb_parameter', type=float, default=0.1)
     parser.add_argument('-switch_frequency', type=int, default=50)
 
+    parser.add_argument('-mse_weight', type=float, default=1)
     parameters = parser.parse_args()
     return parameters
 
@@ -63,6 +64,7 @@ def get_sahs_configs():
         config['train_seed'] = parameters.train_seed
         config['num_train'] = parameters.num_train
         config['mixrate'] = parameters.mixrate
+        config['mse_weight'] = parameters.mse_weight
     return configs
 
 
