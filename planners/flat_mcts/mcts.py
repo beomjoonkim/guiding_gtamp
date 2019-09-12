@@ -114,7 +114,7 @@ class MCTS:
                                             total_number_of_feasibility_checks=self.n_feasibility_checks,
                                             dont_check_motion_existence=dont_check_motion_existence)
 
-        else:
+        elif self.sampling_strategy == 'voo':
             return PaPVOOGenerator(node,
                                    operator_skeleton,
                                    self.problem_env,
@@ -126,6 +126,8 @@ class MCTS:
                                    c1=1,
                                    sampling_mode='gaussian',
                                    counter_ratio=1)
+        else:
+            raise NotImplementedError
         return generator
 
     def compute_state(self, parent_node, parent_action):
