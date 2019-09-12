@@ -53,7 +53,7 @@ def get_solution_file_name(config):
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:
         solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
-                             + '/' + str(config.mixrate) + '/'
+                             + '/mse_weight_' + str(config.mse_weight) + '/mix_rate_' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/' + \
                                 'mse_weight_' + str(config.mse_weight) + '/'
@@ -82,7 +82,7 @@ def parse_arguments():
     parser.add_argument('-visualize_plan', action='store_true', default=False)
     parser.add_argument('-visualize_sim', action='store_true', default=False)
     parser.add_argument('-dontsimulate', action='store_true', default=False)
-    parser.add_argument('-plan', action='store_true', default=False)
+    parser.add_argument('-f', action='store_true', default=False)
     parser.add_argument('-dont_use_gnn', action='store_true', default=False)
     parser.add_argument('-dont_use_h', action='store_true', default=False)
     parser.add_argument('-loss', type=str, default='largemargin')
@@ -168,7 +168,7 @@ def main():
     is_problem_solved_before = os.path.isfile(solution_file_name)
     plan_length = 0
     num_nodes = 0
-    if is_problem_solved_before and not config.plan:
+    if is_problem_solved_before and not config.f:
         with open(solution_file_name, 'rb') as f:
             trajectory = pickle.load(f)
             success = trajectory['success']
