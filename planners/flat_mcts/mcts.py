@@ -49,6 +49,7 @@ class MCTS:
         self.planning_horizon = parameters.planning_horizon
         self.sampling_strategy = parameters.sampling_strategy
         self.explr_p = parameters.explr_p
+        self.switch_frequency = parameters.switch_frequency
 
         # Hard-coded params
         self.check_reachability = True
@@ -297,7 +298,7 @@ class MCTS:
             new_trajs.append(new_traj)
 
             # note that I need to evaluate all actions in a node to switch
-            is_time_to_switch_node = iteration % 100 == 0  # and the node should be feasible
+            is_time_to_switch_node = iteration % self.switch_frequency == 0  # and the node should be feasible
             # I have to have a feasible action to switch if this is an instance node
             if is_time_to_switch_node:
                 if node_to_search_from.is_operator_skeleton_node:
