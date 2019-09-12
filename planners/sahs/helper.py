@@ -64,7 +64,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     elif config.qlearned_hcount:
         all_actions = get_actions(problem_env, None, None)
         entity_names = list(state.nodes.keys())[::-1]
-        # todo clean this up later
+        # todo clean this up later;
         q_vals = []
         for a in all_actions:
             a_raw_form = convert_action_to_predictable_form(a, entity_names)
@@ -79,7 +79,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         o_reachable = state.is_entity_reachable(o)
         o_r_manip_free = state.binary_edges[(o, r)][-1]
 
-        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d gnn_pred %.4f hval %.4f' % (
+        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d qbonus %.4f hval %.4f' % (
             number_in_goal, o, r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
     else:
