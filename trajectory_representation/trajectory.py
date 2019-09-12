@@ -217,29 +217,48 @@ class Trajectory:
 class HCountExpTrajectory(Trajectory):
     def __init__(self, problem_idx, filename, statetype):
         Trajectory.__init__(self, problem_idx, filename, statetype)
+        self.paps_used = None
 
     def get_pap_used_in_plan(self, plan):
-        """
-        picks = plan[::2]
-        places = plan[1::2]
-        obj_to_pick = {p.discrete_parameters['object']: p for p in picks}
-        obj_to_place = {(p.discrete_parameters['object'], p.discrete_parameters['region']): p for p in places}
-        """
-        obj_to_pick = {}
-        obj_to_place = {}
+        obj_to_pick = {op.discrete_parameters['object']: [] for op in plan}
+        obj_to_place = {(op.discrete_parameters['object'], op.discrete_parameters['region']): [] for op in plan}
         for op in plan:
+            # making obj_to_pick and obj_to_place used in the plan; this can be done once, not every time
             pick_cont_param = op.continuous_parameters['pick']
             pick_disc_param = {'object': op.discrete_parameters['object']}
             pick_op = Operator('two_arm_pick', pick_disc_param, pick_cont_param)
             pick_op.low_level_motion = pick_cont_param['motion']
-            obj_to_pick[op.discrete_parameters['object']] = pick_op
+
+            obj_to_pick[op.discrete_parameters['object']].append(pick_op)
 
             place_cont_param = op.continuous_parameters['place']
             place_disc_param = {'object': op.discrete_parameters['object'],
-                               'region': op.discrete_parameters['region']}
+                                'region': op.discrete_parameters['region']}
             place_op = Operator('two_arm_pick', place_disc_param, place_cont_param)
             place_op.low_level_motion = place_cont_param['motion']
-            obj_to_place[(op.discrete_parameters['object'], op.discrete_parameters['region'])] = place_op
+            obj_to_place[(op.discrete_parameters['object'], op.discrete_parameters['region'])].append(place_op)
+        return [obj_to_pick, obj_to_place]
+
+    def account_for_used_picks_and_places(self, n_times_objs_moved, n_times_obj_region_moved):
+        # accounting for the moved objects
+        obj_to_pick = copy.deepcopy(self.paps_used[0])
+        obj_to_place = copy.deepcopy(self.paps_used[1])
+
+        for moved in n_times_objs_moved:
+            n_times_moved = n_times_objs_moved[moved]
+            if moved in obj_to_pick:
+                if n_times_moved >= len(obj_to_pick[moved]):
+                    del obj_to_pick[moved]
+                else:
+                    obj_to_pick[moved] = obj_to_pick[moved][n_times_moved]
+
+        for moved_obj_region in n_times_obj_region_moved:
+            n_times_moved = n_times_obj_region_moved[moved_obj_region]
+            if moved_obj_region in obj_to_place:
+                if n_times_moved >= len(obj_to_place[moved_obj_region]):
+                    del obj_to_place[moved_obj_region]
+                else:
+                    obj_to_place[moved_obj_region] = obj_to_place[moved_obj_region][n_times_moved]
 
         return [obj_to_pick, obj_to_place]
 
@@ -254,30 +273,28 @@ class HCountExpTrajectory(Trajectory):
         parent_state = None
         parent_action = None
 
-        paps_used = self.get_pap_used_in_plan(plan)
-        pick_used = paps_used[0]
-        place_used = paps_used[1]
-        #utils.viewer()
-        state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, 0)
+        moved_objs = {p.discrete_parameters['object'] for p in plan}
+        moved_obj_regions = {(p.discrete_parameters['object'],p.discrete_parameters['region']) for p in plan}
+        n_times_objs_moved = {obj_name: 0 for obj_name in moved_objs}
+        n_times_obj_region_moved = {(obj_name, region_name): 0 for obj_name, region_name in moved_obj_regions}
+
+        self.paps_used = self.get_pap_used_in_plan(plan)
+        curr_paps_used = self.account_for_used_picks_and_places(n_times_objs_moved, n_times_obj_region_moved)
+        state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, curr_paps_used, 0)
 
         for action_idx, action in enumerate(plan):
-            target_obj = openrave_env.GetKinBody(action.discrete_parameters['object'])
-            color_before = get_color(target_obj)
-            set_color(target_obj, [1, 1, 1])
+            action.execute()
 
-            pick_used, place_used = self.delete_moved_objects_from_pap_data(pick_used, place_used, target_obj)
-            paps_used = [pick_used, place_used]
+            # mark that a pick or place in the plan has been used
+            target_obj_name = action.discrete_parameters['object']
+            target_region_name = action.discrete_parameters['region']
+            n_times_objs_moved[target_obj_name] += 1
+            n_times_obj_region_moved[(target_obj_name, target_region_name)] += 1
 
-            action.is_skeleton = False
-            #pap_action = pap_action.merge_operators(plan[action_idx + 1])
-            #pap_action.is_skeleton = False
-            pap_action = copy.deepcopy(action)
-            pap_action.execute()
-            # set_color(target_obj, color_before)
-
+            curr_paps_used = self.account_for_used_picks_and_places(n_times_objs_moved, n_times_obj_region_moved)
             parent_state = state
-            parent_action = pap_action
-            state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, paps_used, action_idx)
+            parent_action = action
+            state = self.compute_state(parent_state, parent_action, goal_entities, problem_env, curr_paps_used, action_idx)
 
             # execute the pap action
             if action == plan[-1]:
@@ -287,7 +304,7 @@ class HCountExpTrajectory(Trajectory):
 
             print "The reward is ", reward
 
-            self.add_sar_tuples(parent_state, pap_action, reward)
+            self.add_sar_tuples(parent_state, action, reward)
             print "Executed", action.discrete_parameters
 
         self.add_state_prime()

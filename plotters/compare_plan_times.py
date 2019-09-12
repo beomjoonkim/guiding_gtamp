@@ -1,5 +1,6 @@
 import pickle
 import os
+import sys
 import numpy as np
 
 
@@ -102,7 +103,7 @@ def get_metrics(test_dir, test_files, n_objs, n_data=None):
 
 
 def main():
-    n_objs = 1
+    n_objs = int(sys.argv[1])
     t_limit = 300*n_objs
     domain = 'two_arm_mover'
 
@@ -123,6 +124,15 @@ def main():
                'reward_shaping_False/learned_q_False/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_7000/mse_weight_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/num_train_7000/1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
+               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
+               'sampling_strategy_uniform/n_mp_trials_3/widening_30.0/uct_0.1/switch_frequency_50/' \
+               'reward_shaping_False/learned_q_False/' % (domain, n_objs)
+    test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
+               'sampling_strategy_voo/n_mp_trials_3/widening_10.0/uct_0.1/switch_frequency_50/' \
+               'reward_shaping_False/learned_q_False/explr_p_0.3/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
 

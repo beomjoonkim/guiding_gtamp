@@ -119,6 +119,7 @@ def search(mover, config, pap_model):
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                     action_queue.put(
                         (hval, float('nan'), newaction, newnode))
+                import pdb;pdb.set_trace()
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
 
