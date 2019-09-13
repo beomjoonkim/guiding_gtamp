@@ -61,7 +61,8 @@ def get_sahs_configs():
             config['state_hcount'] = ""
         elif parameters.qlearned_hcount:
             config['qlearned_hcount'] = ""
-        elif parameters.use_region_agnostic:
+
+        if parameters.use_region_agnostic:
             config['use_region_agnostic'] = ""
 
         config['loss'] = parameters.loss
