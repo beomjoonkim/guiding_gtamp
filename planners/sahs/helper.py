@@ -43,15 +43,20 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
     region_is_goal = state.nodes[target_r][8]
     number_in_goal = 0
-    goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
+
     if 'two_arm' in problem_env.name:
+        goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
         goal_region = 'home_region'
-        for obj_name in goal_objs:
-            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
-            if is_obj_in_goal_region:
-                number_in_goal += 1
+
     else:
-        raise NotImplementedError
+        goal_objs = [tmp_o for tmp_o in state.goal_entities if 'region' not in tmp_o]
+        goal_region = 'rectangular_packing_box1_region'
+
+    for obj_name in goal_objs:
+        is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
+        if is_obj_in_goal_region:
+            number_in_goal += 1
+
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
         print "%s %s %.4f" % (target_o, target_r, hcount)

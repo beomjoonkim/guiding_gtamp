@@ -153,6 +153,16 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
+def make_pklable(plan):
+    for p in plan:
+        obj = p.discrete_parameters['object']
+        region = p.discrete_parameters['region']
+        if not isinstance(region, str):
+            p.discrete_parameters['region'] = region.name
+        if not (isinstance(obj, unicode) or isinstance(obj, str)):
+            p.discrete_parameters['object'] = obj.GetName()
+
+
 def main():
     config = parse_arguments()
 
@@ -179,6 +189,8 @@ def main():
         tottime = time.time() - t
         success = plan is not None
         plan_length = len(plan) if success else 0
+        if success and config.domain == 'one_arm_mover':
+            make_pklable(plan)
 
         data = {
             'n_objs_pack': config.n_objs_pack,

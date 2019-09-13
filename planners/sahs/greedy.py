@@ -11,10 +11,8 @@ from trajectory_representation.operator import Operator
 from trajectory_representation.trajectory import Trajectory
 
 from helper import get_actions, compute_heuristic, get_state_class
-from gtamp_utils import utils
 
 prm_vertices, prm_edges = pickle.load(open('prm.pkl', 'rb'))
-# prm_edges = [set(l) - {i} for i,l in enumerate(prm_edges)]
 prm_vertices = list(prm_vertices)  # TODO: needs to be a list rather than ndarray
 
 connected = np.array([len(s) >= 2 for s in prm_edges])
@@ -52,8 +50,6 @@ def search(mover, config, pap_model):
             return None, iter
 
         iter += 1
-        # if 'one_arm' in mover.name:
-        #   time.sleep(3.5) # gauged using max_ik_attempts = 20
 
         if iter > 3000:
             print('failed to find plan: iteration limit')
@@ -79,7 +75,6 @@ def search(mover, config, pap_model):
 
         # reset to state
         state.restore(mover)
-        # utils.set_color(action.discrete_parameters['object'], [1, 0, 0])  # visualization purpose
 
         if action.type == 'two_arm_pick_two_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
@@ -99,7 +94,6 @@ def search(mover, config, pap_model):
                 print "Action executed"
             else:
                 print "Failed to sample an action"
-                # utils.set_color(action.discrete_parameters['object'], [0, 1, 0])  # visualization purpose
                 continue
 
             is_goal_achieved = \
@@ -108,7 +102,6 @@ def search(mover, config, pap_model):
             if is_goal_achieved:
                 print("found successful plan: {}".format(n_objs_pack))
                 plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
-                #states = [nd.state for nd in plan]
                 plan = [nd.action for nd in plan[1:]] + [action]
                 return plan, iter
             else:
@@ -118,8 +111,7 @@ def search(mover, config, pap_model):
                 newactions = get_actions(mover, goal, config)
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
-                    action_queue.put(
-                        (hval, float('nan'), newaction, newnode))
+                    action_queue.put((hval, float('nan'), newaction, newnode))
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
 
@@ -165,28 +157,9 @@ def search(mover, config, pap_model):
 
                 if is_goal_achieved:
                     print("found successful plan: {}".format(n_objs_pack))
-                    trajectory = Trajectory(mover.seed, mover.seed)
-                    plan = list(node.backtrack())[::-1]
-                    trajectory.states = [nd.state for nd in plan]
-                    for s in trajectory.states:
-                        s.pap_params = None
-                        s.pick_params = None
-                        s.place_params = None
-                        s.nocollision_pick_op = None
-                        s.collision_pick_op = None
-                        s.nocollision_place_op = None
-                        s.collision_place_op = None
-                    trajectory.actions = [nd.action for nd in plan[1:]] + [action]
-                    for op in trajectory.actions:
-                        op.discrete_parameters = {
-                            key: value.name if 'region' in key else value.GetName()
-                            for key, value in op.discrete_parameters.items()
-                        }
-                    trajectory.rewards = [nd.reward for nd in plan[1:]]
-                    trajectory.state_prime = [nd.state for nd in plan[1:]]
-                    trajectory.seed = mover.seed
-                    print(trajectory)
-                    return trajectory, iter
+                    plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
+                    plan = [nd.action for nd in plan[1:]] + [action]
+                    return plan, iter
                 else:
                     newstate = statecls(mover, goal, node.state, action)
                     print "New state computed"
@@ -194,7 +167,7 @@ def search(mover, config, pap_model):
                     newactions = get_actions(mover, goal, config)
                     print "Old h value", curr_hval
                     for newaction in newactions:
-                        hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
+                        hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                         action_queue.put((hval, float('nan'), newaction, newnode))
 
             if not success:
