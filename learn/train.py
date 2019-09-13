@@ -17,18 +17,12 @@ def top_k_accuracy(q_model, nodes, edges, actions, k):
     print "Testing on %d number of data" % len(nodes)
     q_target_action = q_model.predict_with_raw_input_format(nodes, edges, actions)
     n_data = len(nodes)
-    # n_entities = 11
-    # q_all_actions = np.vstack(
-    #    [q_model.predict_with_raw_input_format(nodes, edges, i * np.ones((n_data, 1))) for i in range(n_entities)])
     q_all_actions = q_model.alt_msg_layer.predict([nodes, edges, actions])
-
     accuracy = []
     top_zero_accuracy = []
     top_one_accuracy = []
     top_two_accuracy = []
     for i in range(n_data):
-        # q_all_other = np.delete(q_all_actions[:, i], actions[i])
-        # n_actions_bigger_than_target = np.sum(q_target_action[i] < q_all_actions)
         n_actions_bigger_than_target = np.sum(q_target_action[i] < q_all_actions[i])
         accuracy.append(n_actions_bigger_than_target <= k)
         top_zero_accuracy.append(n_actions_bigger_than_target == 0)
