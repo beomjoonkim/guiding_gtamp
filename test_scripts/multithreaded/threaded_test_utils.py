@@ -18,6 +18,7 @@ def parse_options():
     parser.add_argument('-explr_p', type=float, default=0.3)  # number of re-evals
     parser.add_argument('-planner', type=str, default='mcts_with_leaf_strategy')
     parser.add_argument('-mixrate', type=float, default=1)
+    parser.add_argument('-use_region_agnostic', action='store_true', default=False)
 
     # MCTS
     parser.add_argument('-use_shaped_reward', action='store_true', default=False)
@@ -60,6 +61,9 @@ def get_sahs_configs():
             config['state_hcount'] = ""
         elif parameters.qlearned_hcount:
             config['qlearned_hcount'] = ""
+        elif parameters.use_region_agnostic:
+            config['use_region_agnostic'] = ""
+
         config['loss'] = parameters.loss
         config['train_seed'] = parameters.train_seed
         config['num_train'] = parameters.num_train
