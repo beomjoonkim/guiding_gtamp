@@ -32,34 +32,38 @@ def get_state_class(domain):
 def compute_heuristic(state, action, pap_model, problem_env, config):
     is_two_arm_domain = 'two_arm_place_object' in action.discrete_parameters
     if is_two_arm_domain:
-        o = action.discrete_parameters['two_arm_place_object']
-        r = action.discrete_parameters['two_arm_place_region']
+        target_o = action.discrete_parameters['two_arm_place_object']
+        target_r = action.discrete_parameters['two_arm_place_region']
     else:
-        o = action.discrete_parameters['object'].GetName()
-        r = action.discrete_parameters['region'].name
+        target_o = action.discrete_parameters['object'].GetName()
+        target_r = action.discrete_parameters['region'].name
 
     nodes, edges, actions, _ = extract_individual_example(state, action)
     nodes = nodes[..., 6:]
 
-
-    region_is_goal = state.nodes[r][8]
+    region_is_goal = state.nodes[target_r][8]
     number_in_goal = 0
-    goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
+
     if 'two_arm' in problem_env.name:
+        goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
         goal_region = 'home_region'
-        for obj_name in goal_objs:
-            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
-            if is_obj_in_goal_region:
-                number_in_goal += 1
+
     else:
-        raise NotImplementedError
+        goal_objs = [tmp_o for tmp_o in state.goal_entities if 'region' not in tmp_o]
+        goal_region = 'rectangular_packing_box1_region'
+
+    for obj_name in goal_objs:
+        is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
+        if is_obj_in_goal_region:
+            number_in_goal += 1
+
     if config.hcount:
         hcount = compute_hcount_with_action(state, action, problem_env)
-        print "%s %s %.4f" % (o, r, hcount)
+        print "%s %s %.4f" % (target_o, target_r, hcount)
         return hcount
     elif config.state_hcount:
         hcount = compute_hcount(state, problem_env)
-        print "state_hcount %s %s %.4f" % (o, r, hcount)
+        print "state_hcount %s %s %.4f" % (target_o, target_r, hcount)
         return hcount
     elif config.qlearned_hcount:
         all_actions = get_actions(problem_env, None, None)
@@ -74,19 +78,21 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
         # hval = -number_in_goal + gnn_pred
         hcount = compute_hcount(state, problem_env)
+        obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
 
-        hval = hcount - config.mixrate * q_bonus
-        o_reachable = state.is_entity_reachable(o)
-        o_r_manip_free = state.binary_edges[(o, r)][-1]
+        hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
 
         print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d qbonus %.4f hval %.4f' % (
-            number_in_goal, o, r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
     else:
         qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         hval = -number_in_goal - qval
-        o_reachable = state.is_entity_reachable(o)
-        o_r_manip_free = state.binary_edges[(o, r)][-1]
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+        hcount = compute_hcount(state, problem_env)
 
         """
         Vpre_free = state.nodes[action.discrete_parameters['object']][9]
@@ -103,6 +109,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         print "====================="
         """
-        print 'n_in_goal %d %s %s prefree %d manipfree %d qval %.4f hval %.4f' % (
-            number_in_goal, o, r, o_reachable, o_r_manip_free, qval, hval)
+        print 'n_in_goal %d %30s %30s prefree %d manipfree %d hcount %d qval %.4f hval %.4f' % (
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, qval, hval)
         return hval

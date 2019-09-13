@@ -52,7 +52,7 @@ def get_solution_file_name(config):
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:
-        solution_file_dir += '/qlearned_hcount/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
+        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
                              + '/mse_weight_' + str(config.mse_weight) + '/mix_rate_' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
@@ -153,6 +153,16 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
+def make_pklable(plan):
+    for p in plan:
+        obj = p.discrete_parameters['object']
+        region = p.discrete_parameters['region']
+        if not isinstance(region, str):
+            p.discrete_parameters['region'] = region.name
+        if not (isinstance(obj, unicode) or isinstance(obj, str)):
+            p.discrete_parameters['object'] = obj.GetName()
+
+
 def main():
     config = parse_arguments()
 
@@ -179,6 +189,8 @@ def main():
         tottime = time.time() - t
         success = plan is not None
         plan_length = len(plan) if success else 0
+        if success and config.domain == 'one_arm_mover':
+            make_pklable(plan)
 
         data = {
             'n_objs_pack': config.n_objs_pack,
