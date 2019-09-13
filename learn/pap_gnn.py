@@ -95,19 +95,22 @@ class PaPGNN(GNN):
     def create_region_based_sender_dest_edge_concatenation_lambda_layer(self):
         def concatenate_fcn(src_r1, src_r2, dest_r1, dest_r2, edge_tensor):
             n_entities = self.num_entities
-            src_repetitons = [1, 1, n_entities, 1]  # repeat in the columns
 
-            src_r1_repeated = tf.tile(tf.expand_dims(src_r1, -2), src_repetitons)
-            src_r2_repeated = tf.tile(tf.expand_dims(src_r2, -2), src_repetitons)
-            src_r_concat = tf.concat([tf.expand_dims(src_r1_repeated, -2), tf.expand_dims(src_r2_repeated, -2)], axis=-2)
+            # node: n_data n_sender n_rcver n_dims
+            # concate along the regions
+            region_axis = -2
+            src_repetitons = [1, 1, n_entities, 1]  # same message for all the rcvers
+            src_r1_repeated = tf.tile(tf.expand_dims(src_r1, region_axis), src_repetitons)
+            src_r2_repeated = tf.tile(tf.expand_dims(src_r2, region_axis), src_repetitons)
+            src_r_concat = tf.concat([tf.expand_dims(src_r1_repeated, region_axis), tf.expand_dims(src_r2_repeated, region_axis)], axis=region_axis)
 
-            dest_repetitons = [1, n_entities, 1, 1]  # repeat in the rows
+            dest_repetitons = [1, n_entities, 1, 1]  # same message for all the senders
             dest_r1_repeated = tf.tile(tf.expand_dims(dest_r1, 1), dest_repetitons)
             dest_r2_repeated = tf.tile(tf.expand_dims(dest_r2, 1), dest_repetitons)
-            dest_r_concat = tf.concat([tf.expand_dims(dest_r1_repeated, -2), tf.expand_dims(dest_r2_repeated, -2)], axis=-2)
+            dest_r_concat = tf.concat([tf.expand_dims(dest_r1_repeated, region_axis), tf.expand_dims(dest_r2_repeated, region_axis)], axis=region_axis)
 
+            # concatenate src and dest
             src_dest_concat = tf.concat([src_r_concat, dest_r_concat], axis=-1)
-
 
             all_concat = tf.concat([src_dest_concat, edge_tensor], axis=-1)
 
@@ -141,6 +144,8 @@ class PaPGNN(GNN):
             msg_aggregation_layer = self.create_graph_network_layers_with_different_msg_passing_network(config)
         else:
             msg_aggregation_layer = self.create_graph_network_layers_with_same_msg_passing_network(config)
+
+        # apply the same last layer weight to all the aggregated msgs
         value_layer = tf.keras.layers.Conv2D(1, kernel_size=(1, 1),
                                              kernel_initializer=self.config.weight_initializer,
                                              bias_initializer=self.config.weight_initializer,
@@ -149,11 +154,11 @@ class PaPGNN(GNN):
         n_regions = self.n_regions
 
         def compute_q(values, actions):
+            # Is this correct?
             values = tf.squeeze(values)
             actions = tf.cast(actions, dtype=tf.float32)
             q_value = actions * values
             q_value = tf.reduce_sum(tf.reduce_sum(q_value, axis=-1), axis=-1)
-            # q_value = tf.reduce_sum(tf.reduce_sum(values,axis=-1),axis=-1)
             return q_value
 
         q_layer = tf.keras.layers.Lambda(lambda args: compute_q(*args))

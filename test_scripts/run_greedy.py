@@ -53,11 +53,12 @@ def get_solution_file_name(config):
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:
         solution_file_dir += '/qlearned_hcount_obj_already_in_goal/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
-                             + '/mse_weight_' + str(config.mse_weight) + '/mix_rate_' + str(config.mixrate) + '/'
+                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(config.use_region_agnostic) \
+                             + 'mix_rate_' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
-                              + '/mse_weight_' + str(config.mse_weight) + '/'
-
+                              + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' \
+                              + str(config.use_region_agnostic) + '/'
     solution_file_name = 'pidx_' + str(config.pidx) + \
                          '_planner_seed_' + str(config.planner_seed) + \
                          '_train_seed_' + str(config.train_seed) + \
@@ -91,6 +92,7 @@ def parse_arguments():
     parser.add_argument('-hcount', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
+    parser.add_argument('-use_region_agnostic', action='store_true', default=False)
     config = parser.parse_args()
     return config
 
@@ -130,7 +132,7 @@ def get_pap_gnn_model(mover, config):
             same_vertex_model=False,
             weight_initializer='glorot_uniform',
             loss=config.loss,
-            use_region_agnostic=False
+            use_region_agnostic=config.use_region_agnostic
         )
         if config.domain == 'two_arm_mover':
             num_entities = 10
