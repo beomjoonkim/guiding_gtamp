@@ -48,13 +48,13 @@ def get_plan_times(test_dir, test_files, t_limit):
     print "Getting test stats from %d files in %s" % (len(test_files), test_dir)
     for filename in test_files:
         pidx = get_pidx(test_dir, filename)
-        if pidx < 20000 or pidx > 20100:
-            continue
+        #if pidx < 20000 or pidx > 20100:
+        #    continue
 
-        if 'train_seed_0' in filename:
-            continue
         #print filename
 
+        #if 'train_seed_3' not in filename:
+        #    continue
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
         fsuccess = get_success(test_dir, stat)
@@ -65,7 +65,7 @@ def get_plan_times(test_dir, test_files, t_limit):
         else:
             time_taken.append(t_limit)
             successes.append(False)
-
+    import pdb;pdb.set_trace()
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
@@ -86,8 +86,8 @@ def get_metrics(test_dir, test_files, n_objs, n_data=None):
     for fidx, filename in enumerate(test_files):
         print "%d / %d" % (fidx, len(test_files))
         pidx = get_pidx(test_dir, filename)
-        if pidx < 20000:
-            continue
+        #if pidx < 20000:
+        #    continue
 
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
@@ -122,7 +122,6 @@ def main():
     test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
                'sampling_strategy_uniform/n_mp_trials_3/widening_30.0/uct_0.1/switch_frequency_50/' \
                'reward_shaping_False/learned_q_False/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
     test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
                'sampling_strategy_voo/n_mp_trials_3/widening_20.0/uct_0.1/switch_frequency_50/' \
                'reward_shaping_False/learned_q_False/explr_p_0.3/' % (domain, n_objs)
@@ -130,11 +129,19 @@ def main():
                'sampling_strategy_uniform/n_mp_trials_3/widening_20.0/uct_0.1/switch_frequency_50/' \
                'reward_shaping_False/learned_q_False/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
                'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/num_train_7000/1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
+               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
+               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
+               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
+               'num_train_7000/mse_weight_1.0/use_region_agnostic_True/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = 'planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
 
