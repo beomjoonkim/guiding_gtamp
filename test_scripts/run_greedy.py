@@ -40,8 +40,13 @@ def get_solution_file_name(config):
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/'
 
-    solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d' \
-                        % (config.domain, config.n_objs_pack)
+    if config.gather_planning_exp:
+        root_dir = root_dir + '/planning_experience/'
+        solution_file_dir = root_dir + '/domain_%s/n_objs_pack_%d' \
+                            % (config.domain, config.n_objs_pack)
+    else:
+        solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d' \
+                            % (config.domain, config.n_objs_pack)
 
     if config.dont_use_gnn:
         solution_file_dir += '/no_gnn/'
@@ -93,6 +98,7 @@ def parse_arguments():
     parser.add_argument('-qlearned_hcount', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
     parser.add_argument('-use_region_agnostic', action='store_true', default=False)
+    parser.add_argument('-gather_planning_exp', action='store_true', default=False)
     config = parser.parse_args()
     return config
 
