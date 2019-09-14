@@ -13,7 +13,7 @@ else:
 
 
 def get_save_dir(parameters):
-    save_dir = ROOTDIR + '/planning_experience/%s/%s/domain_two_arm_mover/n_objs_pack_1/trajectory_data/' \
+    save_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/%s/trajectory_data/%s/' \
                 %(parameters.planner, parameters.statetype)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
@@ -22,10 +22,10 @@ def get_save_dir(parameters):
 
 def get_raw_dir(parameters):
     if parameters.planner == 'hcount':
-        raw_dir = ROOTDIR + '/planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
-        #raw_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/'
+        #raw_dir = ROOTDIR + '/planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
+        raw_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/'
     else:
-        raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
+        raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/irsc/'
     return raw_dir
 
 
@@ -73,7 +73,6 @@ def parse_parameters():
 
 
 def get_processed_fname(parameters, save_dir, raw_fname):
-    print "Processing", save_dir + raw_fname
     traj_fname = 'pap_traj_' + raw_fname
 
     return traj_fname
@@ -87,8 +86,8 @@ def get_goal_entities(parameters):
 
 def get_raw_fname(parameters):
     if parameters.planner == 'hcount':
-        return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
-        #return 'pidx_%d_planner_seed_0_train_seed_0_domain_two_arm_mover.pkl' % parameters.pidx
+        #return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
+        return 'pidx_%d_planner_seed_0_train_seed_0_domain_two_arm_mover.pkl' % parameters.pidx
     else:
         return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
 
