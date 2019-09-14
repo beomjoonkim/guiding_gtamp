@@ -1,4 +1,6 @@
 import os
+import multiprocessing
+
 from multiprocessing.pool import ThreadPool  # dummy is nothing but multiprocessing but wrapper around threading
 from threaded_test_utils import get_sahs_configs
 
@@ -22,7 +24,7 @@ def worker_wrapper_multi_input(multi_args):
 
 def main():
     configs = get_sahs_configs()
-    n_workers = 10
+    n_workers = multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
 
