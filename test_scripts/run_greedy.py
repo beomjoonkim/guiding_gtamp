@@ -173,6 +173,8 @@ def make_pklable(plan):
 
 def main():
     config = parse_arguments()
+    if config.gather_planning_exp:
+        config.timelimit = np.inf
 
     np.random.seed(config.pidx)
     random.seed(config.pidx)
