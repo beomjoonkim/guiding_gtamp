@@ -7,11 +7,12 @@ import time
 
 from process_planning_experience import parse_parameters
 
+
 def worker_p(config):
     command = 'python ./data_processing/process_planning_experience.py'
 
     for key, value in zip(config.keys(), config.values()):
-        option = ' -'+str(key)+' ' + str(value)
+        option = ' -' + str(key) + ' ' + str(value)
         command += option
 
     print command

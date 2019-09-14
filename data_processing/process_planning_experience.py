@@ -23,6 +23,7 @@ def get_save_dir(parameters):
 def get_raw_dir(parameters):
     if parameters.planner == 'hcount':
         raw_dir = ROOTDIR + '/planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
+        #raw_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/'
     else:
         raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1/'
     return raw_dir
@@ -46,7 +47,10 @@ def process_plan_file(filename, pidx, goal_entities, parameters):
     #if plan_data['plan'] is None:
     #    raise IOError
     if parameters.planner == 'hcount':
-        plan = plan_data.actions
+        if isinstance(plan_data, dict):
+            plan = plan_data['plan']
+        else:
+            plan = plan_data.actions
     else:
         plan = plan_data['plan']
 
@@ -84,6 +88,7 @@ def get_goal_entities(parameters):
 def get_raw_fname(parameters):
     if parameters.planner == 'hcount':
         return 'pidx_%d_planner_seed_0.pkl' % parameters.pidx
+        #return 'pidx_%d_planner_seed_0_train_seed_0_domain_two_arm_mover.pkl' % parameters.pidx
     else:
         return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
 
