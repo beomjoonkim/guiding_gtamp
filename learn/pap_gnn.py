@@ -97,27 +97,27 @@ class PaPGNN(GNN):
             n_entities = self.num_entities
 
             # node: n_data n_sender n_rcver n_dims
-            # concate along the regions
-            region_axis = -2
+            # repeate the srcs and dests to make them into a single vector
             src_repetitons = [1, 1, n_entities, 1]  # same message for all the rcvers
-            src_r1_repeated = tf.tile(tf.expand_dims(src_r1, region_axis), src_repetitons)
-            src_r2_repeated = tf.tile(tf.expand_dims(src_r2, region_axis), src_repetitons)
-            src_r_concat = tf.concat([tf.expand_dims(src_r1_repeated, region_axis), tf.expand_dims(src_r2_repeated, region_axis)], axis=region_axis)
+            src_r1_repeated = tf.tile(tf.expand_dims(src_r1, -2), src_repetitons)
+            src_r2_repeated = tf.tile(tf.expand_dims(src_r2, -2), src_repetitons)
 
             dest_repetitons = [1, n_entities, 1, 1]  # same message for all the senders
             dest_r1_repeated = tf.tile(tf.expand_dims(dest_r1, 1), dest_repetitons)
             dest_r2_repeated = tf.tile(tf.expand_dims(dest_r2, 1), dest_repetitons)
-            dest_r_concat = tf.concat([tf.expand_dims(dest_r1_repeated, region_axis), tf.expand_dims(dest_r2_repeated, region_axis)], axis=region_axis)
+
+            # concate along the regions
+            region_axis = -2
+            src_r_concat = tf.concat([tf.expand_dims(src_r1_repeated, region_axis),
+                                      tf.expand_dims(src_r2_repeated, region_axis)], axis=region_axis)
+            dest_r_concat = tf.concat([tf.expand_dims(dest_r1_repeated, region_axis),
+                                       tf.expand_dims(dest_r2_repeated, region_axis)], axis=region_axis)
 
             # concatenate src and dest
             src_dest_concat = tf.concat([src_r_concat, dest_r_concat], axis=-1)
 
             all_concat = tf.concat([src_dest_concat, edge_tensor], axis=-1)
 
-            # todo I think I could get away with not repeating srcs, by predicting
-            #   different values.
-            # this should be of size n_data, n_entities, n_entities, dim_node
-            # edge is of size n_data, n_entities, n_entities, n_region, dim_edge
             return all_concat
 
         concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_fcn(*args), name='r_based_concat')
