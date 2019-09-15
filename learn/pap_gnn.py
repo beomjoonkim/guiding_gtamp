@@ -242,6 +242,15 @@ class PaPGNN(GNN):
         inputs = [self.node_input, self.edge_input, self.action_input]
         self.msg_model = self.make_model(inputs, msg_network, 'msg_model')
         self.concat_model = self.make_model(inputs, concat_layer, 'concat_model')
+
+        if config.n_msg_passing > 0 and not config.use_region_agnostic:
+            self.val_r1_model = self.make_model(inputs, val_r1, 'val_r1')
+            self.val_r2_model = self.make_model(inputs, val_r2, 'val_r2')
+            self.sender_r1_model = self.make_model(inputs, sender_r1_network, 'sender_r1')
+            self.sender_r2_model = self.make_model(inputs, sender_r2_network, 'sender_r2')
+            self.dest_r1_model = self.make_model(inputs, dest_r1_network, 'dest_r1')
+            self.dest_r2_model = self.make_model(inputs, dest_r2_network, 'dest_r2')
+
         if same_model_for_sender_and_dest:
             self.sender_model = vertex_model  # sender_model
             self.dest_model = vertex_model  # dest_model
@@ -327,6 +336,7 @@ class PaPGNN(GNN):
                                                     compute_rank_loss(*args)
                                                     + self.config.mse_weight * compute_mse_loss(*args))
 
+        # q_layer is a one-hot on the aggregated msgs
         loss_layer = loss_layer([alt_msg_layer, q_layer, self.cost_input])
         loss_inputs = [self.node_input, self.edge_input, self.action_input, self.cost_input]
         loss_model = tf.keras.Model(loss_inputs, loss_layer)
