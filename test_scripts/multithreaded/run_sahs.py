@@ -2,6 +2,7 @@ import os
 from multiprocessing.pool import ThreadPool  # dummy is nothing but multiprocessing but wrapper around threading
 from threaded_test_utils import get_sahs_configs
 from test_scripts.run_greedy import parse_arguments
+import multiprocessing
 
 
 def worker_p(config):
@@ -50,7 +51,7 @@ def main():
 
         configs.append(config)
 
-    n_workers = 1
+    n_workers = multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
 
