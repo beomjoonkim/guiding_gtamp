@@ -47,7 +47,8 @@ def make_one_hot_encoded_edge(edge):
 def get_edges(state, region_nodes, entity_names):
     # Desired output shape: n_e x n_e x n_r x n_edge
 
-    regions = [r for r in entity_names if 'region' in r and 'entire' not in r]
+    #regions = [r for r in entity_names if 'region' in r and 'entire' not in r]  # is the region order always fixed?
+    regions = ['home_region', 'loading_region']
     n_edge_features = 44
     n_regions = len(regions)
     n_entities = len(entity_names)
@@ -104,7 +105,6 @@ def get_actions(op_skeleton, entity_names):
         action[object_idx, region_idx] = 1
     else:
         raise NotImplementedError
-
     return action
 
 
