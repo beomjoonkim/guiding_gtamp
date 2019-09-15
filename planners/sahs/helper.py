@@ -77,7 +77,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
 
         # hval = -number_in_goal + gnn_pred
-        hcount = compute_hcount(state, problem_env)
+        hcount = compute_hcount_with_action(state, action, problem_env)
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
 
         hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus

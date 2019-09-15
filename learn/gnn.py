@@ -30,6 +30,7 @@ class GNN(object):
             print self.entity_name_to_idx
 
     def load_weights(self):
+        print "Loading weight", self.weight_file_name
         self.loss_model.load_weights(self.weight_file_name)
 
     def __deepcopy__(self, _):
@@ -243,6 +244,7 @@ class GNN(object):
             attention = tf.squeeze(tf.one_hot(action_idxs, num_entities, dtype=tf.float32))
             q_value = tf.reduce_sum(attention * values, axis=-1)
             return q_value
+
 
         q_layer = tf.keras.layers.Lambda(lambda args: compute_q(*args))
         q_layer = q_layer([value_layer, self.action_input])
