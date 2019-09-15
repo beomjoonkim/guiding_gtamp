@@ -8,7 +8,9 @@ import time
 
 
 def get_actions(mover, goal, config):
-    return mover.get_applicable_ops()
+    actions = mover.get_applicable_ops()
+    permuted_actions = np.random.permutation(actions).tolist()
+    return permuted_actions
 
 
 def get_state_class(domain):
@@ -58,8 +60,13 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             number_in_goal += 1
 
     if config.hcount:
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+
         hcount = compute_hcount_with_action(state, action, problem_env)
-        print "%s %s %.4f" % (target_o, target_r, hcount)
+        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d' % (
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, )
+        #print "%s %s %.4f" % (target_o, target_r, hcount)
         return hcount
     elif config.state_hcount:
         hcount = compute_hcount(state, problem_env)
