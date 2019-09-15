@@ -65,7 +65,6 @@ def get_plan_times(test_dir, test_files, t_limit):
         else:
             time_taken.append(t_limit)
             successes.append(False)
-    import pdb;pdb.set_trace()
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
@@ -118,7 +117,6 @@ def main():
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qbonus_and_hcount/loss_largemargin/num_train_5000/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn_after_submission/loss_largemargin/num_train_5000/' % (domain, n_objs)
 
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_7000/mse_weight_1.0/' % (domain, n_objs)
     test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
                'sampling_strategy_uniform/n_mp_trials_3/widening_30.0/uct_0.1/switch_frequency_50/' \
                'reward_shaping_False/learned_q_False/' % (domain, n_objs)
@@ -142,6 +140,9 @@ def main():
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
                'num_train_7000/mse_weight_1.0/use_region_agnostic_True/mix_rate_1.0/' % (domain, n_objs)
     test_dir = 'planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/hcount/'
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
+               'num_train_1805/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_1805/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
 
