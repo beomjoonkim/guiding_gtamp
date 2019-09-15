@@ -62,19 +62,10 @@ def get_num_nodes(test_dir, test_files):
     print "Getting test stats from %d files in %s" % (len(test_files), test_dir)
     for filename in test_files:
         pidx = get_pidx(test_dir, filename)
-        # if pidx < 20000 or pidx > 20100:
-        #    continue
 
-        # print filename
-
-        # if 'train_seed_3' not in filename:
-        #    continue
         stat = pickle.load(open(test_dir + filename, 'r'))
         num_nodes = get_num_node_from_file(test_dir, stat)
         all_num_nodes.append(num_nodes)
-        # ftime_taken = get_time_taken(test_dir, stat)
-        # fsuccess = get_success(test_dir, stat)
-
     CI95 = 1.96 * np.std(all_num_nodes) / np.sqrt(len(all_num_nodes))
     print "Number of data", len(all_num_nodes)
     print "Num nodes %.3f +- %.3f" % (np.mean(all_num_nodes), CI95)
@@ -106,7 +97,7 @@ def get_plan_times(test_dir, test_files, t_limit):
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
-    print "Success rate %.3f" % np.mean(time_taken)
+    print "Success rate %.3f" % np.mean(successes)
 
 
 def main():
@@ -154,9 +145,9 @@ def main():
                'num_train_1805/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_1805/mse_weight_1.0/use_region_agnostic_False/' % (
     domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_10000/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_mse/' \
+               'num_train_10000/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
     get_num_nodes(test_dir, test_files)
