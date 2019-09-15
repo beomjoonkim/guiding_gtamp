@@ -43,7 +43,7 @@ def create_callbacks(q_weight_file):
     return callbacks
 
 
-#def create_gnn_model(nodes, edges, config):
+# def create_gnn_model(nodes, edges, config):
 def create_gnn_model(config, nodes, edges):
     num_entities = nodes.shape[1]
     m = PaPGNN(num_entities, nodes.shape[-1], edges.shape[-1], config)
@@ -69,11 +69,14 @@ def train(config):
         #'./planning_experience/hcount/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         './planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/trajectory_data/shortest/',
         desired_operator_type=config.operator)
+    """
     print "Loading data..."
-    #nodes, edges, actions, rewards = pickle.load(open('planning_experience/two_arm_pick_two_arm_place_before_submission.pkl', 'r'))
+    nodes, edges, actions, rewards = pickle.load(open('tmp.pkl', 'r'))
+    """
 
     print "Total number of data", len(nodes)
-    #num_test = min(config.num_test, len(nodes))
+
+    # num_test = min(config.num_test, len(nodes))
     num_training = config.num_train
     num_test = len(nodes) - num_training
     assert num_training > 0
