@@ -45,12 +45,13 @@ def search(mover, config, pap_model):
     iter = 0
     # beginning of the planner
     while True:
-        print "Time limit is ", config.timelimit
-        print "Num node limit is", config.num_node_limit
-        if time.time() - tt > config.timelimit or iter > config.num_node_limit:
+        iter += 1
+        curr_time = time.time()-tt
+        print "Time %.2f / %.2f "%(curr_time, config.timelimit)
+        print "Iter %d / %d" %(iter, config.num_node_limit)
+        if curr_time > config.timelimit or iter > config.num_node_limit:
             return None, iter
 
-        iter += 1
 
         if iter > 3000:
             print('failed to find plan: iteration limit')

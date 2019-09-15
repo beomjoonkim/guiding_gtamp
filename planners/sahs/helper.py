@@ -88,12 +88,24 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
     else:
+        hval = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
+        """
+        all_actions = get_actions(problem_env, None, None)
+        entity_names = list(state.nodes.keys())[::-1]
         qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = -number_in_goal - qval
+        q_vals = []
+        for a in all_actions:
+            a_raw_form = convert_action_to_predictable_form(a, entity_names)
+            q_vals.append(np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
+        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
+
+        hval = -number_in_goal - q_bonus
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
         hcount = compute_hcount(state, problem_env)
 
+        """
         """
         Vpre_free = state.nodes[action.discrete_parameters['object']][9]
         Vmanip_free = state.binary_edges[(action.discrete_parameters['object'], action.discrete_parameters['region'])][2]
@@ -106,9 +118,10 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print "Total occ " + str(len(Vpre_occ + Vmanip_occ))
         print "Occ place to goal " + str(len([objregion for objregion in Vmanip_occ if objregion[1] == 'home_region']))
 
-        print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
+        #print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
+        #print "%s %s hval: %.9f " % (o, r, hval)
         print "====================="
-        """
         print 'n_in_goal %d %30s %30s prefree %d manipfree %d hcount %d qval %.4f hval %.4f' % (
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, qval, hval)
+        """
         return hval
