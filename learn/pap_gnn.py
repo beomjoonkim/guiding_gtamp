@@ -331,10 +331,12 @@ class PaPGNN(GNN):
         else:
             if self.config.loss == 'dql':
                 loss_layer = tf.keras.layers.Lambda(lambda args: compute_dql_loss(*args))
-            else:
+            elif self.config.loss == 'largemargin':
                 loss_layer = tf.keras.layers.Lambda(lambda args:
                                                     compute_rank_loss(*args)
                                                     + self.config.mse_weight * compute_mse_loss(*args))
+            else:
+                raise NotImplementedError
 
         # q_layer is a one-hot on the aggregated msgs
         loss_layer = loss_layer([alt_msg_layer, q_layer, self.cost_input])

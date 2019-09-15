@@ -46,7 +46,8 @@ def search(mover, config, pap_model):
     # beginning of the planner
     while True:
         print "Time limit is ", config.timelimit
-        if time.time() - tt > config.timelimit:
+        print "Num node limit is", config.num_node_limit
+        if time.time() - tt > config.timelimit or iter > config.num_node_limit:
             return None, iter
 
         iter += 1
