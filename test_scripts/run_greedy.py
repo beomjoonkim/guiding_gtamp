@@ -99,6 +99,7 @@ def parse_arguments():
     parser.add_argument('-state_hcount', action='store_true', default=False)
     parser.add_argument('-use_region_agnostic', action='store_true', default=False)
     parser.add_argument('-gather_planning_exp', action='store_true', default=False)
+    parser.add_argument('-pidxs', nargs=2, type=int, default=[0, 1])  # used for threaded runs
     config = parser.parse_args()
     return config
 
