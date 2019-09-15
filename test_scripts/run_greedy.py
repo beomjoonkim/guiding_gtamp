@@ -194,6 +194,7 @@ def main():
             trajectory = pickle.load(f)
             success = trajectory['success']
             tottime = trajectory['tottime']
+            num_nodes = trajectory['num_nodes']
     else:
         t = time.time()
         plan, num_nodes = search(problem_env, config, pap_model)
