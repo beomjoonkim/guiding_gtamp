@@ -66,7 +66,8 @@ def train(config):
         #'./planning_experience/irsc/two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./planning_experience/hcount/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./planning_experience/irsc/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
-        './planning_experience/hcount/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
+        #'./planning_experience/hcount/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
+        './planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/trajectory_data/',
         desired_operator_type=config.operator)
     print "Loading data..."
     #nodes, edges, actions, rewards = pickle.load(open('planning_experience/two_arm_pick_two_arm_place_before_submission.pkl', 'r'))
