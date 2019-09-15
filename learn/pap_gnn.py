@@ -92,7 +92,7 @@ class PaPGNN(GNN):
         concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_src_dest_edge_fcn(*args), name='concat')
         return concat_layer
 
-    def create_region_based_sender_dest_edge_concatenation_lambda_layer(self):
+    def create_region_based_sender_dest_edge_concatenation_lambda_layer(self, msg_passing_iter):
         def concatenate_fcn(src_r1, src_r2, dest_r1, dest_r2, edge_tensor):
             n_entities = self.num_entities
 
@@ -120,7 +120,7 @@ class PaPGNN(GNN):
 
             return all_concat
 
-        concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_fcn(*args), name='r_based_concat')
+        concat_layer = tf.keras.layers.Lambda(lambda args: concatenate_fcn(*args), name='r_based_concat_'+str(msg_passing_iter))
         return concat_layer
 
     def create_concat_model_for_verification(self):
@@ -219,8 +219,8 @@ class PaPGNN(GNN):
                     dest_network = dest_model(val)
                     concat_layer = concat_lambda_layer([sender_network, dest_network, edge_network])
                 else:
-                    r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1')
-                    r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2')
+                    r1_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 0, :], name='r1_'+str(i)) 
+                    r2_msg_value = tf.keras.layers.Lambda(lambda x: x[:, :, 1, :], name='r2_'+str(i))
                     val_r1 = r1_msg_value(msg_aggregation_layer)
                     val_r2 = r2_msg_value(msg_aggregation_layer)
 
@@ -228,7 +228,7 @@ class PaPGNN(GNN):
                     sender_r2_network = sender_model(val_r2)
                     dest_r1_network = dest_model(val_r1)
                     dest_r2_network = dest_model(val_r2)
-                    region_concat_lambda_layer = self.create_region_based_sender_dest_edge_concatenation_lambda_layer()
+                    region_concat_lambda_layer = self.create_region_based_sender_dest_edge_concatenation_lambda_layer(i)
 
                     concat_layer = region_concat_lambda_layer([sender_r1_network, sender_r2_network,
                                                                dest_r1_network, dest_r2_network,
