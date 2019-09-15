@@ -3,6 +3,7 @@ from multiprocessing.pool import ThreadPool  # dummy is nothing but multiprocess
 from threaded_test_utils import get_sahs_configs
 from test_scripts.run_greedy import parse_arguments
 
+
 def worker_p(config):
     command = 'python ./test_scripts/run_greedy.py'
 
@@ -13,7 +14,7 @@ def worker_p(config):
         command += option
 
     print command
-    #os.system(command)
+    os.system(command)
 
 
 def worker_wrapper_multi_input(multi_args):
@@ -21,7 +22,7 @@ def worker_wrapper_multi_input(multi_args):
 
 
 def main():
-    #configs = get_sahs_configs()
+    # configs = get_sahs_configs()
     params = parse_arguments()
     pidx_begin = params.pidxs[0]
     pidx_end = params.pidxs[1]
