@@ -41,6 +41,7 @@ def search(mover, config, pap_model):
     actions = get_actions(mover, goal, config)
     for a in actions:
         hval = compute_heuristic(state, a, pap_model, mover, config)
+        initnode.set_heuristic(a, hval)
         action_queue.put((hval, float('nan'), a, initnode))  # initial q
 
     iter = 0
@@ -56,17 +57,12 @@ def search(mover, config, pap_model):
         if action_queue.empty():
             actions = get_actions(mover, goal, config)
             for a in actions:
-                action_queue.put((compute_heuristic(initial_state, a, pap_model, mover, config), float('nan'), a,
-                                  initnode))  # initial q
+                hval = initnode.heuristic_vals[a]
+                action_queue.put((hval, float('nan'), a, initnode))  # initial q
 
         curr_hval, _, action, node = action_queue.get()
         state = node.state
         print "Curr hval", curr_hval
-
-        if node.depth >= 2 and action.type == 'two_arm_pick' and node.parent.action.discrete_parameters['object'] == \
-                action.discrete_parameters['object']:  # and plan[-1][1] == r:
-            print('skipping because repeat', action.discrete_parameters['object'])
-            continue
 
         if node.depth > depth_limit:
             print('skipping because depth limit', node.action.discrete_parameters.values())
@@ -110,7 +106,6 @@ def search(mover, config, pap_model):
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                     action_queue.put((hval, float('nan'), newaction, newnode))
-            #import pdb;pdb.set_trace()
 
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
