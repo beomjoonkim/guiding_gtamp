@@ -3,6 +3,7 @@ import pickle
 import Queue
 import numpy as np
 from node import Node
+from gtamp_utils import utils
 
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
 from generators.uniform import UniformPaPGenerator
@@ -50,11 +51,6 @@ def search(mover, config, pap_model):
         print "Time %.2f / %.2f "%(curr_time, config.timelimit)
         print "Iter %d / %d" %(iter, config.num_node_limit)
         if curr_time > config.timelimit or iter > config.num_node_limit:
-            return None, iter
-
-
-        if iter > 3000:
-            print('failed to find plan: iteration limit')
             return None, iter
 
         if action_queue.empty():
@@ -114,6 +110,8 @@ def search(mover, config, pap_model):
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                     action_queue.put((hval, float('nan'), newaction, newnode))
+            #import pdb;pdb.set_trace()
+
         elif action.type == 'one_arm_pick_one_arm_place':
             success = False
 
