@@ -5,11 +5,18 @@ class Node(object):
         self.action = action
         self.state = state  # resulting state
         self.reward = reward  # resulting reward
+        self.heuristic_vals = {}
+        #for a in self.action:
+        #    self.heuristic_vals[a] = None # used only for the root node
+        self.heuristic_vals = {}
 
         if parent is None:
             self.depth = 1
         else:
             self.depth = parent.depth + 1
+
+    def set_heuristic(self, action, val):
+        self.heuristic_vals[action] = val
 
     def backtrack(self):
         node = self
