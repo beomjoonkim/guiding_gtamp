@@ -35,9 +35,10 @@ def main():
         for key, value in zip(params.keys(), params.values()):
             if key == 'pidxs':
                 continue
-            if value == False:
+
+            if value is False:
                 continue
-            elif value == True:
+            elif value is True:
                 if key == 'hcount':
                     config['hcount'] = ""
                 elif key == 'state_hcount':
@@ -50,7 +51,7 @@ def main():
                 config[key] = value
 
         configs.append(config)
-
+    import pdb;pdb.set_trace()
     n_workers = 1 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)

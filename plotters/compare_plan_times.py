@@ -145,9 +145,9 @@ def main():
                'num_train_1805/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_1805/mse_weight_1.0/use_region_agnostic_False/' % (
     domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_mse/' \
                'num_train_10000/mse_weight_0.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
     get_num_nodes(test_dir, test_files)
