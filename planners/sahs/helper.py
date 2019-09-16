@@ -111,8 +111,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
 
         hval = -number_in_goal - q_bonus
-        o_reachable = state.is_entity_reachable(target_o)
-        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
         hcount = compute_hcount(state, problem_env)
 
         """
@@ -131,7 +129,9 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         #print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
         #print "%s %s hval: %.9f " % (o, r, hval)
         print "====================="
-        print 'n_in_goal %d %30s %30s prefree %d manipfree %d hcount %d qval %.4f hval %.4f' % (
-            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, qval, hval)
         """
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+        print 'n_in_goal %d %30s %30s prefree %d manipfree %d hval %.4f' % (
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free,  hval)
         return hval
