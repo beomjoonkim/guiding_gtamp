@@ -41,9 +41,9 @@ def search(mover, config, pap_model):
     actions = get_actions(mover, goal, config)
     for a in actions:
         hval = compute_heuristic(state, a, pap_model, mover, config)
-        initnode.set_heuristic(a, hval)
+        discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
+        initnode.set_heuristic(discrete_params, hval)
         action_queue.put((hval, float('nan'), a, initnode))  # initial q
-
     iter = 0
     # beginning of the planner
     while True:
@@ -57,7 +57,8 @@ def search(mover, config, pap_model):
         if action_queue.empty():
             actions = get_actions(mover, goal, config)
             for a in actions:
-                hval = initnode.heuristic_vals[a]
+                discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
+                hval = initnode.heuristic_vals[discrete_params]
                 action_queue.put((hval, float('nan'), a, initnode))  # initial q
 
         curr_hval, _, action, node = action_queue.get()
