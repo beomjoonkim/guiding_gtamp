@@ -31,7 +31,7 @@ def main():
     configs = []
     for pidx in range(pidx_begin, pidx_end):
         config = {}
-        config['pidx'] = pidx
+        print pidx
         for key, value in zip(params.keys(), params.values()):
             if key == 'pidxs':
                 continue
@@ -49,7 +49,7 @@ def main():
                     config['use_region_agnostic'] = ""
             else:
                 config[key] = value
-
+            config['pidx'] = pidx
         configs.append(config)
     n_workers = 1 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
