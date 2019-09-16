@@ -75,13 +75,15 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     elif config.qlearned_hcount:
         all_actions = get_actions(problem_env, None, None)
         entity_names = list(state.nodes.keys())[::-1]
-        # todo clean this up later;
         q_vals = []
         for a in all_actions:
             a_raw_form = convert_action_to_predictable_form(a, entity_names)
+            if np.all(a_raw_form == actions):
+                continue
             q_vals.append(np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
+
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
+        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals+np.exp(q_val_on_curr_a))
 
         # hval = -number_in_goal + gnn_pred
         #hcount = compute_hcount_with_action(state, action, problem_env)
