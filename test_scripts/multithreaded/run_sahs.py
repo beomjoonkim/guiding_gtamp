@@ -51,7 +51,6 @@ def main():
                 config[key] = value
 
         configs.append(config)
-    import pdb;pdb.set_trace()
     n_workers = 1 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
