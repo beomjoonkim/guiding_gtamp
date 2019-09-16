@@ -64,6 +64,9 @@ def get_num_nodes(test_dir, test_files):
         pidx = get_pidx(test_dir, filename)
 
         stat = pickle.load(open(test_dir + filename, 'r'))
+        #if not stat['success']:
+        #    continue
+
         num_nodes = get_num_node_from_file(test_dir, stat)
         all_num_nodes.append(num_nodes)
     CI95 = 1.96 * np.std(all_num_nodes) / np.sqrt(len(all_num_nodes))
@@ -92,8 +95,11 @@ def get_plan_times(test_dir, test_files, t_limit):
             time_taken.append(ftime_taken)
             successes.append(fsuccess)
         else:
+            #if not stat['success']:
+            #    continue
             time_taken.append(t_limit)
             successes.append(False)
+            #print 'Failed',filename
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
@@ -143,11 +149,11 @@ def main():
                'num_train_7000/mse_weight_1.0/use_region_agnostic_True/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_1805/mse_weight_1.0/use_region_agnostic_False/' % (
     domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
+               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
+               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
     get_num_nodes(test_dir, test_files)
