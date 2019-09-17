@@ -7,7 +7,7 @@ p2
 I00
 sS'num_nodes'
 p3
-I473
+I458
 sS'plan_length'
 p4
 I0
@@ -15,5 +15,5 @@ sS'plan'
 p5
 NsS'tottime'
 p6
-F2403.36652803421
+F2403.5150661468506
 s.

@@ -13,6 +13,22 @@ def get_actions(mover, goal, config):
     return permuted_actions
 
 
+def compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env):
+    all_actions = get_actions(problem_env, None, None)
+    entity_names = list(state.nodes.keys())[::-1]
+    q_vals = []
+    for a in all_actions:
+        a_raw_form = convert_action_to_predictable_form(a, entity_names)
+        if np.all(a_raw_form == actions):
+            continue
+        q_vals.append(
+            np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
+
+    q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
+    q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals + np.exp(q_val_on_curr_a))
+    return q_bonus
+
+
 def get_state_class(domain):
     if domain == 'two_arm_mover':
         statecls = ShortestPathPaPState
@@ -73,24 +89,12 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print "state_hcount %s %s %.4f" % (target_o, target_r, hcount)
         return hcount
     elif config.qlearned_hcount:
-        all_actions = get_actions(problem_env, None, None)
-        entity_names = list(state.nodes.keys())[::-1]
-        q_vals = []
-        for a in all_actions:
-            a_raw_form = convert_action_to_predictable_form(a, entity_names)
-            if np.all(a_raw_form == actions):
-                continue
-            q_vals.append(np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
+        q_bonus = compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env)
 
-        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals+np.exp(q_val_on_curr_a))
-
-        # hval = -number_in_goal + gnn_pred
-        #hcount = compute_hcount_with_action(state, action, problem_env)
         hcount = compute_hcount(state, problem_env)
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
-
         hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
+
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
 
@@ -98,40 +102,15 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
     else:
-        hval = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        """
-        all_actions = get_actions(problem_env, None, None)
-        entity_names = list(state.nodes.keys())[::-1]
-        qval = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        q_vals = []
-        for a in all_actions:
-            a_raw_form = convert_action_to_predictable_form(a, entity_names)
-            q_vals.append(np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
-        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals)
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
+                                                                  actions[None, ...])
+        obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
 
-        hval = -number_in_goal - q_bonus
-        hcount = compute_hcount(state, problem_env)
+        hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
 
-        """
-        """
-        Vpre_free = state.nodes[action.discrete_parameters['object']][9]
-        Vmanip_free = state.binary_edges[(action.discrete_parameters['object'], action.discrete_parameters['region'])][2]
-        Vpre_occ = state.pick_entities_occluded_by(action.discrete_parameters['object'])
-        Vmanip_occ = state.place_entities_occluded_by(action.discrete_parameters['object'])
-        print "Vpre_free", Vpre_free
-        print "Vmanip_free", Vmanip_free
-        print "Vpre_occ ", Vpre_occ
-        print "Vmanip_occ ", Vmanip_occ
-        print "Total occ " + str(len(Vpre_occ + Vmanip_occ))
-        print "Occ place to goal " + str(len([objregion for objregion in Vmanip_occ if objregion[1] == 'home_region']))
-
-        #print "%s %s hval: %.9f hcount: %d" % (o, r, hval, hcount)
-        #print "%s %s hval: %.9f " % (o, r, hval)
-        print "====================="
-        """
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
-        print 'n_in_goal %d %30s %30s prefree %d manipfree %d hval %.4f' % (
-            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free,  hval)
+
+        print 'n_in_goal %d %s %s prefree %d manipfree %d numb_in_goal %d qbonus %.4f hval %.4f' % (
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, number_in_goal, -q_bonus, hval)
         return hval
