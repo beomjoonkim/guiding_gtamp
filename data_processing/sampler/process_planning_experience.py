@@ -14,14 +14,14 @@ else:
 
 
 def get_save_dir():
-    save_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/irsc/sampler_trajectory_data/'
+    save_dir = ROOTDIR + '/planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/sampler_trajectory_data/'
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
     return save_dir
 
 
 def get_raw_dir():
-    raw_dir = ROOTDIR + '/planning_experience/irsc/two_arm_mover/n_objs_pack_1//'
+    raw_dir = ROOTDIR + '/planning_experience/raw/two_arm_mover/n_objs_pack_1//'
     return raw_dir
 
 
