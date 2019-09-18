@@ -136,7 +136,6 @@ class UniformGenerator:
         return np.random.uniform(domain_min, domain_max, (1, dim_parameters)).squeeze()
 
 
-
 class UniformPaPGenerator(PaPGenerator):
     def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,
                  total_number_of_feasibility_checks, n_candidate_params_to_smpl, dont_check_motion_existence):

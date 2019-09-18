@@ -14,18 +14,12 @@ FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
 PR2_ARM_LENGTH = 0.9844
 
 
-def convert_collision_vec_to_one_hot(c_data):
-    n_konf = c_data.shape[1]
-    onehot_cdata = []
-    for cvec in c_data:
-        one_hot_cvec = np.zeros((n_konf, 2))
-        for boolean_collision, onehot_collision in zip(cvec, one_hot_cvec):
-            onehot_collision[boolean_collision] = 1
-        assert (np.all(np.sum(one_hot_cvec, axis=1) == 1))
-        onehot_cdata.append(one_hot_cvec)
-
-    onehot_cdata = np.array(onehot_cdata)
-    return onehot_cdata
+def convert_binary_vec_to_one_hot(collision_vector):
+    n_konf = collision_vector.shape[0]
+    one_hot_cvec = np.zeros((n_konf, 2))
+    one_hot_cvec[:, 0] = collision_vector
+    one_hot_cvec[:, 1] = 1-collision_vector
+    return one_hot_cvec
 
 
 def compute_angle_to_be_set(target_xy, src_xy):
@@ -291,7 +285,9 @@ def clean_pose_data(pose_data):
         return np.array([])[None, :]
 
 
-def compute_occ_vec(key_configs, robot, env):
+def compute_occ_vec(key_configs):
+    env = openravepy.RaveGetEnvironment(1)
+    robot = env.GetRobot('pr2')
     occ_vec = []
     with robot:
         for config in key_configs:
