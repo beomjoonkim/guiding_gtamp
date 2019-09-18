@@ -60,7 +60,6 @@ class SamplerTrajectory:
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
                 #incollision_configs = self.key_configs[state.state_vec[:-2,0]==1]
-                #import pdb;pdb.set_trace()
                 action.execute()
                 pick_base_pose = action.continuous_parameters['q_goal']
             else:
