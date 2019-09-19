@@ -60,7 +60,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     nodes = nodes[..., 6:]
 
     region_is_goal = state.nodes[target_r][8]
-    number_in_goal = 0
 
     if 'two_arm' in problem_env.name:
         goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
@@ -70,10 +69,25 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         goal_objs = [tmp_o for tmp_o in state.goal_entities if 'region' not in tmp_o]
         goal_region = 'rectangular_packing_box1_region'
 
+    """
+    number_in_goal = 0
     for obj_name in goal_objs:
         is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
         if is_obj_in_goal_region:
             number_in_goal += 1
+    """
+    number_in_goal = 0
+    for i in state.nodes:
+        if i == target_o:
+            continue
+        for tmpr in problem_env.regions:
+            if tmpr in state.nodes:
+                is_r_goal_region = state.nodes[tmpr][8]
+                if is_r_goal_region:
+                    is_i_in_r = state.binary_edges[(i, tmpr)][0]
+                    if is_r_goal_region:
+                        number_in_goal += is_i_in_r
+    number_in_goal += int(region_is_goal)
 
     if config.hcount:
         o_reachable = state.is_entity_reachable(target_o)
@@ -105,7 +119,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
-        hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
+        #hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
+        hval = -number_in_goal - q_val_on_curr_a
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
