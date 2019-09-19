@@ -81,13 +81,17 @@ def get_plan_times(test_dir, test_files, t_limit):
     print "Getting test stats from %d files in %s" % (len(test_files), test_dir)
     for filename in test_files:
         pidx = get_pidx(test_dir, filename)
-        # if pidx < 20000 or pidx > 20100:
+        if pidx < 20000 or pidx > 20100:
+            continue
+
+        if 'train_seed_4' in filename: #or 'train_seed_0' not in filename:
+            continue
+
+        #if 'planner_seed_1' not in filename:
         #    continue
 
-        # print filename
+        #print filename
 
-        # if 'train_seed_3' not in filename:
-        #    continue
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
         fsuccess = get_success(test_dir, stat)
@@ -109,54 +113,29 @@ def get_plan_times(test_dir, test_files, t_limit):
 
 def main():
     n_objs = int(sys.argv[1])
-    t_limit = 300 * n_objs
+    if n_objs == 4:
+        t_limit = 100 * n_objs
+    elif n_objs == 1:
+        t_limit = 100 * n_objs
+    else:
+        #t_limit = A00 * n_objs
+        t_limit = 2400
+
+    t_limit = 300
+
     num_nodes = 500
     domain = 'two_arm_mover'
 
     # Customize the below
-    # test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/state_hcount/' % (domain, n_objs)
-    # test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/new_hcount/' % (domain, n_objs)
 
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/state_hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn_and_hcount/loss_largemargin/num_train_5000/' % (
-    domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount_after_submission/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qbonus_and_hcount/loss_largemargin/num_train_5000/' % (
-    domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn_after_submission/loss_largemargin/num_train_5000/' % (
-    domain, n_objs)
+    if n_objs == 4 or n_objs==1:
+        test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
+                   'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+    else:
+        test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
+                   'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
 
-    test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
-               'sampling_strategy_uniform/n_mp_trials_3/widening_30.0/uct_0.1/switch_frequency_50/' \
-               'reward_shaping_False/learned_q_False/' % (domain, n_objs)
-    test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
-               'sampling_strategy_voo/n_mp_trials_3/widening_20.0/uct_0.1/switch_frequency_50/' \
-               'reward_shaping_False/learned_q_False/explr_p_0.3/' % (domain, n_objs)
-    test_dir = './test_results/mcts_results_with_q_bonus/domain_%s/n_objs_pack_%d/' \
-               'sampling_strategy_uniform/n_mp_trials_3/widening_20.0/uct_0.1/switch_frequency_50/' \
-               'reward_shaping_False/learned_q_False/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/num_train_7000/1.0/' % (
-    domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_7000/mse_weight_1.0/use_region_agnostic_True/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/loss_largemargin/num_train_1805/mse_weight_1.0/use_region_agnostic_False/' % (
-    domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/loss_largemargin/' \
-               'num_train_10000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
-               'loss_largemargin/num_train_1700/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
     get_num_nodes(test_dir, test_files)

@@ -1,10 +1,7 @@
 from generators.uniform import UniformGenerator
-from manipulation.bodies.bodies import set_color
 from gtamp_utils import utils
-from gtamp_utils.utils import CustomStateSaver, get_body_xytheta, set_robot_config, set_obj_xytheta, visualize_path, \
-    one_arm_pick_object, set_point
+from gtamp_utils.utils import CustomStateSaver, get_body_xytheta, set_obj_xytheta,  set_point
 from pick_and_place_state import PaPState
-from planners.subplanners.motion_planner import BaseMotionPlanner
 from predicates.in_region import InRegion
 from predicates.is_holding_goal_entity import IsHoldingGoalEntity
 from predicates.pick_in_way import PickInWay
@@ -12,10 +9,9 @@ from predicates.place_in_way import PlaceInWay
 from trajectory_representation.operator import Operator
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
 from generators.feasibility_checkers.one_arm_pick_feasibility_checker import OneArmPickFeasibilityChecker
-from trajectory_representation.state import State
+
 import numpy as np
 import pickle
-import copy
 import os
 import time
 

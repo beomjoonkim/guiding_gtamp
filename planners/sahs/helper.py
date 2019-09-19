@@ -105,12 +105,11 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
-
         hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
 
-        print 'n_in_goal %d %s %s prefree %d manipfree %d numb_in_goal %d qbonus %.4f hval %.4f' % (
-            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, number_in_goal, -q_bonus, hval)
+        print '%s %s prefree %d manipfree %d numb_in_goal %d qval %.4f hval %.4f' % (
+            target_o, target_r, o_reachable, o_r_manip_free, number_in_goal, q_val_on_curr_a, hval)
         return hval

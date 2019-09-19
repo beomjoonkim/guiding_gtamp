@@ -109,6 +109,7 @@ def search(mover, config, pap_model):
                     action_queue.put((hval, float('nan'), newaction, newnode))
 
         elif action.type == 'one_arm_pick_one_arm_place':
+            print("Sampling for {}".format(action.discrete_parameters.values()))
             success = False
 
             obj = action.discrete_parameters['object']
