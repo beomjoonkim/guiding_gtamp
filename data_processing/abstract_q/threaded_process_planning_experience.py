@@ -28,9 +28,11 @@ def main():
     params = parse_parameters()
     param_vals = vars(params)
     configs = []
-
-    for pidx in range(5000):
-        config = {key: value for key, value in zip(param_vals.keys(), param_vals.values())}
+    pidxs = params.pidxs
+    for pidx in range(pidxs[0], pidxs[1]):
+        for key, value in zip(param_vals.keys(), param_vals.values()):
+            if key != 'pidxs':
+                config = {key: value}
         config['pidx'] = pidx
         configs.append(config)
 
