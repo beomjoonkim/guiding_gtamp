@@ -17,7 +17,6 @@ from learn.pap_gnn import PaPGNN
 import collections
 
 
-
 def get_problem_env(config):
     n_objs_pack = config.n_objs_pack
     if config.domain == 'two_arm_mover':
@@ -57,13 +56,15 @@ def get_solution_file_name(config):
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:
-        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
-                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(config.use_region_agnostic) \
+        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc/loss_' + str(
+            config.loss) + '/num_train_' + str(config.num_train) \
+                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
+            config.use_region_agnostic) \
                              + '/mix_rate_' + str(config.mixrate) + '/'
     else:
         solution_file_dir += '/gnn/shortest_irsc/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
-                              + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' \
-                              + str(config.use_region_agnostic) + '/'
+                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' \
+                             + str(config.use_region_agnostic) + '/'
     solution_file_name = 'pidx_' + str(config.pidx) + \
                          '_planner_seed_' + str(config.planner_seed) + \
                          '_train_seed_' + str(config.train_seed) + \

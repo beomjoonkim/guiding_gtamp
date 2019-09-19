@@ -81,11 +81,11 @@ def get_plan_times(test_dir, test_files, t_limit):
     print "Getting test stats from %d files in %s" % (len(test_files), test_dir)
     for filename in test_files:
         pidx = get_pidx(test_dir, filename)
-        if pidx < 20000 or pidx > 20100:
+        if pidx < 20000 or pidx > 20009:
             continue
 
-        if 'train_seed_4' in filename: #or 'train_seed_0' not in filename:
-            continue
+        #if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
+        #    continue
 
         #if 'planner_seed_1' not in filename:
         #    continue
@@ -116,15 +116,15 @@ def main():
     if n_objs == 4:
         t_limit = 100 * n_objs
     elif n_objs == 1:
-        t_limit = 100 * n_objs
+        t_limit = 300 * n_objs
     else:
         #t_limit = A00 * n_objs
         t_limit = 2400
 
-    t_limit = 300
 
-    num_nodes = 500
-    domain = 'two_arm_mover'
+    domain = 'one_arm_mover'
+    if domain == 'one_arm_mover':
+        t_limit = 1000
 
     # Customize the below
 
@@ -135,6 +135,10 @@ def main():
         test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
                    'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
 
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)

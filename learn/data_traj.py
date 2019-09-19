@@ -48,7 +48,8 @@ def get_edges(state, region_nodes, entity_names):
     # Desired output shape: n_e x n_e x n_r x n_edge
 
     #regions = [r for r in entity_names if 'region' in r and 'entire' not in r]  # is the region order always fixed?
-    if 'one_arm' in state.problem_env.name:
+    is_one_arm_env = 'rectangular_packing_box1_region' in region_nodes.keys()
+    if is_one_arm_env:
         regions = ['rectangular_packing_box1_region', 'center_shelf_region']
     else:
         regions = ['home_region', 'loading_region']

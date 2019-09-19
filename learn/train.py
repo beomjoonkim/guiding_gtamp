@@ -68,7 +68,8 @@ def train(config):
         #'./planning_experience/irsc/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./planning_experience/hcount/mc/domain_two_arm_mover/n_objs_pack_1/trajectory_data/',
         #'./planning_experience/domain_two_arm_mover/n_objs_pack_1/hcount/trajectory_data/shortest/',
-        './planning_experience/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/shortest/',
+        #'./planning_experience/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/shortest/',
+        './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/mc/',
         desired_operator_type=config.operator)
     """
     print "Loading data..."
