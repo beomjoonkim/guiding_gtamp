@@ -1,5 +1,5 @@
-from gtamp_utils.samplers import *
-from gtamp_utils.utils import set_robot_config, grab_obj, release_obj
+from mover_library.samplers import *
+from mover_library.utils import set_robot_config, grab_obj, release_obj
 
 
 class PlaceFeasibilityChecker:

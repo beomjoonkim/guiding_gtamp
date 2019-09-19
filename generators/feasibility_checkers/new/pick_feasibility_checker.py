@@ -1,4 +1,4 @@
-from mover_library.utils import get_pick_base_pose_and_grasp_from_pick_parameters
+from gtamp_utils.utils import get_pick_base_pose_and_grasp_from_pick_parameters
 import time
 
 

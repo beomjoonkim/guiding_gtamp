@@ -12,7 +12,7 @@ from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from gtamp_utils import utils
-from planners.sahs.greedy import search
+from planners.sahs.greedy_new import search
 from learn.pap_gnn import PaPGNN
 import collections
 
@@ -215,8 +215,8 @@ def main():
             'plan': plan
         }
 
-        with open(solution_file_name, 'wb') as f:
-            pickle.dump(data, f)
+        #with open(solution_file_name, 'wb') as f:
+        #    pickle.dump(data, f)
     print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, plan_length, num_nodes)
 
 
