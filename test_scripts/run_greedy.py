@@ -215,8 +215,8 @@ def main():
             'plan': plan
         }
 
-        #with open(solution_file_name, 'wb') as f:
-        #    pickle.dump(data, f)
+        with open(solution_file_name, 'wb') as f:
+            pickle.dump(data, f)
     print 'Time: %.2f Success: %d Plan length: %d Num nodes: %d' % (tottime, success, plan_length, num_nodes)
 
 
