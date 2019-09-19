@@ -100,13 +100,13 @@ def get_actions(op_skeleton, entity_names):
     elif op_skeleton.type == 'one_arm_pick_one_arm_place':
         object_idx = name_to_idx[op_skeleton.discrete_parameters['object'].GetName()]
         region_name = op_skeleton.discrete_parameters['region'].name
+        #region_idx = region_name_to_idx[region_name]
         if region_name == 'rectangular_packing_box1_region':
             region_idx = 0
         elif region_name == 'center_shelf_region':
             region_idx = 1
         else:
             raise NotImplementedError
-        #region_idx = region_name_to_idx[region_name]
 
         n_regions = len(regions)
         n_entities = len(entity_names)
