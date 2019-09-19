@@ -1,4 +1,5 @@
-from trajectory_representation.trajectory import Trajectory, HCountExpTrajectory
+from trajectory_representation.trajectory import Trajectory
+from trajectory_representation.hcount_trajectory import HCountExpTrajectory
 
 import pickle
 import os
@@ -13,7 +14,7 @@ else:
 
 
 def get_save_dir(parameters):
-    save_dir = ROOTDIR + '/planning_experience/domain_two_arm_mover/n_objs_pack_1/%s/trajectory_data/%s/' \
+    save_dir = ROOTDIR + '/planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/%s/trajectory_data/%s/' \
                 %(parameters.planner, parameters.statetype)
     if not os.path.isdir(save_dir):
         os.makedirs(save_dir)
