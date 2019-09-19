@@ -164,6 +164,7 @@ def extract_file(filename, desired_operator_type='two_arm_pick'):
 # filename is a directory
 def load_data(dirname, desired_operator_type='two_arm_pick'):
     cachefile = "{}{}.pkl".format(dirname, desired_operator_type)
+    cachefile = './planning_experience/two_arm_pick_two_arm_place_before_submission.pkl'
     if os.path.isfile(cachefile):
         print "Loading the cached file:", cachefile
         return pickle.load(open(cachefile, 'rb'))
