@@ -66,6 +66,7 @@ def process_plan_file(filename, pidx, goal_entities, parameters):
 def parse_parameters():
     parser = argparse.ArgumentParser(description='parameters')
     parser.add_argument('-pidx', type=int, default=0)
+    parser.add_argument('-pidxs', nargs=2, type=int, default=[0, 1])  # used for threaded runs
     parser.add_argument('-planner', type=str, default="hcount")
     parser.add_argument('-statetype', type=str, default="mc")
     parameters = parser.parse_args()
