@@ -83,7 +83,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
         return hval
 
-
+"""
 def get_actions(mover, goal, config):
     actions = []
     for o in mover.entity_names:
@@ -112,7 +112,7 @@ def get_actions(mover, goal, config):
             actions.append(action)
 
     return actions
-
+"""
 
 def search(mover, config, pap_model):
     tt = time.time()
