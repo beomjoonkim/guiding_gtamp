@@ -44,13 +44,30 @@ def search(mover, config, pap_model):
         discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
         initnode.set_heuristic(discrete_params, hval)
         action_queue.put((hval, float('nan'), a, initnode))  # initial q
+
+    """
+    other = pickle.load(open('/home/beomjoon/Documents/github/qqq/tmp.pkl','r'))
+    other_binary = other[1]
+    keys = state.binary_edges.keys()
+    for k in keys:
+        #print k, state.binary_edges[k], other_binary[k], np.array(state.binary_edges[k]) == np.array(other_binary[k])
+        if not np.all( np.array(state.binary_edges[k]) == np.array(other_binary[k]) ):
+            print "Wrong!", k, state.binary_edges[k], np.array(other_binary[k])
+    keys = state.ternary_edges.keys()
+    other_ternary = other[2]
+    for k in keys:
+        if not np.all( np.array(state.ternary_edges[k]) == np.array(other_ternary[k]) ):
+            print "Wrong!", k, state.ternary_edges[k], np.array(other_ternary[k])
+    import pdb;pdb.set_trace()
+    """
+
     iter = 0
     # beginning of the planner
     while True:
         iter += 1
-        curr_time = time.time()-tt
-        print "Time %.2f / %.2f "%(curr_time, config.timelimit)
-        print "Iter %d / %d" %(iter, config.num_node_limit)
+        curr_time = time.time() - tt
+        print "Time %.2f / %.2f " % (curr_time, config.timelimit)
+        print "Iter %d / %d" % (iter, config.num_node_limit)
         if curr_time > config.timelimit or iter > config.num_node_limit:
             return None, iter
 
@@ -81,7 +98,7 @@ def search(mover, config, pap_model):
                                          total_number_of_feasibility_checks=200,
                                          dont_check_motion_existence=False)
 
-            smpled_param = smpler.sample_next_point(cached_collisions=state.collisions_at_all_obj_pose_pairs,
+            smpled_param = smpler.sample_next_point(cached_collisions=state.collides,
                                                     cached_holding_collisions=None)
             if smpled_param['is_feasible']:
                 action.continuous_parameters = smpled_param
@@ -166,7 +183,6 @@ def search(mover, config, pap_model):
                     for newaction in newactions:
                         hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
                         action_queue.put((hval, float('nan'), newaction, newnode))
-
             if not success:
                 print('failed to execute action')
             else:

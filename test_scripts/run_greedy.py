@@ -44,7 +44,7 @@ def get_solution_file_name(config):
         solution_file_dir = root_dir + '/domain_%s/n_objs_pack_%d' \
                             % (config.domain, config.n_objs_pack)
     else:
-        solution_file_dir = root_dir + '/test_results/sahs_results/domain_%s/n_objs_pack_%d' \
+        solution_file_dir = root_dir + '/test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d' \
                             % (config.domain, config.n_objs_pack)
 
     if config.dont_use_gnn:
@@ -144,7 +144,7 @@ def get_pap_gnn_model(mover, config):
             use_region_agnostic=config.use_region_agnostic
         )
         if config.domain == 'two_arm_mover':
-            num_entities = 10
+            num_entities = 11
             n_regions = 2
         elif config.domain == 'one_arm_mover':
             num_entities = 12

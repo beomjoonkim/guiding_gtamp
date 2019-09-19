@@ -87,7 +87,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                     is_i_in_r = state.binary_edges[(i, tmpr)][0]
                     if is_r_goal_region:
                         number_in_goal += is_i_in_r
-    number_in_goal += int(region_is_goal)
+    number_in_goal += int(region_is_goal) # encourage moving goal obj to goal region
 
     if config.hcount:
         o_reachable = state.is_entity_reachable(target_o)
