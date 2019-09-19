@@ -30,8 +30,6 @@ def get_p_idx(fname):
 
 
 def save_traj(traj, save_fname):
-    for state in traj.states:
-        state.make_pklable()
     pickle.dump(traj, open(save_fname, 'wb'))
 
 
@@ -87,7 +85,7 @@ def main():
     key_configs = np.delete(key_configs, 293, axis=0)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, key_configs)
 
-    # save_traj(traj, save_dir + processed_fname)
+    save_traj(traj, save_dir + processed_fname)
 
 
 if __name__ == '__main__':
