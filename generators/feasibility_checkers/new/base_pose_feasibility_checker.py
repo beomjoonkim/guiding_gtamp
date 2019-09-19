@@ -1,7 +1,7 @@
 import sys
 
-sys.path.append('../mover_library/')
-from mover_library.motion_planner import collision_fn
+sys.path.append('../gtamp_utils/')
+from gtamp_utils.motion_planner import collision_fn
 from utils import get_body_xytheta, set_robot_config
 
 

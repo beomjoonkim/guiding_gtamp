@@ -1,8 +1,8 @@
-from mover_library.utils import set_robot_config, open_gripper
-from mover_library.operator_utils.grasp_utils import compute_one_arm_grasp, solveIKs
+from gtamp_utils.utils import set_robot_config, open_gripper
+from gtamp_utils.operator_utils.grasp_utils import compute_one_arm_grasp, solveIKs
 from manipulation.bodies.bodies import set_config
 from generators.feasibility_checkers.pick_feasibility_checker import PickFeasibilityChecker
-from mover_library.utils import get_pick_base_pose_and_grasp_from_pick_parameters, set_active_config
+from gtamp_utils.utils import get_pick_base_pose_and_grasp_from_pick_parameters, set_active_config
 import numpy as np
 import time
 

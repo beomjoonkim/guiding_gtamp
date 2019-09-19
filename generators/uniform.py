@@ -1,6 +1,9 @@
 from generator import PaPGenerator, Generator
 from gtamp_utils import utils
 from gtamp_utils.utils import get_pick_domain, get_place_domain
+#from mover_library import utils
+#from mover_library.utils import get_pick_domain, get_place_domain
+
 
 from feasibility_checkers.two_arm_pick_feasibility_checker import TwoArmPickFeasibilityChecker
 from feasibility_checkers.two_arm_place_feasibility_checker import TwoArmPlaceFeasibilityChecker
@@ -134,6 +137,75 @@ class UniformGenerator:
         domain_min = self.domain[0]
         domain_max = self.domain[1]
         return np.random.uniform(domain_min, domain_max, (1, dim_parameters)).squeeze()
+
+
+
+class PaPUniformGenerator(UniformGenerator):
+    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
+        UniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
+        self.feasible_pick_params = {}
+
+    def sample_next_point(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning=1,
+                          cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
+        # Not yet motion-planning-feasible
+        target_obj = operator_skeleton.discrete_parameters['object']
+        if target_obj in self.feasible_pick_params:
+            self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
+
+        status = "NoSolution"
+        #stime = time.time()
+        for n_iter in range(10, n_iter, 10):
+            feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
+                                                                                n_iter,
+                                                                                n_parameters_to_try_motion_planning)
+            if status =='HasSolution':
+                break
+        #print 'Sampling time', time.time()-stime
+        if status == "NoSolution":
+            return {'is_feasible': False}
+
+        if dont_check_motion_existence:
+            chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
+        else:
+            #stime = time.time()
+            chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
+                                                                           feasible_op_parameters,
+                                                                           cached_collisions,
+                                                                           cached_holding_collisions)
+            #print 'MP time', time.time()-stime
+
+        return chosen_op_param
+
+    def get_pap_param_with_feasible_motion_plan(self, operator_skeleton, feasible_op_parameters,
+                                                cached_collisions, cached_holding_collisions):
+        # getting pick motion - I can still use the cached collisions from state computation
+        pick_op_params = [op['pick'] for op in feasible_op_parameters]
+        chosen_pick_param = self.get_op_param_with_feasible_motion_plan(pick_op_params, cached_collisions)
+        if not chosen_pick_param['is_feasible']:
+            return {'is_feasible': False}
+
+        target_obj = operator_skeleton.discrete_parameters['object']
+        if target_obj in self.feasible_pick_params:
+            self.feasible_pick_params[target_obj].append(chosen_pick_param)
+        else:
+            self.feasible_pick_params[target_obj] = [chosen_pick_param]
+
+        #self.feasible_pick_params[target_obj].append(pick_op_params)
+
+        # getting place motion
+        original_config = utils.get_body_xytheta(self.problem_env.robot).squeeze()
+        utils.two_arm_pick_object(operator_skeleton.discrete_parameters['object'], chosen_pick_param)
+        place_op_params = [op['place'] for op in feasible_op_parameters]
+        chosen_place_param = self.get_op_param_with_feasible_motion_plan(place_op_params, cached_holding_collisions)
+        utils.two_arm_place_object(chosen_pick_param)
+        utils.set_robot_config(original_config)
+
+        if not chosen_place_param['is_feasible']:
+            return {'is_feasible': False}
+
+        chosen_pap_param = {'pick': chosen_pick_param, 'place': chosen_place_param, 'is_feasible': True}
+        return chosen_pap_param
+
 
 
 class UniformPaPGenerator(PaPGenerator):

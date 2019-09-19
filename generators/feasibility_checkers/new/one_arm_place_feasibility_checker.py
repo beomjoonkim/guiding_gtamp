@@ -1,8 +1,8 @@
-from mover_library.samplers import *
-from mover_library.utils import set_robot_config, grab_obj, release_obj, set_config
+from gtamp_utils.samplers import *
+from gtamp_utils.utils import set_robot_config, grab_obj, release_obj, set_config
 from generators.feasibility_checkers.place_feasibility_checker import PlaceFeasibilityChecker
 from generators.feasibility_checkers.one_arm_pick_feasibility_checker import OneArmPickFeasibilityChecker
-from mover_library.operator_utils.grasp_utils import compute_one_arm_grasp, solveIKs
+from gtamp_utils.operator_utils.grasp_utils import compute_one_arm_grasp, solveIKs
 
 
 class OneArmPlaceFeasibilityChecker(PlaceFeasibilityChecker, OneArmPickFeasibilityChecker):
