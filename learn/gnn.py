@@ -30,7 +30,7 @@ class GNN(object):
             print self.entity_name_to_idx
 
     def load_weights(self):
-
+        """
         self.weight_file_name ='/home/beomjoon//Documents/github/qqq/learn/q-function-weights/' \
                                'Q_weight_n_msg_passing_1_mse_weight_1.0_optimizer_' \
                                'adam_seed_0_lr_0.0001_operator_two_arm_pick_two_arm_place_n_layers_2_n_hidden_32' \
@@ -40,7 +40,6 @@ class GNN(object):
                                 'Q_weight_n_msg_passing_1_mse_weight_1.0_optimizer_' \
                                 'adam_seed_%d_lr_0.0001_operator_two_arm_pick_two_arm_place_n_layers_2_n_hidden_32' \
                                 '_top_k_1_num_train_5000_loss_largemargin.hdf5' % self.config.seed
-        """
         print "Loading weight", self.weight_file_name
         self.loss_model.load_weights(self.weight_file_name)
 
