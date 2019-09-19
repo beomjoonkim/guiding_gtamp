@@ -30,9 +30,11 @@ def main():
     configs = []
     pidxs = params.pidxs
     for pidx in range(pidxs[0], pidxs[1]):
+        config = {}
         for key, value in zip(param_vals.keys(), param_vals.values()):
             if key != 'pidxs':
-                config = {key: value}
+                print key
+                config[key] = value
         config['pidx'] = pidx
         configs.append(config)
 
