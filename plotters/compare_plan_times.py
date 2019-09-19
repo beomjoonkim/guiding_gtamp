@@ -87,10 +87,10 @@ def get_plan_times(test_dir, test_files, t_limit):
         #if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
         #    continue
 
-        #if 'planner_seed_1' not in filename:
+        #if 'train_seed_3' not in filename:
         #    continue
 
-        #print filename
+        print filename
 
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
@@ -122,7 +122,7 @@ def main():
         t_limit = 2400
 
 
-    domain = 'one_arm_mover'
+    domain = 'two_arm_mover'
     if domain == 'one_arm_mover':
         t_limit = 1000
 
@@ -135,10 +135,10 @@ def main():
         test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
                    'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
-               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
-               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/irsc_mc/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/irsc_mc/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_True/' % (domain, n_objs)
 
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
