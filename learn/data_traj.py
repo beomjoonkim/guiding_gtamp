@@ -48,7 +48,10 @@ def get_edges(state, region_nodes, entity_names):
     # Desired output shape: n_e x n_e x n_r x n_edge
 
     #regions = [r for r in entity_names if 'region' in r and 'entire' not in r]  # is the region order always fixed?
-    regions = ['home_region', 'loading_region']
+    if 'two_arm' in state.problem_env.name:
+        regions = ['home_region', 'loading_region']
+    else:
+        regions = ['rectangular_packing_box1_region', 'center_shelf_region']
     n_edge_features = 44
     n_regions = len(regions)
     n_entities = len(entity_names)
@@ -97,7 +100,13 @@ def get_actions(op_skeleton, entity_names):
     elif op_skeleton.type == 'one_arm_pick_one_arm_place':
         object_idx = name_to_idx[op_skeleton.discrete_parameters['object'].GetName()]
         region_name = op_skeleton.discrete_parameters['region'].name
-        region_idx = region_name_to_idx[region_name]
+        #region_idx = region_name_to_idx[region_name]
+        if region_name == 'rectangular_packing_box1_region':
+            region_idx = 0
+        elif region_name == 'center_shelf_region':
+            region_idx = 1
+        else:
+            raise NotImplementedError
 
         n_regions = len(regions)
         n_entities = len(entity_names)
