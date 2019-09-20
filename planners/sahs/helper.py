@@ -149,7 +149,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         number_in_goal += int(region_is_goal)  # encourage moving goal obj to goal region
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
-        hval = -number_in_goal - q_val_on_curr_a
+        obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
+        hval = -number_in_goal - q_val_on_curr_a + obj_already_in_goal
         return hval
     elif config.qlearned_new_number_in_goal:
         number_in_goal = 0
@@ -159,7 +160,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                 number_in_goal += 1
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
-        hval = -number_in_goal - q_val_on_curr_a
+        obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
+        hval = -number_in_goal - q_val_on_curr_a + obj_already_in_goal
         return hval
     elif config.pure_learned_q:
 
