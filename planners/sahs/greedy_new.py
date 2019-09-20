@@ -24,6 +24,7 @@ MAX_DISTANCE = 1.0
 from learn.data_traj import extract_individual_example
 
 
+"""
 def compute_heuristic(state, action, pap_model, problem_env, config):
     is_two_arm_domain = 'two_arm_place_object' in action.discrete_parameters
     if is_two_arm_domain:
@@ -64,26 +65,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     else:
         gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
         hval = -number_in_goal + gnn_pred
-
-        o_reachable = state.is_entity_reachable(o)
-        o_r_manip_free = state.binary_edges[(o, r)][-1]
-        print '%s %s prefree %d manipfree %d numb_in_goal %d qval %.4f hval %.4f' % (
-            o, r, o_reachable, o_r_manip_free, number_in_goal, gnn_pred, hval)
-        if not is_two_arm_domain:
-            obj_name = action.discrete_parameters['object'].GetName()
-            region_name = action.discrete_parameters['region'].name
-            is_reachable = state.nodes[obj_name][-2] #state.is_entity_reachable(obj_name)
-            is_placeable = state.binary_edges[(obj_name, region_name)][2]
-            is_goal = state.nodes[obj_name][-3]
-            isgoal_region = state.nodes[region_name][-3]
-            is_in_region = state.binary_edges[(obj_name, region_name)][0]
-            in_way_of_goal_pap = obj_name in state.get_entities_in_way_to_goal_entities()
-            print "%15s %35s reachable %d placeable_in_region %d isgoal %d isgoal_region %d is_in_region %d  num_in_goal %d in_way_of_goal_pap %d gnn %.4f hval %.4f" \
-                  % (obj_name, region_name, is_reachable, is_placeable, is_goal, isgoal_region, is_in_region, number_in_goal, in_way_of_goal_pap, -gnn_pred, hval)
-
         return hval
 
-"""
 def get_actions(mover, goal, config):
     actions = []
     for o in mover.entity_names:
@@ -278,7 +261,7 @@ def search(mover, config, pap_model):
                     newactions = get_actions(mover, goal, config)
                     print "Old h value", curr_hval
                     for newaction in newactions:
-                        hval = compute_heuristic(newstate, newaction, pap_model, mover, config)
+                        hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                         action_queue.put((hval, float('nan'), newaction, newnode))
             if not success:
                 print('failed to execute action')
