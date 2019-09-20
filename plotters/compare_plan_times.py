@@ -65,8 +65,8 @@ def get_num_nodes(test_dir, test_files):
         pidx = get_pidx(test_dir, filename)
 
         stat = pickle.load(open(test_dir + filename, 'r'))
-        #if not stat['success']:
-        #    continue
+        if not stat['success']:
+            continue
 
         num_nodes = get_num_node_from_file(test_dir, stat)
         all_num_nodes.append(num_nodes)
@@ -102,6 +102,7 @@ def get_plan_times(test_dir, test_files, t_limit):
         else:
             #if not stat['success']:
             #    continue
+            continue
             time_taken.append(t_limit)
             successes.append(False)
             #print 'Failed',filename
@@ -137,7 +138,7 @@ def main():
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/irsc_mc/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
+    test_dir = './test_results/sahs_results/using_weights_for_submission_with_depth_bonus/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
 
     test_files = os.listdir(test_dir)

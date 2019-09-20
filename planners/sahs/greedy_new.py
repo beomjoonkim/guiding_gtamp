@@ -218,7 +218,7 @@ def search(mover, config, pap_model):
                 newnode = Node(node, action, newstate)
                 newactions = get_actions(mover, goal, config)
                 for newaction in newactions:
-                    hval = compute_heuristic(newstate, newaction, pap_model, mover, config) #- 1. * newnode.depth
+                    hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     action_queue.put((hval, float('nan'), newaction, newnode))
                 #import pdb;pdb.set_trace()
 
