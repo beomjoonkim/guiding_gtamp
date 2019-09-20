@@ -61,6 +61,16 @@ def get_solution_file_name(config):
                              + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
             config.use_region_agnostic) \
                              + '/mix_rate_' + str(config.mixrate) + '/'
+    elif config.qlearned_old_number_in_goal:
+        solution_file_dir += '/qlearned_old_number_in_goal/shortest_irsc/loss_' + str(
+            config.loss) + '/num_train_' + str(config.num_train) \
+                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
+            config.use_region_agnostic) \
+                             + '/mix_rate_' + str(config.mixrate) + '/'
+    elif config.qlearned_new_number_in_goal:
+        solution_file_dir += '/qlearned_old_number_in_goal/shortest_irsc/loss_' + str(
+            config.loss) + '/num_train_' + str(config.num_train) \
+                             + '/mse_weight_' + str(config.mse_weight)
     else:
         solution_file_dir += '/gnn/shortest_irsc/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) \
                              + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' \
@@ -98,6 +108,11 @@ def parse_arguments():
     parser.add_argument('-problem_type', type=str, default='normal')  # supports normal, nonmonotonic
     parser.add_argument('-hcount', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount', action='store_true', default=False)
+    parser.add_argument('-qlearned_hcount_new_number_in_goal', action='store_true', default=False)
+    parser.add_argument('-qlearned_hcount_old_number_in_goal', action='store_true', default=False)
+    parser.add_argument('-qlearned_old_number_in_goal', action='store_true', default=False)
+    parser.add_argument('-qlearned_new_number_in_goal', action='store_true', default=False)
+    parser.add_argument('-pure_learned_q', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
     parser.add_argument('-use_region_agnostic', action='store_true', default=False)
     parser.add_argument('-gather_planning_exp', action='store_true', default=False)

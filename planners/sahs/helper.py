@@ -76,18 +76,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         if is_obj_in_goal_region:
             number_in_goal += 1
     """
-    number_in_goal = 0
-    for i in state.nodes:
-        if i == target_o:
-            continue
-        for tmpr in problem_env.regions:
-            if tmpr in state.nodes:
-                is_r_goal_region = state.nodes[tmpr][8]
-                if is_r_goal_region:
-                    is_i_in_r = state.binary_edges[(i, tmpr)][0]
-                    if is_r_goal_region:
-                        number_in_goal += is_i_in_r
-    number_in_goal += int(region_is_goal) # encourage moving goal obj to goal region
 
     if config.hcount:
         o_reachable = state.is_entity_reachable(target_o)
@@ -102,13 +90,17 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         hcount = compute_hcount(state, problem_env)
         print "state_hcount %s %s %.4f" % (target_o, target_r, hcount)
         return hcount
-    elif config.qlearned_hcount:
-        q_bonus = compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env)
+    elif config.qlearned_hcount_new_number_in_goal:
+        number_in_goal = 0
+        for obj_name in goal_objs:
+            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
+            if is_obj_in_goal_region:
+                number_in_goal += 1
 
+        q_bonus = compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env)
         hcount = compute_hcount(state, problem_env)
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
         hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
-        #hval = -number_in_goal + obj_already_in_goal - config.mixrate * q_bonus
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
@@ -116,12 +108,69 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d qbonus %.4f hval %.4f' % (
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
+    elif config.qlearned_hcount_old_number_in_goal:
+        number_in_goal = 0
+        for i in state.nodes:
+            if i == target_o:
+                continue
+            for tmpr in problem_env.regions:
+                if tmpr in state.nodes:
+                    is_r_goal_region = state.nodes[tmpr][8]
+                    if is_r_goal_region:
+                        is_i_in_r = state.binary_edges[(i, tmpr)][0]
+                        if is_r_goal_region:
+                            number_in_goal += is_i_in_r
+        number_in_goal += int(region_is_goal)  # encourage moving goal obj to goal region
+
+        q_bonus = compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env)
+        hcount = compute_hcount(state, problem_env)
+        obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
+        hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
+
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+
+        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d qbonus %.4f hval %.4f' % (
+            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
+        return hval
+
+    elif config.pure_learned_q:
+        pass
+    elif config.qlearned_old_number_in_goal:
+        number_in_goal = 0
+        for i in state.nodes:
+            if i == target_o:
+                continue
+            for tmpr in problem_env.regions:
+                if tmpr in state.nodes:
+                    is_r_goal_region = state.nodes[tmpr][8]
+                    if is_r_goal_region:
+                        is_i_in_r = state.binary_edges[(i, tmpr)][0]
+                        if is_r_goal_region:
+                            number_in_goal += is_i_in_r
+        number_in_goal += int(region_is_goal)  # encourage moving goal obj to goal region
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
+                                                                  actions[None, ...])
+        hval = -number_in_goal - q_val_on_curr_a
+        return hval
+    elif config.qlearned_new_number_in_goal:
+        number_in_goal = 0
+        for obj_name in goal_objs:
+            is_obj_in_goal_region = state.binary_edges[(obj_name, goal_region)][0]
+            if is_obj_in_goal_region:
+                number_in_goal += 1
+        q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
+                                                                  actions[None, ...])
+        import pdb;pdb.set_trace()
+        hval = -number_in_goal - q_val_on_curr_a
+        return hval
     else:
+
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
-        #hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
-        hval = -number_in_goal - q_val_on_curr_a
+        hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
+        #hval = -number_in_goal - q_val_on_curr_a
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
