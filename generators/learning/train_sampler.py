@@ -1,7 +1,7 @@
 import argparse
 
 
-def train_admon():
+def train_admon(args):
     pass
 
 
