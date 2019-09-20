@@ -53,6 +53,8 @@ def get_solution_file_name(config):
         solution_file_dir += '/gnn_no_h/loss_' + str(config.loss) + '/num_train_' + str(config.num_train) + '/'
     elif config.hcount:
         solution_file_dir += '/hcount/'
+    elif config.hcount_number_in_goal:
+        solution_file_dir += '/hcount_number_in_goal/'
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
     elif config.qlearned_hcount:

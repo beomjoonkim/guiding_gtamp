@@ -80,12 +80,27 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     if config.hcount:
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+        hcount = compute_hcount_with_action(state, action, problem_env)
+        return hcount
+    elif config.hcount_number_in_goal:
+        o_reachable = state.is_entity_reachable(target_o)
+        o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
+        number_in_goal = 0
+        for i in state.nodes:
+            if i == target_o:
+                continue
+            for tmpr in problem_env.regions:
+                if tmpr in state.nodes:
+                    is_r_goal_region = state.nodes[tmpr][8]
+                    if is_r_goal_region:
+                        is_i_in_r = state.binary_edges[(i, tmpr)][0]
+                        if is_r_goal_region:
+                            number_in_goal += is_i_in_r
+        number_in_goal += int(region_is_goal)  # encourage moving goal obj to goal region
 
         hcount = compute_hcount_with_action(state, action, problem_env)
-        print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d' % (
-            number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, )
-        #print "%s %s %.4f" % (target_o, target_r, hcount)
-        return hcount
+        return hcount - number_in_goal
+
     elif config.state_hcount:
         hcount = compute_hcount(state, problem_env)
         print "state_hcount %s %s %.4f" % (target_o, target_r, hcount)
