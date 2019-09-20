@@ -124,6 +124,7 @@ def parse_arguments():
     parser.add_argument('-domain', type=str, default='two_arm_mover')
     parser.add_argument('-problem_type', type=str, default='normal')  # supports normal, nonmonotonic
     parser.add_argument('-hcount', action='store_true', default=False)
+    parser.add_argument('-hcount_number_in_goal', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount_new_number_in_goal', action='store_true', default=False)
     parser.add_argument('-qlearned_hcount_old_number_in_goal', action='store_true', default=False)
