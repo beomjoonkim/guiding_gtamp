@@ -135,7 +135,7 @@ def main():
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/qlearned_old_number_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/' \
-               'qlearned_hcount_obj_already_in_goal_new_number_in_goal//shortest_irsc/' \
+               'qlearned_hcount_obj_already_in_goal_old_number_in_goal//shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
 
     test_files = os.listdir(test_dir)
