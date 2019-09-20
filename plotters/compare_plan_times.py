@@ -127,16 +127,17 @@ def main():
                    'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission_with_depth_bonus/domain_%s/n_objs_pack_%d/gnn/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/qlearned_hcount_obj_already_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/qlearned_new_number_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0//' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/qlearned_old_number_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
+    test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/hcount_number_in_goal/' % (domain, n_objs)
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/n_objs_pack_%d/' \
-               'qlearned_hcount_obj_already_in_goal_old_number_in_goal//shortest_irsc/' \
-               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (domain, n_objs)
+               'qlearned_old_number_in_goal//shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (domain, n_objs)
 
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
