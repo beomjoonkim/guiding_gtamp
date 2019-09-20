@@ -159,7 +159,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                 number_in_goal += 1
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
-        import pdb;pdb.set_trace()
         hval = -number_in_goal - q_val_on_curr_a
         return hval
     elif config.pure_learned_q:
