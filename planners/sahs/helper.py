@@ -107,8 +107,8 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
         hcount = compute_hcount(state, problem_env)
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
-        #hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
-        hval = -number_in_goal + obj_already_in_goal - config.mixrate * q_bonus
+        hval = -number_in_goal + obj_already_in_goal + hcount - config.mixrate * q_bonus
+        #hval = -number_in_goal + obj_already_in_goal - config.mixrate * q_bonus
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
