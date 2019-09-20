@@ -134,8 +134,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
 
-    elif config.pure_learned_q:
-        pass
     elif config.qlearned_old_number_in_goal:
         number_in_goal = 0
         for i in state.nodes:
@@ -164,7 +162,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         import pdb;pdb.set_trace()
         hval = -number_in_goal - q_val_on_curr_a
         return hval
-    else:
+    elif config.pure_learned_q:
 
         q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
                                                                   actions[None, ...])
@@ -178,3 +176,5 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print '%s %s prefree %d manipfree %d numb_in_goal %d qval %.4f hval %.4f' % (
             target_o, target_r, o_reachable, o_r_manip_free, number_in_goal, q_val_on_curr_a, hval)
         return hval
+    else:
+        raise NotImplementedError

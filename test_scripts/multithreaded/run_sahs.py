@@ -39,6 +39,7 @@ def main():
             if value is False:
                 continue
             elif value is True:
+                """
                 if key == 'hcount':
                     config['hcount'] = ""
                 elif key == 'state_hcount':
@@ -47,6 +48,8 @@ def main():
                     config['qlearned_hcount'] = ""
                 if key == 'use_region_agnostic':
                     config['use_region_agnostic'] = ""
+                """
+                config[key] = ""
             else:
                 config[key] = value
             config['pidx'] = pidx
