@@ -52,7 +52,7 @@ class SamplerTrajectory:
         problem_env, openrave_env = self.create_environment()
         self.problem_env = problem_env
 
-        utils.viewer()
+        #utils.viewer()
         state = None
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:

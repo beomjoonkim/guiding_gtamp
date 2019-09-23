@@ -5,6 +5,7 @@ import os
 import argparse
 import socket
 import numpy as np
+import sys
 
 hostname = socket.gethostname()
 if hostname == 'dell-XPS-15-9560' or hostname == 'phaedra' or hostname == 'shakey' or hostname == 'lab':
@@ -30,6 +31,8 @@ def get_p_idx(fname):
 
 
 def save_traj(traj, save_fname):
+    for state in traj.states:
+        state.problem_env = None
     pickle.dump(traj, open(save_fname, 'wb'))
 
 
@@ -45,6 +48,7 @@ def process_plan_file(filename, pidx, key_configs):
 def parse_parameters():
     parser = argparse.ArgumentParser(description='parameters')
     parser.add_argument('-pidx', type=int, default=0)
+    parser.add_argument('-f', action='store_true', default=False)
     parameters = parser.parse_args()
 
     return parameters
@@ -65,9 +69,10 @@ def get_raw_fname(parameters):
     return 'seed_0_pidx_' + str(parameters.pidx) + '.pkl'
 
 
-def quit_if_already_done(fpath):
-    if os.path.isfile(fpath):
+def quit_if_already_done(fpath, config):
+    if os.path.isfile(fpath) and not config.f:
         print "Already done"
+        sys.exit(-1)
 
 
 def main():
@@ -79,12 +84,11 @@ def main():
     processed_fname = get_processed_fname(raw_fname)
     print "Raw fname", raw_dir + raw_fname
     print "Processed fname ", save_dir + processed_fname
-    quit_if_already_done(save_dir + processed_fname)
+    quit_if_already_done(save_dir + processed_fname, parameters)
 
-    key_configs = pickle.load(open('prm.pkl','r'))[0][::2]
+    key_configs = pickle.load(open('prm.pkl', 'r'))[0][::2]
     key_configs = np.delete(key_configs, 293, axis=0)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, key_configs)
-
     save_traj(traj, save_dir + processed_fname)
 
 
