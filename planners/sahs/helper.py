@@ -123,7 +123,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
         print 'n_in_goal %d %s %s prefree %d manipfree %d hcount %d qbonus %.4f hval %.4f' % (
             number_in_goal, target_o, target_r, o_reachable, o_r_manip_free, hcount, -q_bonus, hval)
         return hval
-    elif config.qlearned_hcount_old_number_in_goal:
+    elif config.qlearned_hcount_old_number_in_goal or config.integrated:
         number_in_goal = 0
         for i in state.nodes:
             if i == target_o:

@@ -88,8 +88,10 @@ def main():
     print "Processed fname ", save_dir + processed_fname
     quit_if_already_done(save_dir + processed_fname, parameters)
 
-    key_configs = pickle.load(open('prm.pkl', 'r'))[0][::2]
-    key_configs = np.delete(key_configs, 293, axis=0)
+    # Every second element in the prm - it does not have to be, because state computation checks the collisions
+    # at all configs anyways. todo: reprocess the data using the full prm
+    key_configs = pickle.load(open('prm.pkl', 'r'))[0]
+    #key_configs = np.delete(key_configs, 293, axis=0)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, key_configs)
     save_traj(traj, save_dir + processed_fname)
 

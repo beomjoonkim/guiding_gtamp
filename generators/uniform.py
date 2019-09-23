@@ -1,8 +1,8 @@
 from generator import PaPGenerator, Generator
 from gtamp_utils import utils
 from gtamp_utils.utils import get_pick_domain, get_place_domain
-#from mover_library import utils
-#from mover_library.utils import get_pick_domain, get_place_domain
+# from mover_library import utils
+# from mover_library.utils import get_pick_domain, get_place_domain
 
 
 from feasibility_checkers.two_arm_pick_feasibility_checker import TwoArmPickFeasibilityChecker
@@ -139,7 +139,6 @@ class UniformGenerator:
         return np.random.uniform(domain_min, domain_max, (1, dim_parameters)).squeeze()
 
 
-
 class PaPUniformGenerator(UniformGenerator):
     def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
         UniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
@@ -153,27 +152,22 @@ class PaPUniformGenerator(UniformGenerator):
             self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
 
         status = "NoSolution"
-        #stime = time.time()
         for n_iter in range(10, n_iter, 10):
             feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
                                                                                 n_iter,
                                                                                 n_parameters_to_try_motion_planning)
-            if status =='HasSolution':
+            if status == 'HasSolution':
                 break
-        #print 'Sampling time', time.time()-stime
         if status == "NoSolution":
             return {'is_feasible': False}
 
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
         else:
-            #stime = time.time()
             chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
                                                                            feasible_op_parameters,
                                                                            cached_collisions,
                                                                            cached_holding_collisions)
-            #print 'MP time', time.time()-stime
-
         return chosen_op_param
 
     def get_pap_param_with_feasible_motion_plan(self, operator_skeleton, feasible_op_parameters,
@@ -190,7 +184,7 @@ class PaPUniformGenerator(UniformGenerator):
         else:
             self.feasible_pick_params[target_obj] = [chosen_pick_param]
 
-        #self.feasible_pick_params[target_obj].append(pick_op_params)
+        # self.feasible_pick_params[target_obj].append(pick_op_params)
 
         # getting place motion
         original_config = utils.get_body_xytheta(self.problem_env.robot).squeeze()
@@ -207,6 +201,8 @@ class PaPUniformGenerator(UniformGenerator):
         return chosen_pap_param
 
 
+# It is a mess at the moment: I am using the below for computing the state, but above for sampling in SAHS,
+# to be consistent with the old performance. Will fix later.
 
 class UniformPaPGenerator(PaPGenerator):
     def __init__(self, node, operator_skeleton, problem_env, swept_volume_constraint,

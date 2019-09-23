@@ -6,10 +6,10 @@ from node import Node
 from gtamp_utils import utils
 
 from generators.one_arm_pap_uniform_generator import OneArmPaPUniformGenerator
-from generators.uniform import UniformPaPGenerator, PaPUniformGenerator
+from generators.uniform import PaPUniformGenerator
+from generators.learned_generator import LearnedGenerator
 
 from trajectory_representation.operator import Operator
-from trajectory_representation.trajectory import Trajectory
 
 from helper import get_actions, compute_heuristic, get_state_class
 
@@ -21,83 +21,8 @@ prm_indices = {tuple(v): i for i, v in enumerate(prm_vertices)}
 DISABLE_COLLISIONS = False
 MAX_DISTANCE = 1.0
 
-from learn.data_traj import extract_individual_example
 
-
-"""
-def compute_heuristic(state, action, pap_model, problem_env, config):
-    is_two_arm_domain = 'two_arm_place_object' in action.discrete_parameters
-    if is_two_arm_domain:
-        o = action.discrete_parameters['two_arm_place_object']
-        r = action.discrete_parameters['two_arm_place_region']
-    else:
-        o = action.discrete_parameters['object'].GetName()
-        r = action.discrete_parameters['region'].name
-
-    nodes, edges, actions, _ = extract_individual_example(state, action)
-    nodes = nodes[..., 6:]
-
-    region_is_goal = state.nodes[r][8]
-    number_in_goal = 0
-
-    for i in state.nodes:
-        if i == o:
-            continue
-        for tmpr in problem_env.regions:
-            if tmpr in state.nodes:
-                is_r_goal_region = state.nodes[tmpr][8]
-                if is_r_goal_region:
-                    is_i_in_r = state.binary_edges[(i, tmpr)][0]
-                    if is_r_goal_region:
-                        number_in_goal += is_i_in_r
-    number_in_goal += int(region_is_goal)
-
-    if config.hcount:
-        hcount = compute_hcount(state, action, pap_model, problem_env)
-        print "%s %s %.4f" % (o, r, hcount)
-        return hcount
-    elif config.dont_use_gnn:
-        return -number_in_goal
-    elif config.dont_use_h:
-        gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...],
-                                                            actions[None, ...])
-        return gnn_pred
-    else:
-        gnn_pred = -pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-        hval = -number_in_goal + gnn_pred
-        return hval
-
-def get_actions(mover, goal, config):
-    actions = []
-    for o in mover.entity_names:
-        if 'region' in o:
-            continue
-        for r in mover.entity_names:
-            if 'region' not in r:
-                continue
-            if o not in goal and r in goal:
-                # you cannot place non-goal object in the goal region
-                continue
-            if 'entire' in r: #and config.domain == 'two_arm_mover':
-                continue
-
-            if config.domain == 'two_arm_mover':
-                action = Operator('two_arm_pick_two_arm_place', {'two_arm_place_object': o, 'two_arm_place_region': r})
-                # following two lines are for legacy reasons, will fix later
-                action.discrete_parameters['object'] = action.discrete_parameters['two_arm_place_object']
-                action.discrete_parameters['region'] = action.discrete_parameters['two_arm_place_region']
-            elif config.domain == 'one_arm_mover':
-                action = Operator('one_arm_pick_one_arm_place',
-                                  {'object': mover.env.GetKinBody(o), 'region': mover.regions[r]})
-
-            else:
-                raise NotImplementedError
-            actions.append(action)
-
-    return actions
-"""
-
-def search(mover, config, pap_model):
+def search(mover, config, pap_model, learned_smpler=None):
     tt = time.time()
 
     obj_names = [obj.GetName() for obj in mover.objects]
@@ -108,6 +33,14 @@ def search(mover, config, pap_model):
     depth_limit = 60
 
     state = statecls(mover, goal)
+    actions = get_actions(mover, goal, config)
+    action = actions[0]
+    smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
+    # How can I change the state.collides to the one_hot? How long would it take?
+    smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                                            cached_collisions=state.collides,
+                                            cached_holding_collisions=None)
+    import pdb;pdb.set_trace()
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
@@ -119,22 +52,6 @@ def search(mover, config, pap_model):
         discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
         initnode.set_heuristic(discrete_params, hval)
         action_queue.put((hval, float('nan'), a, initnode))  # initial q
-
-    """
-    other = pickle.load(open('/home/beomjoon/Documents/github/qqq/tmp.pkl','r'))
-    other_binary = other[1]
-    keys = state.binary_edges.keys()
-    for k in keys:
-        #print k, state.binary_edges[k], other_binary[k], np.array(state.binary_edges[k]) == np.array(other_binary[k])
-        if not np.all( np.array(state.binary_edges[k]) == np.array(other_binary[k]) ):
-            print "Wrong!", k, state.binary_edges[k], np.array(other_binary[k])
-    keys = state.ternary_edges.keys()
-    other_ternary = other[2]
-    for k in keys:
-        if not np.all( np.array(state.ternary_edges[k]) == np.array(other_ternary[k]) ):
-            print "Wrong!", k, state.ternary_edges[k], np.array(other_ternary[k])
-    import pdb;pdb.set_trace()
-    """
 
     iter = 0
     # beginning of the planner
@@ -167,9 +84,17 @@ def search(mover, config, pap_model):
             print("Sampling for {}".format(action.discrete_parameters.values()))
             a_obj = action.discrete_parameters['two_arm_place_object']
             a_region = action.discrete_parameters['two_arm_place_region']
-            smpler = PaPUniformGenerator(action, mover, None)
-            smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
-                                                    cached_collisions=state.collides, cached_holding_collisions=None)
+            if learned_smpler is None:
+                smpler = PaPUniformGenerator(action, mover, None)
+                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                                                        cached_collisions=state.collides, cached_holding_collisions=None)
+            else:
+                import pdb;pdb.set_trace()
+                smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
+                # How can I change the state.collides to the one_hot? How long would it take?
+                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                                                        cached_collisions=state.collides,
+                                                        cached_holding_collisions=None)
             """
             smpler = UniformPaPGenerator(None, action, mover, None,
                                          n_candidate_params_to_smpl=3,
@@ -203,7 +128,7 @@ def search(mover, config, pap_model):
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     action_queue.put((hval, float('nan'), newaction, newnode))
-                #import pdb;pdb.set_trace()
+                # import pdb;pdb.set_trace()
 
         elif action.type == 'one_arm_pick_one_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
