@@ -11,7 +11,9 @@ from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from manipulation.primitives.savers import DynamicEnvironmentStateSaver
-from gtamp_utils import utils
+
+from generators.learning.AdMon import AdversarialMonteCarlo
+
 from planners.sahs.greedy_new import search
 from learn.pap_gnn import PaPGNN
 import collections
@@ -57,12 +59,23 @@ def get_solution_file_name(config):
         solution_file_dir += '/hcount_number_in_goal/'
     elif config.state_hcount:
         solution_file_dir += '/state_hcount/'
+    elif config.integrated:
+        solution_file_dir += '/learned_sampler/'
+        # What about the tamp-q? Take as its input
+        solution_file_dir += '/integrated/shortest_irsc/'
+        q_config = '/q_config_num_train_' + str(config.num_train) + \
+                   '_mse_weight_' + str(config.mse_weight) + \
+                   '_use_region_agnostic_' + str(config.use_region_agnostic) + \
+                   '_mix_rate_' + str(config.mixrate) + '/'
+        sampler_config = '/smpler_config_num_train_' + str(config.num_train)  + '/'
+        solution_file_dir = solution_file_dir + q_config + sampler_config
     elif config.qlearned_hcount:
-        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc/loss_' + str(
-            config.loss) + '/num_train_' + str(config.num_train) \
-                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
-            config.use_region_agnostic) \
-                             + '/mix_rate_' + str(config.mixrate) + '/'
+        solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc' \
+                             '/loss_' + str(config.loss) + \
+                             '/num_train_' + str(config.num_train) + \
+                             '/mse_weight_' + str(config.mse_weight) + \
+                             '/use_region_agnostic_' + str(config.use_region_agnostic) + \
+                             '/mix_rate_' + str(config.mixrate) + '/'
     elif config.qlearned_hcount_new_number_in_goal:
         solution_file_dir += '/qlearned_hcount_obj_already_in_goal_new_number_in_goal/shortest_irsc/loss_' + str(
             config.loss) + '/num_train_' + str(config.num_train) \
@@ -70,11 +83,12 @@ def get_solution_file_name(config):
             config.use_region_agnostic) \
                              + '/mix_rate_' + str(config.mixrate) + '/'
     elif config.qlearned_hcount_old_number_in_goal:
-        solution_file_dir += '/qlearned_hcount_obj_already_in_goal_old_number_in_goal/shortest_irsc/loss_' + str(
-            config.loss) + '/num_train_' + str(config.num_train) \
-                             + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
-            config.use_region_agnostic) \
-                             + '/mix_rate_' + str(config.mixrate) + '/'
+        solution_file_dir += '/qlearned_hcount_obj_already_in_goal_old_number_in_goal/shortest_irsc/' \
+                             'loss_' + str(config.loss) + \
+                             '/num_train_' + str(config.num_train) + \
+                             '/mse_weight_' + str(config.mse_weight) + \
+                             '/use_region_agnostic_' + str(config.use_region_agnostic) + \
+                             '/mix_rate_' + str(config.mixrate) + '/'
     elif config.qlearned_old_number_in_goal:
         solution_file_dir += '/qlearned_old_number_in_goal//shortest_irsc/loss_' + str(config.loss) \
                              + '/num_train_' + str(config.num_train) \
@@ -106,6 +120,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description='Greedy planner')
     parser.add_argument('-pidx', type=int, default=0)
     parser.add_argument('-train_seed', type=int, default=0)
+    parser.add_argument('-smpler_train_seed', type=int, default=0)
     parser.add_argument('-planner_seed', type=int, default=0)
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_node_limit', type=int, default=3000)
@@ -129,6 +144,7 @@ def parse_arguments():
     parser.add_argument('-qlearned_hcount_old_number_in_goal', action='store_true', default=False)
     parser.add_argument('-qlearned_old_number_in_goal', action='store_true', default=False)
     parser.add_argument('-qlearned_new_number_in_goal', action='store_true', default=False)
+    parser.add_argument('-integrated', action='store_true', default=False)
     parser.add_argument('-pure_learned_q', action='store_true', default=False)
     parser.add_argument('-state_hcount', action='store_true', default=False)
     parser.add_argument('-use_region_agnostic', action='store_true', default=False)
@@ -196,6 +212,19 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
+def get_learned_smpler():
+    n_key_configs = 618
+    dim_state = (n_key_configs, 2, 1)
+    dim_action = 6
+    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
+                                  save_folder='./generators/learning/learned_weights/',
+                                  tau=1.0,
+                                  explr_const=0.0)
+    #admon.load_weights(agen_file='a_gen_epoch_11.h5',
+    #                   disc_file='disc_epoch_11.h5')
+    return admon
+
+
 def make_pklable(plan):
     for p in plan:
         obj = p.discrete_parameters['object']
@@ -217,7 +246,15 @@ def main():
     problem_env = get_problem_env(config)
     set_problem_env_config(problem_env, config)
 
-    pap_model = get_pap_gnn_model(problem_env, config)
+    if not config.hcount:
+        pap_model = get_pap_gnn_model(problem_env, config)
+    else:
+        pap_model = None
+    if config.integrated:
+        smpler = get_learned_smpler()
+    else:
+        smpler = None
+
     solution_file_name = get_solution_file_name(config)
 
     is_problem_solved_before = os.path.isfile(solution_file_name)
@@ -231,7 +268,7 @@ def main():
             num_nodes = trajectory['num_nodes']
     else:
         t = time.time()
-        plan, num_nodes = search(problem_env, config, pap_model)
+        plan, num_nodes = search(problem_env, config, pap_model, smpler)
         tottime = time.time() - t
         success = plan is not None
         plan_length = len(plan) if success else 0

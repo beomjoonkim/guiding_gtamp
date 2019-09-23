@@ -9,9 +9,9 @@ from predicates.in_region import InRegion
 
 from planners.subplanners.motion_planner import BaseMotionPlanner
 from gtamp_utils import utils
-
-
 from pick_and_place_state import PaPState
+
+import numpy as np
 
 
 class ShortestPathPaPState(PaPState):
@@ -63,7 +63,8 @@ class ShortestPathPaPState(PaPState):
         else:
             self.holding_collides = None
             self.holding_current_collides = None
-
+        self.key_config_obstacles = self.make_key_config_obstacles_from_prm_collisions()
+        return
         self.place_used = {}
         self.cached_pick_paths = {}
         self.cached_place_paths = {}
@@ -81,6 +82,16 @@ class ShortestPathPaPState(PaPState):
         self.nodes = self.get_nodes()
         self.binary_edges = self.get_binary_edges()
         self.ternary_edges = self.get_ternary_edges()
+
+    def make_key_config_obstacles_from_prm_collisions(self):
+        # make key configs
+        n_vtxs = len(self.prm_vertices)
+        collision_vector = np.zeros((n_vtxs))
+        colliding_vtx_idxs = [v for v in self.collides.values()]
+        colliding_vtx_idxs = list(set().union(*colliding_vtx_idxs))
+        collision_vector[colliding_vtx_idxs] = 1
+        key_config_obstacles = utils.convert_binary_vec_to_one_hot(collision_vector)
+        return key_config_obstacles.reshape((1, n_vtxs, 2, 1)) # the shape req'd for CNN
 
     def initialize_parent_predicates(self, moved_obj, parent_state, parent_action):
         assert parent_action is not None
