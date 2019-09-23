@@ -1,34 +1,55 @@
 import argparse
 import os
 import pickle
+import numpy as np
+import tensorflow as tf
+import random
+
+from AdMon import AdversarialMonteCarlo
 
 
 def load_data(traj_dir):
     traj_files = os.listdir(traj_dir)
-    import pdb;pdb.set_trace()
-    for traj_file in traj_files:
-        try:
-            traj = pickle.load(open(traj_dir+traj_file, 'r'))
-        except:
-            continue
-        import pdb;pdb.set_trace()
+    cache_file_name = 'cache.pkl'
+    if os.path.isfile(traj_dir + cache_file_name):
+        return pickle.load(open(traj_dir + cache_file_name, 'r'))
 
-    return 1
+    all_states = []
+    all_actions = []
+    all_sum_rewards = []
+    for traj_file in traj_files:
+        if 'pidx' not in traj_file: continue
+        traj = pickle.load(open(traj_dir + traj_file, 'r'))
+        if len(traj.states) == 0:
+            continue
+        states = np.array([s.state_vec for s in traj.states])
+        actions = traj.actions
+        rewards = traj.rewards
+        sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
+
+        all_states.append(states)
+        all_actions.append(actions)
+        all_sum_rewards.append(sum_rewards)
+
+    all_states = np.vstack(all_states)[:, :, :, None]  # for use with CNN
+    all_actions = np.vstack(all_actions)
+    all_sum_rewards = np.hstack(np.array(all_sum_rewards))[:, None]  # keras requires n_data x 1
+
+    pickle.dump((all_states, all_actions, all_sum_rewards), open(traj_dir + cache_file_name, 'wb'))
+    return all_states, all_actions, all_sum_rewards[:, None]
 
 
 def train_admon(args):
     # Loads the processed data
     states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                              'n_objs_pack_1/irsc/sampler_trajectory_data/')
-    import pdb;pdb.set_trace()
-
-
-    # Loads the state, action, and reward tuples
-
-    # Compute the sum of rewards
-
-    # Run AdMon
-    pass
+    savedir = './generators/learning/learned_weights/'
+    n_key_configs = 310
+    dim_state = (n_key_configs, 2, 1)
+    dim_action = actions.shape[1]
+    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=1.0,
+                                  explr_const=0.0)
+    admon.train(states, actions, sum_rewards)
 
 
 def parse_args():
@@ -52,8 +73,12 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
-    train_admon(args)
+    configs = parse_args()
+    np.random.seed(configs.seed)
+    random.seed(configs.seed)
+    tf.set_random_seed(configs.seed)
+    train_admon(configs)
+
 
 if __name__ == '__main__':
     main()

@@ -5,7 +5,6 @@ from gtamp_utils.utils import visualize_path, two_arm_pick_object
 from manipulation.bodies.bodies import set_color
 import pickle
 
-prm_vertices = prm_edges = None
 
 
 class PaPState(State):
@@ -42,20 +41,23 @@ class PaPState(State):
         self.binary_edges = None
         self.nodes = None
 
-    def update_collisions_at_prm_vertices(self, parent_collides):
-        global prm_vertices
-        global prm_edges
+        self.prm_vertices, self.prm_edges = pickle.load(open('./prm.pkl','rb'))
 
-        if prm_vertices is None or prm_edges is None:
-            prm_vertices, prm_edges = pickle.load(open('./prm.pkl', 'rb'))
+    def update_collisions_at_prm_vertices(self, parent_collides):
+        #global prm_vertices
+        #global prm_edges
+
+        #if prm_vertices is None or prm_edges is None:
+        #    prm_vertices, prm_edges = pickle.load(open('./prm.pkl', 'rb'))
 
         is_robot_holding = len(self.problem_env.robot.GetGrabbed()) > 0
 
         def in_collision(q, obj):
             set_robot_config(q, self.problem_env.robot)
             if is_robot_holding:
-                # openrave bug: when the object is held, it won't check the held_obj and given object collision unless
-                #               collision on robot is first checked.
+                # note:
+                # openrave bug: when an object is held, it won't check the held_obj and given object collision unless
+                #               collision on robot is first checked. So, we have to check it twice
                 col = self.problem_env.env.CheckCollision(self.problem_env.robot)
                 col = self.problem_env.env.CheckCollision(self.problem_env.robot, obj)
             else:
@@ -76,7 +78,7 @@ class PaPState(State):
             if collisions_with_obj_did_not_change:
                 collisions_at_all_obj_pose_pairs[obj_name_pose_tuple] = parent_collides[obj_name_pose_tuple]
             else:
-                prm_vertices_in_collision_with_obj = {i for i, q in enumerate(prm_vertices) if in_collision(q, obj)}
+                prm_vertices_in_collision_with_obj = {i for i, q in enumerate(self.prm_vertices) if in_collision(q, obj)}
                 collisions_at_all_obj_pose_pairs[obj_name_pose_tuple] = prm_vertices_in_collision_with_obj
         set_robot_config(old_q, self.problem_env.robot)
 
