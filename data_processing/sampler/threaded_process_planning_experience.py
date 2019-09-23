@@ -12,6 +12,8 @@ def worker_p(config):
     command = 'python ./data_processing/sampler/process_planning_experience.py'
 
     for key, value in zip(config.keys(), config.values()):
+        if key == 'f':
+            continue
         option = ' -' + str(key) + ' ' + str(value)
         command += option
 
