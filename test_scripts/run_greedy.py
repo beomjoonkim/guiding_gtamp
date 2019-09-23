@@ -75,7 +75,6 @@ def get_solution_file_name(config):
                              + '/mse_weight_' + str(config.mse_weight) + '/use_region_agnostic_' + str(
             config.use_region_agnostic) \
                              + '/mix_rate_' + str(config.mixrate) + '/'
-
     elif config.qlearned_old_number_in_goal:
         solution_file_dir += '/qlearned_old_number_in_goal//shortest_irsc/loss_' + str(config.loss) \
                              + '/num_train_' + str(config.num_train) \

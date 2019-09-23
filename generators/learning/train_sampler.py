@@ -1,7 +1,33 @@
 import argparse
+import os
+import pickle
+
+
+def load_data(traj_dir):
+    traj_files = os.listdir(traj_dir)
+    import pdb;pdb.set_trace()
+    for traj_file in traj_files:
+        try:
+            traj = pickle.load(open(traj_dir+traj_file, 'r'))
+        except:
+            continue
+        import pdb;pdb.set_trace()
+
+    return 1
 
 
 def train_admon(args):
+    # Loads the processed data
+    states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
+                                             'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    import pdb;pdb.set_trace()
+
+
+    # Loads the state, action, and reward tuples
+
+    # Compute the sum of rewards
+
+    # Run AdMon
     pass
 
 
@@ -28,3 +54,6 @@ def parse_args():
 def main():
     args = parse_args()
     train_admon(args)
+
+if __name__ == '__main__':
+    main()
