@@ -35,7 +35,7 @@ def save_traj(traj, save_fname):
     for state in traj.states:
         state.problem_env = None
     traj.problem_env = None
-    pickle.dump(traj.states, open(save_fname, 'wb'))
+    pickle.dump(traj, open(save_fname, 'wb'))
 
 
 def process_plan_file(filename, pidx, key_configs):
