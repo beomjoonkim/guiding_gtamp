@@ -33,14 +33,18 @@ def search(mover, config, pap_model, learned_smpler=None):
     depth_limit = 60
 
     state = statecls(mover, goal)
+
+    """
     actions = get_actions(mover, goal, config)
     action = actions[0]
+
     smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
     # How can I change the state.collides to the one_hot? How long would it take?
     smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)
     import pdb;pdb.set_trace()
+    """
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
@@ -89,7 +93,6 @@ def search(mover, config, pap_model, learned_smpler=None):
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides, cached_holding_collisions=None)
             else:
-                import pdb;pdb.set_trace()
                 smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
                 # How can I change the state.collides to the one_hot? How long would it take?
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
