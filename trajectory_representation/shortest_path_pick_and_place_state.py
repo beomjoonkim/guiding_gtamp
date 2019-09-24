@@ -64,6 +64,7 @@ class ShortestPathPaPState(PaPState):
             self.holding_collides = None
             self.holding_current_collides = None
         self.key_config_obstacles = self.make_key_config_obstacles_from_prm_collisions()
+        return
         self.place_used = {}
         self.cached_pick_paths = {}
         self.cached_place_paths = {}
