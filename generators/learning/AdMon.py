@@ -180,7 +180,8 @@ class AdversarialMonteCarlo:
             a_z = noise(n_samples, self.dim_action)
             state = np.tile(state, (n_samples, 1))
             #state = state.reshape((n_samples, self.n_key_confs, self.dim_state[1]))
-            g = self.action_scaler.inverse_transform(self.a_gen.predict([a_z, state]))
+            #g = self.action_scaler.inverse_transform(self.a_gen.predict([a_z, state]))
+            g = self.a_gen.predict([a_z, state])
         elif state.shape[0] == 1 and n_samples == 1:
             a_z = noise(state.shape[0], self.dim_action)
             #state = state.reshape((1, self.n_key_confs, self.dim_state[1]))
@@ -271,7 +272,6 @@ class AdversarialMonteCarlo:
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
             self.save_weights(additional_name='_epoch_' + str(i))
             print "Epoch took: %.2fs" % (time.time() - stime)
+
             # How do I evaluate this shit? I need to use it with the trained Q?
-            # Also, I need to be relative with respect to the region for placements;
-            # How can I do this?
-            # Basically, take the trained weights, and then use it with the learned Q.
+            # (1) Take the

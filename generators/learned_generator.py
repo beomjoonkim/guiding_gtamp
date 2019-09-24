@@ -15,17 +15,15 @@ class LearnedGenerator(PaPUniformGenerator):
         feasible_op_parameters = []
         for i in range(n_iter):
             pick_place_base_poses = self.sampler.generate(self.key_config_obstacles)  # I need grasp parameters;
-            grasp_parameters = self.sample_from_uniform()[0:3]
-            op_parameters = np.hstack([grasp_parameters, pick_place_base_poses])
-            op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton,
-                                                                                  op_parameters,
+            grasp_parameters = self.sample_from_uniform()[0:3][None, :]
+            op_parameters = np.hstack([grasp_parameters, pick_place_base_poses]).squeeze()
+            op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,
                                                                                   self.swept_volume_constraint)
 
             if status == 'HasSolution':
                 feasible_op_parameters.append(op_parameters)
                 if len(feasible_op_parameters) >= n_parameters_to_try_motion_planning:
                     break
-
         if len(feasible_op_parameters) == 0:
             feasible_op_parameters.append(op_parameters)  # place holder
             status = "NoSolution"
