@@ -526,10 +526,13 @@ def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR
 
     angle = np.arccos(abs(robot_x_wrt_obj / dist_to_obj))
     if robot_x_wrt_obj < 0 < robot_y_wrt_obj:
-        angle += np.pi / 2.0
+        print "a"
+        angle = np.pi - angle
     elif robot_x_wrt_obj < 0 and robot_y_wrt_obj < 0:
+        print "b"
         angle += np.pi
     elif robot_x_wrt_obj > 0 > robot_y_wrt_obj:
+        print "c"
         angle = -angle
 
     return portion_of_dist_to_obj, angle

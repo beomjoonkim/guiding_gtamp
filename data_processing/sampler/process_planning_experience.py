@@ -93,6 +93,7 @@ def main():
     key_configs = pickle.load(open('prm.pkl', 'r'))[0]
     #key_configs = np.delete(key_configs, 293, axis=0)
     traj = process_plan_file(raw_dir + raw_fname, parameters.pidx, key_configs)
+    import pdb;pdb.set_trace()
     save_traj(traj, save_dir + processed_fname)
 
 
