@@ -230,7 +230,7 @@ class AdversarialMonteCarlo:
         #   Also, how do I make sure it is in the right unit with the place base config?
         #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
 
-    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
+    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-3):
 
         BATCH_SIZE = np.min([32, int(len(actions) * 0.1)])
         if BATCH_SIZE == 0:
