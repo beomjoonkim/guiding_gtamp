@@ -297,9 +297,9 @@ class AdversarialMonteCarlo:
             self.compare_to_data(states, actions)
             a_z = noise(len(states), self.dim_noise)
             tau_values = np.tile(curr_tau, (len(states), 1))
-            print "Mean score values ",  np.mean(self.disc.predict([actions, states, tau_values]).squeeze())
+            print "Mean score values ",  np.mean(np.abs(self.disc.predict([actions, states, tau_values]).squeeze()))
             print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tau_values]).squeeze()))
-            print "Generator score error", np.mean(np.linalg.norm(self.DG.predict([a_z, states]).squeeze() - np.array(sum_rewards).squeeze()))
+            print "Generator score error", np.mean(np.abs(np.linalg.norm(self.DG.predict([a_z, states]).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", gen_w_norm
             print "Disc weight norm diff", disc_w_norm
