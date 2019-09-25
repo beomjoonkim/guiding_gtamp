@@ -207,16 +207,18 @@ class AdversarialMonteCarlo:
         qvals = self.predict_Q(w)
         return qvals.mean()
 
-    def record_evaluation(self, states, actions):
+    def compare_to_data(self, states, actions):
         n_data = len(states)
         a_z = noise(n_data, self.dim_noise)
         pred = self.a_gen.predict([a_z, states])
         gen_ir_params = pred[:, 0:3]
-        utils.get_absolute_pick_base_pose_from_ir_parameters(gen_ir_params, obj) # which obj...?
-        gen_place_base = pred[:, 3:]
         data_ir_params = actions[:, 0:3]
+        gen_place_base = pred[:, 3:]
         data_place_base = actions[:, 0:3]
-        utils.get_absolute_pick_base_pose_from_ir_parameters(data_ir_params, obj)
+
+        print "IR params", np.linalg.norm(gen_ir_params - data_ir_params)
+        print "Place params", np.linalg.norm(gen_place_base - data_place_base)
+
         # todo
         #   the trouble here is that the pick parameter consists of:
         #       - how close you are to the object expressed in terms of the proportion of the radius [0.4, 0.9]
@@ -226,7 +228,6 @@ class AdversarialMonteCarlo:
         #   How should we compare the distance in this domain?
         #   Also, how do I make sure it is in the right unit with the place base config?
         #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
-        import pdb;pdb.set_trace()
 
     def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
 
@@ -243,6 +244,7 @@ class AdversarialMonteCarlo:
 
         n_score_train = 1
         for i in range(1, epochs):
+            self.record_evaluation(states, actions)
             stime = time.time()
             tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
             print "Current tau value", curr_tau
@@ -288,6 +290,7 @@ class AdversarialMonteCarlo:
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
             curr_tau = np.power(curr_tau, i)
             self.save_weights(additional_name='_epoch_' + str(i))
+            self.compare_to_data(states, actions)
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm", w_norm
 

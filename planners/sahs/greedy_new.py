@@ -45,7 +45,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                                      mover.goal,
                                      collision_vector=state.key_config_obstacles
                                      )
-
+    import pdb;pdb.set_trace()
     smpler = LearnedGenerator(action, mover, learned_smpler, smpler_state.state_vec)
     smples = np.vstack([smpler.sampler.generate(smpler_state.state_vec) for _ in range(10)])
     utils.viewer()
