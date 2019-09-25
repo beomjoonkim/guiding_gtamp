@@ -240,7 +240,6 @@ class AdversarialMonteCarlo:
         curr_tau = self.tau
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
-        import pdb;pdb.set_trace()
         print self.opt_G.get_config()
 
         n_score_train = 1
@@ -292,10 +291,17 @@ class AdversarialMonteCarlo:
             disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
 
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
-            curr_tau = np.power(curr_tau, i)
+            if curr_tau < 1:
+                curr_tau = np.power(curr_tau, i)
             self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, actions)
+            a_z = noise(len(states), self.dim_noise)
+            tau_values = np.tile(curr_tau, (len(states), 1))
+            print "Mean score values ",  np.mean(self.disc.predict([actions, states, tau_values]).squeeze())
+            print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tau_values]).squeeze()))
+            print "Generator score error", np.mean(np.linalg.norm(self.DG.predict([a_z, states]).squeeze() - np.array(sum_rewards).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
-            print "Generator weight norm diff", w_norm
-            print "Disc weight norm diff", w_norm
+            print "Generator weight norm diff", gen_w_norm
+            print "Disc weight norm diff", disc_w_norm
+            print "================================"
 
