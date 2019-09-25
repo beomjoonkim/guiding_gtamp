@@ -72,7 +72,7 @@ class SamplerTrajectory:
                 action.execute()
                 place_base_pose = action.continuous_parameters['q_goal']
                 cont_pap_params = np.hstack([pick_rel_pose, place_base_pose])
-                self.add_sar_tuples(state, cont_pap_params, reward)
+                self.add_sar_tuples(state, [action.discrete_parameters['object'], cont_pap_params], reward)
 
         self.add_state_prime()
         openrave_env.Destroy()

@@ -542,7 +542,6 @@ def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
     grasp_params = pick_parameters[0:3]
     ir_params = pick_parameters[3:]
     pick_base_pose = get_absolute_pick_base_pose_from_ir_parameters(ir_params, obj)
-
     return grasp_params, pick_base_pose
 
 

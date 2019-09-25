@@ -211,11 +211,21 @@ class AdversarialMonteCarlo:
         n_data = len(states)
         a_z = noise(n_data, self.dim_noise)
         pred = self.a_gen.predict([a_z, states])
-        gen_pick_base = pred[:, 0:3]
+        gen_ir_params = pred[:, 0:3]
+        utils.get_absolute_pick_base_pose_from_ir_parameters(gen_ir_params, obj) # which obj...?
         gen_place_base = pred[:, 3:]
-        data_pick_base = actions[:, 0:3]
+        data_ir_params = actions[:, 0:3]
         data_place_base = actions[:, 0:3]
-        utils.se2_distance(gen_pick_base, data_pick_base)
+        utils.get_absolute_pick_base_pose_from_ir_parameters(data_ir_params, obj)
+        # todo
+        #   the trouble here is that the pick parameter consists of:
+        #       - how close you are to the object expressed in terms of the proportion of the radius [0.4, 0.9]
+        #       - base angle wrt the object [0,2pi)
+        #       - angle offset from where it should look [-30,30]
+        #   and so it is not really a configuration.
+        #   How should we compare the distance in this domain?
+        #   Also, how do I make sure it is in the right unit with the place base config?
+        #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
         import pdb;pdb.set_trace()
 
     def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
@@ -252,9 +262,9 @@ class AdversarialMonteCarlo:
                     # make their scores
                     fake_action_q = np.ones((BATCH_SIZE, 1)) * INFEASIBLE_SCORE  # marks fake data
                     real_action_q = sum_reward_batch
-
                     batch_a = np.vstack([fake, real])
                     batch_s = np.vstack([s_batch, s_batch])
+
                     batch_scores = np.vstack([fake_action_q, real_action_q])
                     self.disc.fit({'a': batch_a, 's': batch_s, 'tau': self.tau},
                                   batch_scores,
@@ -271,7 +281,7 @@ class AdversarialMonteCarlo:
                             verbose=0)
 
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
-            self.record_evaluation(i, states, actions)
+            #self.record_evaluation(i, states, actions)
             self.save_weights(additional_name='_epoch_' + str(i))
             print "Epoch took: %.2fs" % (time.time() - stime)
 
