@@ -73,6 +73,8 @@ class UniformGenerator:
         feasible_op_parameters = []
         for i in range(n_iter):
             op_parameters = self.sample_from_uniform()
+            # is this sampling the absolute or relative pick base config?
+            # It is sampling the relative config, but q_goal is the absolute.
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton,
                                                                                   op_parameters,
                                                                                   self.swept_volume_constraint)

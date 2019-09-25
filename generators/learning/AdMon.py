@@ -11,6 +11,8 @@ import sys
 import numpy as np
 import os
 
+from gtamp_utils import utils
+
 INFEASIBLE_SCORE = -sys.float_info.max
 
 
@@ -191,19 +193,6 @@ class AdversarialMonteCarlo:
             raise NotImplementedError
         return g
 
-    def evaluate(self, visualize=False):
-        # Try the policy
-        traj_list = []
-        for n_iter in range(5):
-            problem = ConveyorBelt()  # different "initial" state
-            traj = problem.execute_policy(self, 20, self.v)
-            traj_list.append(traj)
-            problem.env.Destroy()
-            RaveDestroy()
-        avg_J = np.mean([np.sum(traj['r']) for traj in traj_list])
-        std_J = np.std([np.sum(traj['r']) for traj in traj_list])
-        return avg_J, std_J
-
     def predict_Q(self, w):
         a_z = noise(w.shape[0], self.dim_action)
         w = w.reshape((w.shape[0], self.n_key_confs, self.dim_state[1]))
@@ -217,6 +206,17 @@ class AdversarialMonteCarlo:
         w = w.reshape((w.shape[0], self.n_key_confs, self.dim_state[1]))
         qvals = self.predict_Q(w)
         return qvals.mean()
+
+    def record_evaluation(self, states, actions):
+        n_data = len(states)
+        a_z = noise(n_data, self.dim_noise)
+        pred = self.a_gen.predict([a_z, states])
+        gen_pick_base = pred[:, 0:3]
+        gen_place_base = pred[:, 3:]
+        data_pick_base = actions[:, 0:3]
+        data_place_base = actions[:, 0:3]
+        utils.se2_distance(gen_pick_base, data_pick_base)
+        import pdb;pdb.set_trace()
 
     def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
 
@@ -269,9 +269,9 @@ class AdversarialMonteCarlo:
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
+
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
+            self.record_evaluation(i, states, actions)
             self.save_weights(additional_name='_epoch_' + str(i))
             print "Epoch took: %.2fs" % (time.time() - stime)
 
-            # How do I evaluate this shit? I need to use it with the trained Q?
-            # (1) Take the

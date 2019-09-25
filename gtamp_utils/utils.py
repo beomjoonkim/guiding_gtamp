@@ -1,9 +1,10 @@
 from manipulation.primitives.transforms import *
-from manipulation.bodies.bodies import *
 import manipulation
+from manipulation.bodies.bodies import *
 from manipulation.primitives.transforms import get_point, set_point, pose_from_quat_point, unit_quat
-
 from manipulation.primitives.utils import mirror_arm_config
+
+import copy
 import openravepy
 import numpy as np
 import math
@@ -18,7 +19,7 @@ def convert_binary_vec_to_one_hot(collision_vector):
     n_konf = collision_vector.shape[0]
     one_hot_cvec = np.zeros((n_konf, 2))
     one_hot_cvec[:, 0] = collision_vector
-    one_hot_cvec[:, 1] = 1-collision_vector
+    one_hot_cvec[:, 1] = 1 - collision_vector
     return one_hot_cvec
 
 
@@ -326,7 +327,7 @@ def get_body_xytheta(body):
         import pdb;
         pdb.set_trace()
     if th < 0: th += 2 * np.pi
-    assert (th >= 0 and th < 2 * np.pi)
+    assert (0 <= th < 2 * np.pi)
 
     # set the quaternion using the one found
     set_quat(body, quat_from_angle_vector(th, np.array([0, 0, 1])))
@@ -499,26 +500,79 @@ def place_distance(a1, a2):
     return base_distance
 
 
-def compute_robot_xy_given_ir_parameters(portion, angle, obj, radius=PR2_ARM_LENGTH):
-    dist_to_obj = radius * portion  # how close are you to obj?
-    x = dist_to_obj * np.cos(angle)
+def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, obj, radius=PR2_ARM_LENGTH):
+    dist_to_obj = radius * portion_of_dist_to_obj  # how close are you to obj?
+    x = dist_to_obj * np.cos(angle)  # Relative pose to the object
     y = dist_to_obj * np.sin(angle)
     robot_wrt_o = np.array([x, y, 0, 1])
     return np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
 
 
+def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR2_ARM_LENGTH):
+    dist_to_obj = np.linalg.norm(robot_xy - obj_xy)
+    portion_of_dist_to_obj = dist_to_obj / radius
+
+    """
+    robot_x_wrt_obj = robot_xy[0]-obj_xy[0] # Why is this not the case? Because the coordinate frame might not be defined at the center
+    robot_y_wrt_obj = robot_xy[1]-obj_xy[1]
+
+    robot_wrt_o = np.array([robot_x_wrt_obj, robot_y_wrt_obj, 0, 1])
+    recovered = np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
+    """
+
+    robot_xy_wrt_o = np.dot(np.linalg.inv(obj.GetTransform()), robot.GetTransform())[:-2, 3]
+    robot_x_wrt_obj = robot_xy_wrt_o[0]
+    robot_y_wrt_obj = robot_xy_wrt_o[1]
+
+    angle = np.arccos(abs(robot_x_wrt_obj / dist_to_obj))
+    if robot_x_wrt_obj < 0 < robot_y_wrt_obj:
+        angle += np.pi / 2.0
+    elif robot_x_wrt_obj < 0 and robot_y_wrt_obj < 0:
+        angle += np.pi
+    elif robot_x_wrt_obj > 0 > robot_y_wrt_obj:
+        angle = -angle
+
+    return portion_of_dist_to_obj, angle
+
+
 def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
     grasp_params = pick_parameters[0:3]
-    portion = pick_parameters[3]
-    base_angle = pick_parameters[4]
-    facing_angle = pick_parameters[5]
+    ir_params = pick_parameters[3:]
+    pick_base_pose = get_absolute_pick_base_pose_from_ir_parameters(ir_params, obj)
 
-    pick_base_pose = compute_robot_xy_given_ir_parameters(portion, base_angle, obj)
+    return grasp_params, pick_base_pose
+
+
+def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj):
+    portion_of_dist_to_obj = ir_parameters[0]
+    base_angle = ir_parameters[1]
+    angle_offset = ir_parameters[2]
+    pick_base_pose = compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, base_angle, obj)
     obj_xy = get_body_xytheta(obj).squeeze()[:-1]
     robot_xy = pick_base_pose[0:2]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
-    pick_base_pose[-1] = angle_to_be_set + facing_angle
-    return grasp_params, pick_base_pose
+    pick_base_pose[-1] = angle_to_be_set + angle_offset
+    return pick_base_pose
+
+
+def get_relative_base_pose_from_absolute_base_pose(obj):
+    env = openravepy.RaveGetEnvironment(1)
+    if type(obj) == str or type(obj) == unicode:
+        obj = env.GetKinBody(obj)
+    robot = env.GetRobot('pr2')
+    obj_xy = get_body_xytheta(obj).squeeze()[:-1]
+    robot_xyth = copy.deepcopy(get_body_xytheta(robot))
+
+    robot_xy = get_body_xytheta(robot).squeeze()[:-1]
+    robot_th = get_body_xytheta(robot).squeeze()[-1]
+    angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
+    angle_offset = robot_th - angle_to_be_set
+
+    portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot)
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, angle_offset], obj)
+
+    assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))
+    return portion, base_angle, angle_offset
 
 
 def pick_parameter_distance(obj, param1, param2):

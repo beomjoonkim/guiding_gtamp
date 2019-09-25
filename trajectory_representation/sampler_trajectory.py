@@ -52,7 +52,6 @@ class SamplerTrajectory:
         problem_env, openrave_env = self.create_environment()
         self.problem_env = problem_env
 
-        #utils.viewer()
         state = None
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
@@ -61,7 +60,10 @@ class SamplerTrajectory:
                                            associated_place.discrete_parameters['region'])
                 #incollision_configs = self.key_configs[state.state_vec[:-2,0]==1]
                 action.execute()
-                pick_base_pose = action.continuous_parameters['q_goal']
+                pick_rel_pose = utils.get_relative_base_pose_from_absolute_base_pose(
+                    action.discrete_parameters['object'])
+                #pick_base_pose = action.continuous_parameters['q_goal']
+                # I need this to be relative. How do I do that?
             else:
                 if action == plan[-1]:
                     reward = 0
@@ -69,7 +71,7 @@ class SamplerTrajectory:
                     reward = -1
                 action.execute()
                 place_base_pose = action.continuous_parameters['q_goal']
-                cont_pap_params = np.hstack([pick_base_pose, place_base_pose])
+                cont_pap_params = np.hstack([pick_rel_pose, place_base_pose])
                 self.add_sar_tuples(state, cont_pap_params, reward)
 
         self.add_state_prime()

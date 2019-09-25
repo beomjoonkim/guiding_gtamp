@@ -121,7 +121,6 @@ class ResolveSpatialConstraints:
         motion, status = self.get_minimum_constraint_path_to(potential_motion_plan_goals, obj)
         if motion is None:
             return None, "NoSolution", None
-
         pick_op.low_level_motion = motion
         pick_op.continuous_parameters = {'q_goal': motion[-1]}
         return motion, status, pick_op

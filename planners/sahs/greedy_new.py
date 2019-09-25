@@ -34,7 +34,6 @@ def search(mover, config, pap_model, learned_smpler=None):
 
     state = statecls(mover, goal)
 
-    """
     actions = get_actions(mover, goal, config)
     action = actions[0]
 
@@ -44,7 +43,6 @@ def search(mover, config, pap_model, learned_smpler=None):
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)
     import pdb;pdb.set_trace()
-    """
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);

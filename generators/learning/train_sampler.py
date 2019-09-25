@@ -44,8 +44,9 @@ def train_admon(args):
     states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                              'n_objs_pack_1/irsc/sampler_trajectory_data/')
     savedir = './generators/learning/learned_weights/'
-    n_key_configs = 310
-    dim_state = (n_key_configs, 2, 1)
+    n_key_configs = 618
+    n_goal_flags = 2  # indicating whether it is a goal obj and goal region
+    dim_state = (n_key_configs+n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=1.0,
                                   explr_const=0.0)
