@@ -101,7 +101,7 @@ class AdversarialMonteCarlo:
 
     def save_weights(self, additional_name=''):
         self.a_gen.save_weights(self.save_folder + '/a_gen' + additional_name + '.h5')
-        self.disc.save_weights(self.save_folder + '/disc' + additional_name + '.h5')
+        #self.disc.save_weights(self.save_folder + '/disc' + additional_name + '.h5')
 
     def load_weights(self, agen_file, disc_file):
         self.a_gen.load_weights(self.save_folder + agen_file)
@@ -269,8 +269,10 @@ class AdversarialMonteCarlo:
                     real_action_q = sum_reward_batch
                     batch_a = np.vstack([fake, real])
                     batch_s = np.vstack([s_batch, s_batch])
-
-                    batch_scores = np.vstack([fake_action_q, real_action_q])
+                    try:
+                        batch_scores = np.vstack([fake_action_q, real_action_q])
+                    except:
+                        import pdb;pdb.set_trace()
                     self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
                                   batch_scores,
                                   epochs=1,
@@ -297,9 +299,25 @@ class AdversarialMonteCarlo:
             self.compare_to_data(states, actions)
             a_z = noise(len(states), self.dim_noise)
             tau_values = np.tile(curr_tau, (len(states), 1))
-            print "Mean score values ",  np.mean(np.abs(self.disc.predict([actions, states, tau_values]).squeeze()))
+
+            real_score_values = np.mean((self.disc.predict([actions, states, tau_values]).squeeze()))
+            fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
+            print "Real score values ",  real_score_values
+            print "Generator score error",  fake_score_values
+            if real_score_values < fake_score_values:
+                print "Changing weight values"
+                g_lr = 1e-3
+                d_lr = 1e-2 
+                K.set_value(self.opt_G.lr, g_lr)
+                K.set_value(self.opt_D.lr, d_lr)    
+            else:
+                print "Maintaining balance"
+                g_lr = 1e-3
+                d_lr = 1e-3
+                K.set_value(self.opt_G.lr, g_lr)
+                K.set_value(self.opt_D.lr, d_lr)    
+
             print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tau_values]).squeeze()))
-            print "Generator score error", np.mean(np.abs(np.linalg.norm(self.DG.predict([a_z, states]).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", gen_w_norm
             print "Disc weight norm diff", disc_w_norm

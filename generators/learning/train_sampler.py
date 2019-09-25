@@ -24,7 +24,7 @@ def load_data(traj_dir):
         if len(traj.states) == 0:
             continue
         states = np.array([s.state_vec for s in traj.states])
-        actions = traj.actions
+        actions = [a[1] for a in traj.actions]
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
 
@@ -32,10 +32,9 @@ def load_data(traj_dir):
         all_actions.append(actions)
         all_sum_rewards.append(sum_rewards)
 
-    all_states = np.vstack(all_states)[:, :, :, None]  # for use with CNN
+    all_states = np.vstack(all_states).squeeze(axis=1)
     all_actions = np.vstack(all_actions)
     all_sum_rewards = np.hstack(np.array(all_sum_rewards))[:, None]  # keras requires n_data x 1
-
     pickle.dump((all_states, all_actions, all_sum_rewards), open(traj_dir + cache_file_name, 'wb'))
     return all_states, all_actions, all_sum_rewards[:, None]
 

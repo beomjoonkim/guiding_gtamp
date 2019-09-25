@@ -74,7 +74,7 @@ def get_raw_fname(parameters):
 def quit_if_already_done(fpath, config):
     if os.path.isfile(fpath) and not config.f:
         print "Already done"
-        sys.exit(-1)
+        #sys.exit(-1)
 
 
 def main():
