@@ -246,6 +246,7 @@ class AdversarialMonteCarlo:
             stime = time.time()
             tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
             print "Current tau value", curr_tau
+            before = self.a_gen.get_weights()
             for idx in range(0, actions.shape[0], BATCH_SIZE):
                 for score_train_idx in range(n_score_train):
                     # choose a batch of data
@@ -277,17 +278,16 @@ class AdversarialMonteCarlo:
                 a_z = noise(BATCH_SIZE, self.dim_noise)
                 y_labels = np.ones((BATCH_SIZE,))  # dummy variable
 
-                before = self.a_gen.get_weights()
                 self.DG.fit({'z': a_z, 's': s_batch},
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
-                after = self.a_gen.get_weights()
-                w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(before, after)]))
-                print "Generator weight norm", w_norm
+            after = self.a_gen.get_weights()
+            w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(before, after)]))
 
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
             curr_tau = np.power(curr_tau, i)
             self.save_weights(additional_name='_epoch_' + str(i))
             print "Epoch took: %.2fs" % (time.time() - stime)
+            print "Generator weight norm", w_norm
 
