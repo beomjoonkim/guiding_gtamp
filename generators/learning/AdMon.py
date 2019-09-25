@@ -292,7 +292,7 @@ class AdversarialMonteCarlo:
             gen_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(gen_before, gen_after)]))
             disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
 
-            print 'Completed: %.2f%%' % (i / float(epochs) * 100)
+            print 'Completed: %d / %d' % (i , float(epochs))
             if curr_tau < 1:
                 curr_tau = np.power(curr_tau, i)
             self.save_weights(additional_name='_epoch_' + str(i))
@@ -304,10 +304,10 @@ class AdversarialMonteCarlo:
             fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
             print "Real score values ",  real_score_values
             print "Generator score error",  fake_score_values
-            if real_score_values < fake_score_values:
+            if real_score_values <= fake_score_values:
                 print "Changing weight values"
-                g_lr = 1e-3
-                d_lr = 1e-2 
+                g_lr = 1e-4
+                d_lr = 1e-1 
                 K.set_value(self.opt_G.lr, g_lr)
                 K.set_value(self.opt_D.lr, d_lr)    
             else:
