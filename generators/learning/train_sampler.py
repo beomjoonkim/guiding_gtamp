@@ -6,6 +6,7 @@ import tensorflow as tf
 import random
 
 from AdMon import AdversarialMonteCarlo
+from Qmse import Qmse
 
 
 def load_data(traj_dir):
@@ -46,11 +47,25 @@ def train_admon(config):
     savedir = './generators/learning/learned_weights/'
     n_key_configs = 618
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
-    dim_state = (n_key_configs+n_goal_flags, 2, 1)
+    dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
                                   explr_const=0.0)
     admon.train(states, actions, sum_rewards)
+
+
+def train_mse(config):
+    # Loads the processed data
+    states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
+                                             'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    savedir = './generators/learning/learned_weights/'
+    n_key_configs = 618
+    n_goal_flags = 2  # indicating whether it is a goal obj and goal region
+    dim_state = (n_key_configs + n_goal_flags, 2, 1)
+    dim_action = actions.shape[1]
+    model = Qmse(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
+                 explr_const=0.0)
+    model.train(states, actions, sum_rewards)
 
 
 def parse_args():
@@ -64,6 +79,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
+    parser.add_argument('-algo', type=str, default='admon')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
@@ -78,7 +94,11 @@ def main():
     np.random.seed(configs.seed)
     random.seed(configs.seed)
     tf.set_random_seed(configs.seed)
-    train_admon(configs)
+
+    if configs.algo == 'admon':
+        train_admon(configs)
+    elif configs.algo == 'mse':
+        train_mse(configs)
 
 
 if __name__ == '__main__':

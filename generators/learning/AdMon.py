@@ -171,6 +171,7 @@ class AdversarialMonteCarlo:
 
         disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
                             bias_initializer=self.initializer)(H)
+        self.disc_output = disc_output
         disc = Model(inputs=[self.action_input, self.state_input, self.tau_input],
                      outputs=disc_output,
                      name='disc_output')
@@ -239,7 +240,7 @@ class AdversarialMonteCarlo:
         curr_tau = self.tau
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
-
+        import pdb;pdb.set_trace()
         print self.opt_G.get_config()
 
         n_score_train = 1
@@ -248,7 +249,8 @@ class AdversarialMonteCarlo:
             stime = time.time()
             tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
             print "Current tau value", curr_tau
-            before = self.a_gen.get_weights()
+            gen_before = self.a_gen.get_weights()
+            disc_before = self.disc.get_weights()
             for idx in range(0, actions.shape[0], BATCH_SIZE):
                 for score_train_idx in range(n_score_train):
                     # choose a batch of data
@@ -284,8 +286,10 @@ class AdversarialMonteCarlo:
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
-            after = self.a_gen.get_weights()
-            w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(before, after)]))
+            gen_after = self.a_gen.get_weights()
+            disc_after = self.disc.get_weights()
+            gen_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(gen_before, gen_after)]))
+            disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
 
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
             curr_tau = np.power(curr_tau, i)
@@ -293,4 +297,5 @@ class AdversarialMonteCarlo:
             self.compare_to_data(states, actions)
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", w_norm
+            print "Disc weight norm diff", w_norm
 
