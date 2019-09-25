@@ -235,8 +235,7 @@ class AdversarialMonteCarlo:
             BATCH_SIZE = 1
         print BATCH_SIZE
 
-        self.tau = np.tile(self.tau, (BATCH_SIZE * 2, 1))
-
+        curr_tau = self.tau
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
 
@@ -245,6 +244,8 @@ class AdversarialMonteCarlo:
         n_score_train = 1
         for i in range(1, epochs):
             stime = time.time()
+            tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
+            print "Current tau value", curr_tau
             for idx in range(0, actions.shape[0], BATCH_SIZE):
                 for score_train_idx in range(n_score_train):
                     # choose a batch of data
@@ -266,7 +267,7 @@ class AdversarialMonteCarlo:
                     batch_s = np.vstack([s_batch, s_batch])
 
                     batch_scores = np.vstack([fake_action_q, real_action_q])
-                    self.disc.fit({'a': batch_a, 's': batch_s, 'tau': self.tau},
+                    self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
                                   batch_scores,
                                   epochs=1,
                                   verbose=False)
@@ -275,13 +276,18 @@ class AdversarialMonteCarlo:
                 # why do i have labels for agen_output?
                 a_z = noise(BATCH_SIZE, self.dim_noise)
                 y_labels = np.ones((BATCH_SIZE,))  # dummy variable
+
+                before = self.a_gen.get_weights()
                 self.DG.fit({'z': a_z, 's': s_batch},
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
+                after = self.a_gen.get_weights()
+                w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(before, after)]))
+                print "Generator weight norm", w_norm
 
             print 'Completed: %.2f%%' % (i / float(epochs) * 100)
-            #self.record_evaluation(i, states, actions)
+            curr_tau = np.power(curr_tau, i)
             self.save_weights(additional_name='_epoch_' + str(i))
             print "Epoch took: %.2fs" % (time.time() - stime)
 

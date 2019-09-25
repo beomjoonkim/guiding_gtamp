@@ -39,7 +39,7 @@ def load_data(traj_dir):
     return all_states, all_actions, all_sum_rewards[:, None]
 
 
-def train_admon(args):
+def train_admon(config):
     # Loads the processed data
     states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                              'n_objs_pack_1/irsc/sampler_trajectory_data/')
@@ -48,7 +48,7 @@ def train_admon(args):
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs+n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
-    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=1.0,
+    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
                                   explr_const=0.0)
     admon.train(states, actions, sum_rewards)
 
@@ -61,7 +61,7 @@ def parse_args():
     parser.add_argument('-n_trial', type=int, default=-1)
     parser.add_argument('-i', type=int, default=0)
     parser.add_argument('-v', action='store_true')
-    parser.add_argument('-tau', type=float, default=1e-3)
+    parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
     parser.add_argument('-n_score', type=int, default=5)
