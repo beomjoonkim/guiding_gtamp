@@ -546,6 +546,9 @@ def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
 
 
 def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj):
+    env = openravepy.RaveGetEnvironment(1)
+    if type(obj) == str or type(obj) == unicode:
+        obj = env.GetKinBody(obj)
     portion_of_dist_to_obj = ir_parameters[0]
     base_angle = ir_parameters[1]
     angle_offset = ir_parameters[2]

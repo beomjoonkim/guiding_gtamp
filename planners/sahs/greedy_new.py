@@ -10,6 +10,7 @@ from generators.uniform import PaPUniformGenerator
 from generators.learned_generator import LearnedGenerator
 
 from trajectory_representation.operator import Operator
+from trajectory_representation.concrete_node_state import ConcreteNodeState
 
 from helper import get_actions, compute_heuristic, get_state_class
 
@@ -37,8 +38,23 @@ def search(mover, config, pap_model, learned_smpler=None):
     actions = get_actions(mover, goal, config)
     action = actions[0]
 
-    smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
-    # How can I change the state.collides to the one_hot? How long would it take?
+    utils.set_color(action.discrete_parameters['object'], [1,0,0])
+    smpler_state = ConcreteNodeState(mover,
+                                     action.discrete_parameters['object'],
+                                     action.discrete_parameters['region'],
+                                     mover.goal,
+                                     collision_vector=state.key_config_obstacles
+                                     )
+
+    smpler = LearnedGenerator(action, mover, learned_smpler, smpler_state.state_vec)
+    smples = np.vstack([smpler.sampler.generate(smpler_state.state_vec) for _ in range(10)])
+    utils.viewer()
+
+
+    #pick_base_poses = #???
+    place_base_poses = smples[:, 3:]
+    pick_base_poses = [utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object']) for smpl in smples[:, 0:3]]
+    import pdb;pdb.set_trace()
     smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)

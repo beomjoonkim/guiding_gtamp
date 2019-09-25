@@ -90,8 +90,9 @@ class ShortestPathPaPState(PaPState):
         colliding_vtx_idxs = [v for v in self.collides.values()]
         colliding_vtx_idxs = list(set().union(*colliding_vtx_idxs))
         collision_vector[colliding_vtx_idxs] = 1
-        key_config_obstacles = utils.convert_binary_vec_to_one_hot(collision_vector)
-        return key_config_obstacles.reshape((1, n_vtxs, 2, 1)) # the shape req'd for CNN
+        return collision_vector
+        #key_config_obstacles = utils.convert_binary_vec_to_one_hot(collision_vector)
+        #return key_config_obstacles.reshape((1, n_vtxs, 2)) # the shape req'd for CNN
 
     def initialize_parent_predicates(self, moved_obj, parent_state, parent_action):
         assert parent_action is not None

@@ -213,15 +213,14 @@ def get_pap_gnn_model(mover, config):
 
 
 def get_learned_smpler():
-    n_key_configs = 618
+    n_key_configs = 620
     dim_state = (n_key_configs, 2, 1)
     dim_action = 6
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
                                   save_folder='./generators/learning/learned_weights/',
                                   tau=1.0,
                                   explr_const=0.0)
-    #admon.load_weights(agen_file='a_gen_epoch_11.h5',
-    #                   disc_file='disc_epoch_11.h5')
+    admon.load_weights(agen_file='a_gen_epoch_20.h5', disc_file='disc_epoch_20.h5')
     return admon
 
 
