@@ -71,7 +71,10 @@ class SamplerTrajectory:
                     reward = -1
                 action.execute()
                 place_base_pose = action.continuous_parameters['q_goal']
-                cont_pap_params = np.hstack([pick_rel_pose, place_base_pose])
+                region_origin = self.problem_env.regions[action.discrete_parameters['region']].box[0]
+                place_rel_pose = place_base_pose
+                place_rel_pose = place_base_pose[0:2] - region_origin
+                cont_pap_params = np.hstack([pick_rel_pose, place_rel_pose])
                 self.add_sar_tuples(state, [action.discrete_parameters['object'], cont_pap_params], reward)
 
         self.add_state_prime()
