@@ -216,8 +216,8 @@ class AdversarialMonteCarlo:
         gen_place_base = pred[:, 3:]
         data_place_base = actions[:, 0:3]
 
-        print "IR params", np.linalg.norm(gen_ir_params - data_ir_params)
-        print "Place params", np.linalg.norm(gen_place_base - data_place_base)
+        print "IR params", np.mean(np.linalg.norm(gen_ir_params - data_ir_params, axis=-1))
+        print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
 
         # todo
         #   the trouble here is that the pick parameter consists of:
@@ -244,7 +244,7 @@ class AdversarialMonteCarlo:
 
         n_score_train = 1
         for i in range(1, epochs):
-            self.record_evaluation(states, actions)
+            self.compare_to_data(states, actions)
             stime = time.time()
             tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
             print "Current tau value", curr_tau
@@ -292,5 +292,5 @@ class AdversarialMonteCarlo:
             self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, actions)
             print "Epoch took: %.2fs" % (time.time() - stime)
-            print "Generator weight norm", w_norm
+            print "Generator weight norm diff", w_norm
 
