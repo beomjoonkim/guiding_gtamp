@@ -257,8 +257,8 @@ class AdversarialMonteCarlo:
             gen_before = self.a_gen.get_weights()
             disc_before = self.disc.get_weights()
             batch_idxs = range(0, actions.shape[0], batch_size)
-            for idx in batch_idxs:
-                print 'Epoch completion: %d / %d' % (idx, len(batch_idxs))
+            for k, idx in enumerate(batch_idxs):
+                #print 'Epoch completion: %d / %d' % (k, len(batch_idxs))
                 s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
 
                 # train \hat{S}
@@ -291,20 +291,20 @@ class AdversarialMonteCarlo:
                 s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
                 real_score_values = np.mean((self.disc.predict([a_batch, s_batch, tttau_values]).squeeze()))
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch]).squeeze()))
-                print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
+                #print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
                     if real_score_values == fake_score_values:
                         import pdb;pdb.set_trace() 
                     g_lr = 1e-4
                     d_lr = 1e-3
-                    print "g_lr %.5f d_lr %.5f", g_lr, d_lr
+                    #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
                 else:
                     g_lr = 1e-3
                     d_lr = 1e-4
-                    print "g_lr %.5f d_lr %.5f", g_lr, d_lr
+                    #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
 
@@ -315,12 +315,13 @@ class AdversarialMonteCarlo:
 
             print 'Completed: %d / %d' % (i, float(epochs))
             #curr_tau = curr_tau * 1 /
-            curr_tau = curr_tau / (1 + 1e-1 * i)
+            curr_tau = self.tau / (1.0 + 1e-1 * i)
             self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, actions)
             a_z = noise(len(states), self.dim_noise)
 
             tttau_values = np.tile(curr_tau, (len(states), 1))
+            print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
             print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tttau_values]).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", gen_w_norm
