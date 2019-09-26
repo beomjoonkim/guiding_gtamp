@@ -103,9 +103,8 @@ class AdversarialMonteCarlo:
         self.a_gen.save_weights(self.save_folder + '/a_gen' + additional_name + '.h5')
         #self.disc.save_weights(self.save_folder + '/disc' + additional_name + '.h5')
 
-    def load_weights(self, agen_file, disc_file):
+    def load_weights(self, agen_file):
         self.a_gen.load_weights(self.save_folder + agen_file)
-        self.disc.load_weights(self.save_folder + disc_file)
 
     def reset_weights(self, init=True):
         if init:
