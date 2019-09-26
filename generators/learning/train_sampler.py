@@ -50,7 +50,13 @@ def train_admon(config):
     dim_action = actions.shape[1]
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
                                   explr_const=0.0)
+
+    n_data = 5000
+    states = states[:5000, :]
+    actions = actions[:5000, :]
+    sum_rewards = sum_rewards[:5000]
     print "Number of data", len(states)
+    
     admon.train(states, actions, sum_rewards)
 
 

@@ -211,11 +211,10 @@ class AdversarialMonteCarlo:
         n_data = len(states)
         a_z = noise(n_data, self.dim_noise)
         pred = self.a_gen.predict([a_z, states])
-        gen_ir_params = pred[:, 0:3]
-        data_ir_params = actions[:, 0:3]
-        gen_place_base = pred[:, 3:]
-        data_place_base = actions[:, 0:3]
-
+        gen_ir_params = pred[:, 0:4]
+        data_ir_params = actions[:, 0:4]
+        gen_place_base = pred[:, 4:]
+        data_place_base = actions[:, 0:4]
         print "IR params", np.mean(np.linalg.norm(gen_ir_params - data_ir_params, axis=-1))
         print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
 
