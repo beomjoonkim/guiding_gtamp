@@ -64,7 +64,7 @@ def search(mover, config, pap_model, learned_smpler=None):
     actions = get_actions(mover, goal, config)
 
     utils.viewer()
-    action = actions[0]
+    action = actions[1]
     utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
     state_vec = create_state_vec(state.key_config_obstacles, action, goal)
     smpler = LearnedGenerator(action, mover, learned_smpler, state_vec)

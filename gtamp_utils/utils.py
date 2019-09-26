@@ -571,13 +571,27 @@ def get_relative_base_pose_from_absolute_base_pose(obj):
     robot_xy = get_body_xytheta(robot).squeeze()[:-1]
     robot_th = get_body_xytheta(robot).squeeze()[-1]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
-    angle_offset = robot_th - angle_to_be_set
+    facing_angle_offset = robot_th - angle_to_be_set
+    while facing_angle_offset > 30./180 * np.pi:
+        facing_angle_offset -= 2*np.pi
+    while facing_angle_offset < -30./180 * np.pi:
+        facing_angle_offset += 2*np.pi
 
     portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot)
-    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, angle_offset], obj)
-
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset], obj)
+    #base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
+    recovered_robot_xyth = clean_pose_data(recovered_robot_xyth)
+    robot_xyth = clean_pose_data(robot_xyth)
     assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))
-    return portion, base_angle, angle_offset
+    return portion, base_angle, facing_angle_offset
+
+
+def encode_angle_in_sin_and_cos(angle):
+    return np.array([np.sin(angle), np.cos(angle)])
+
+
+def decode_sin_and_cos_to_angle(encoding):
+    return np.arctan2(encoding[0], encoding[1])
 
 
 def pick_parameter_distance(obj, param1, param2):
@@ -661,7 +675,7 @@ def get_pick_domain():
     facing_angle_domain = [[-30 * np.pi / 180.0], [30 * np.pi / 180]]
     base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
 
-    grasp_param_domain = np.array([[45 * np.pi / 180, 0.5, 0.1], [180 * np.pi / 180, 1, 0.9]])
+    grasp_param_domain = np.array([[45 * np.pi / 180, 0.5, 0.1], [np.pi, 1, 0.9]])
     domain = np.hstack([grasp_param_domain, base_pose_domain])
     return domain
 
