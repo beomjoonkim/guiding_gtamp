@@ -294,16 +294,14 @@ class AdversarialMonteCarlo:
                 #print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
-                    if real_score_values == fake_score_values:
-                        import pdb;pdb.set_trace() 
-                    g_lr = 1e-3
-                    d_lr = 1e-2
+                    g_lr = 1e-4
+                    d_lr = 1e-3
                     #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
                 else:
-                    g_lr = 1e-2
-                    d_lr = 1e-3
+                    g_lr = 1e-3
+                    d_lr = 1e-4
                     #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
