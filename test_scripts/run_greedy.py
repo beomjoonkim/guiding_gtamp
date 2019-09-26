@@ -220,7 +220,7 @@ def get_learned_smpler():
                                   save_folder='./generators/learning/learned_weights/',
                                   tau=1.0,
                                   explr_const=0.0)
-    admon.load_weights(agen_file='a_gen_epoch_19.h5')
+    admon.load_weights(agen_file='a_gen_epoch_23.h5')
     return admon
 
 

@@ -23,6 +23,32 @@ DISABLE_COLLISIONS = False
 MAX_DISTANCE = 1.0
 
 
+def create_state_vec(key_config_obstacles, action, goal_entities):
+    obj = action.discrete_parameters['object']
+    region = action.discrete_parameters['region']
+    one_hot = utils.convert_binary_vec_to_one_hot(key_config_obstacles)
+    is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in goal_entities]))
+    is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([region in goal_entities]))
+
+    state_vec = np.vstack([one_hot, is_goal_obj, is_goal_region])
+    state_vec = state_vec.reshape((1, len(state_vec), 2, 1))
+
+    return state_vec
+
+
+def get_pick_base_poses(action, smples):
+    pick_base_poses = [
+        utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object'])
+        for smpl in smples[:, 0:3]]
+    return pick_base_poses
+
+
+def get_place_base_poses(action, smples, mover):
+    place_base_poses = smples[:, 3:]
+    place_base_poses[:, 0:2] += mover.regions[action.discrete_parameters['region']].box[0]
+    return place_base_poses
+
+
 def search(mover, config, pap_model, learned_smpler=None):
     tt = time.time()
 
@@ -36,29 +62,25 @@ def search(mover, config, pap_model, learned_smpler=None):
     state = statecls(mover, goal)
 
     actions = get_actions(mover, goal, config)
-    action = actions[0]
 
-    utils.set_color(action.discrete_parameters['object'], [1,0,0])
-    smpler_state = ConcreteNodeState(mover,
-                                     action.discrete_parameters['object'],
-                                     action.discrete_parameters['region'],
-                                     mover.goal,
-                                     collision_vector=state.key_config_obstacles
-                                     )
-    import pdb;pdb.set_trace()
-    smpler = LearnedGenerator(action, mover, learned_smpler, smpler_state.state_vec)
-    smples = np.vstack([smpler.sampler.generate(smpler_state.state_vec) for _ in range(10)])
     utils.viewer()
+    action = actions[0]
+    utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
+    state_vec = create_state_vec(state.key_config_obstacles, action, goal)
+    smpler = LearnedGenerator(action, mover, learned_smpler, state_vec)
+    smples = np.vstack([smpler.sampler.generate(state_vec) for _ in range(10)])
+    pick_base_poses = get_pick_base_poses(action, smples)
+    place_base_poses = get_place_base_poses(action, smples, mover)
+    utils.visualize_path(place_base_poses)
+    #utils.visualize_path(pick_base_poses)
+    import pdb;
+    pdb.set_trace()
 
-
-    #pick_base_poses = #???
-    place_base_poses = smples[:, 3:]
-    pick_base_poses = [utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object']) for smpl in smples[:, 0:3]]
-    import pdb;pdb.set_trace()
     smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
@@ -105,7 +127,8 @@ def search(mover, config, pap_model, learned_smpler=None):
             if learned_smpler is None:
                 smpler = PaPUniformGenerator(action, mover, None)
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
-                                                        cached_collisions=state.collides, cached_holding_collisions=None)
+                                                        cached_collisions=state.collides,
+                                                        cached_holding_collisions=None)
             else:
                 smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
                 # How can I change the state.collides to the one_hot? How long would it take?

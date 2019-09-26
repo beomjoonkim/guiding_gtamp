@@ -229,12 +229,19 @@ class AdversarialMonteCarlo:
         #   Also, how do I make sure it is in the right unit with the place base config?
         #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
 
+    def get_batch(self, states, actions, sum_rewards, batch_size):
+        indices = np.random.randint(0, actions.shape[0], size=batch_size)
+        s_batch = np.array(states[indices, :])  # collision vector
+        a_batch = np.array(actions[indices, :])
+        sum_reward_batch = np.array(sum_rewards[indices, :])
+        return s_batch, a_batch, sum_reward_batch
+
     def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-2, g_lr=1e-3):
 
-        BATCH_SIZE = np.min([32, int(len(actions) * 0.1)])
-        if BATCH_SIZE == 0:
-            BATCH_SIZE = 1
-        print BATCH_SIZE
+        batch_size = np.min([32, int(len(actions) * 0.1)])
+        if batch_size == 0:
+            batch_size = 1
+        print batch_size
 
         curr_tau = self.tau
         K.set_value(self.opt_G.lr, g_lr)
@@ -245,59 +252,51 @@ class AdversarialMonteCarlo:
         for i in range(1, epochs):
             self.compare_to_data(states, actions)
             stime = time.time()
-            tau_values = np.tile(curr_tau, (BATCH_SIZE * 2, 1))
+            tau_values = np.tile(curr_tau, (batch_size * 2, 1))
             print "Current tau value", curr_tau
             gen_before = self.a_gen.get_weights()
             disc_before = self.disc.get_weights()
-            for idx in range(0, actions.shape[0], BATCH_SIZE):
-                for score_train_idx in range(n_score_train):
-                    # choose a batch of data
-                    indices = np.random.randint(0, actions.shape[0], size=BATCH_SIZE)
-                    s_batch = np.array(states[indices, :])  # collision vector
-                    a_batch = np.array(actions[indices, :])
-                    sum_reward_batch = np.array(sum_rewards[indices, :])
+            batch_idxs = range(0, actions.shape[0], batch_size)
+            for idx in batch_idxs:
+                print 'Epoch completion: %d / %d' % (idx, len(batch_idxs))
+                s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
 
-                    # train \hat{S}
-                    # make fake and reals
-                    a_z = noise(BATCH_SIZE, self.dim_noise)
-                    fake = self.a_gen.predict([a_z, s_batch])
-                    real = a_batch
+                # train \hat{S}
+                # make fake and reals
+                a_z = noise(batch_size, self.dim_noise)
+                fake = self.a_gen.predict([a_z, s_batch])
+                real = a_batch
 
-                    # make their scores
-                    fake_action_q = np.ones((BATCH_SIZE, 1)) * INFEASIBLE_SCORE  # marks fake data
-                    real_action_q = sum_reward_batch.reshape((BATCH_SIZE,1))
-                    batch_a = np.vstack([fake, real])
-                    batch_s = np.vstack([s_batch, s_batch])
-                    batch_scores = np.vstack([fake_action_q, real_action_q])
-                    self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
-                                  batch_scores,
-                                  epochs=1,
-                                  verbose=False)
-                    tttau_values = np.tile(curr_tau, (len(states), 1))
-                    real_score_values = np.mean((self.disc.predict([actions, states, tttau_values]).squeeze()))
-                    fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
-                    #print "Real score values ",  real_score_values
-                    #print "Generator score error",  fake_score_values
+                # make their scores
+                fake_action_q = np.ones((batch_size, 1)) * INFEASIBLE_SCORE  # marks fake data
+                real_action_q = sum_rewards_batch.reshape((batch_size,1))
+                batch_a = np.vstack([fake, real])
+                batch_s = np.vstack([s_batch, s_batch])
+                batch_scores = np.vstack([fake_action_q, real_action_q])
+                self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
+                              batch_scores,
+                              epochs=1,
+                              verbose=False)
 
                 # train G
-                # why do i have labels for agen_output?
-                a_z = noise(BATCH_SIZE, self.dim_noise)
-                y_labels = np.ones((BATCH_SIZE,))  # dummy variable
-
+                a_z = noise(batch_size, self.dim_noise)
+                y_labels = np.ones((batch_size,))  # dummy variable
                 self.DG.fit({'z': a_z, 's': s_batch},
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
                 
-                tttau_values = np.tile(curr_tau, (len(states), 1))
-                real_score_values = np.mean((self.disc.predict([actions, states, tttau_values]).squeeze()))
-                fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
+                tttau_values = np.tile(curr_tau, (batch_size, 1))
+                a_z = noise(batch_size, self.dim_noise)
+                s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
+                real_score_values = np.mean((self.disc.predict([a_batch, s_batch, tttau_values]).squeeze()))
+                fake_score_values = np.mean((self.DG.predict([a_z, s_batch]).squeeze()))
                 print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
+
                 if real_score_values <= fake_score_values:
                     if real_score_values == fake_score_values:
                         import pdb;pdb.set_trace() 
-                    print "Changing weight values"
-                    g_lr = 1e-5
+                    g_lr = 1e-4
                     d_lr = 1e-3
                     print "g_lr %.5f d_lr %.5f", g_lr, d_lr
                     K.set_value(self.opt_G.lr, g_lr)
@@ -314,9 +313,9 @@ class AdversarialMonteCarlo:
             gen_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(gen_before, gen_after)]))
             disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
 
-            print 'Completed: %d / %d' % (i , float(epochs))
-            if curr_tau < 1:
-                curr_tau = np.power(curr_tau, i)
+            print 'Completed: %d / %d' % (i, float(epochs))
+            #curr_tau = curr_tau * 1 /
+            curr_tau = curr_tau / (1 + 1e-1 * i)
             self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, actions)
             a_z = noise(len(states), self.dim_noise)
