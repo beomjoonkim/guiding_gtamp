@@ -300,12 +300,13 @@ class AdversarialMonteCarlo:
                     print "Changing weight values"
                     g_lr = 1e-5
                     d_lr = 1e-3
+                    print "g_lr %.5f d_lr %.5f", g_lr, d_lr
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
                 else:
-                    print "Maintaining balance"
                     g_lr = 1e-3
                     d_lr = 1e-4
+                    print "g_lr %.5f d_lr %.5f", g_lr, d_lr
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
 
