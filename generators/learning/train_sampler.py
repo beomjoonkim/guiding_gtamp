@@ -14,7 +14,7 @@ def load_data(traj_dir):
     cache_file_name = 'cache.pkl'
     if os.path.isfile(traj_dir + cache_file_name):
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
-
+    print 'caching file...'
     all_states = []
     all_actions = []
     all_sum_rewards = []
@@ -35,7 +35,7 @@ def load_data(traj_dir):
     all_states = np.vstack(all_states).squeeze(axis=1)
     all_actions = np.vstack(all_actions)
     all_sum_rewards = np.hstack(np.array(all_sum_rewards))[:, None]  # keras requires n_data x 1
-    pickle.dump((all_states, all_actions, all_sum_rewards), open(traj_dir + cache_file_name, 'wb'))
+    pickle.dump((all_states, all_actions, all_sum_rewards), open(traj_dir + cache_file_name, 'wb')) 
     return all_states, all_actions, all_sum_rewards[:, None]
 
 
@@ -50,7 +50,9 @@ def train_admon(config):
     dim_action = actions.shape[1]
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
                                   explr_const=0.0)
+    print "Number of data", len(states)
     admon.train(states, actions, sum_rewards)
+
 
 
 def train_mse(config):

@@ -58,7 +58,7 @@ class AdversarialMonteCarlo:
         self.opt_D = Adam(lr=1e-3, beta_1=0.5)
 
         # initialize
-        self.initializer = initializers.glorot_normal()
+        self.initializer = initializers.glorot_uniform()
 
         # get setup dimensions for inputs
         self.dim_action = dim_action
@@ -230,7 +230,7 @@ class AdversarialMonteCarlo:
         #   Also, how do I make sure it is in the right unit with the place base config?
         #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
 
-    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-3):
+    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-2, g_lr=1e-3):
 
         BATCH_SIZE = np.min([32, int(len(actions) * 0.1)])
         if BATCH_SIZE == 0:
@@ -266,17 +266,19 @@ class AdversarialMonteCarlo:
 
                     # make their scores
                     fake_action_q = np.ones((BATCH_SIZE, 1)) * INFEASIBLE_SCORE  # marks fake data
-                    real_action_q = sum_reward_batch
+                    real_action_q = sum_reward_batch.reshape((BATCH_SIZE,1))
                     batch_a = np.vstack([fake, real])
                     batch_s = np.vstack([s_batch, s_batch])
-                    try:
-                        batch_scores = np.vstack([fake_action_q, real_action_q])
-                    except:
-                        import pdb;pdb.set_trace()
+                    batch_scores = np.vstack([fake_action_q, real_action_q])
                     self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
                                   batch_scores,
                                   epochs=1,
                                   verbose=False)
+                    tttau_values = np.tile(curr_tau, (len(states), 1))
+                    real_score_values = np.mean((self.disc.predict([actions, states, tttau_values]).squeeze()))
+                    fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
+                    #print "Real score values ",  real_score_values
+                    #print "Generator score error",  fake_score_values
 
                 # train G
                 # why do i have labels for agen_output?
@@ -287,6 +289,26 @@ class AdversarialMonteCarlo:
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
+                
+                tttau_values = np.tile(curr_tau, (len(states), 1))
+                real_score_values = np.mean((self.disc.predict([actions, states, tttau_values]).squeeze()))
+                fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
+                print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
+                if real_score_values <= fake_score_values:
+                    if real_score_values == fake_score_values:
+                        import pdb;pdb.set_trace() 
+                    print "Changing weight values"
+                    g_lr = 1e-5
+                    d_lr = 1e-3
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)    
+                else:
+                    print "Maintaining balance"
+                    g_lr = 1e-3
+                    d_lr = 1e-4
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)    
+
             gen_after = self.a_gen.get_weights()
             disc_after = self.disc.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(gen_before, gen_after)]))
@@ -298,26 +320,9 @@ class AdversarialMonteCarlo:
             self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, actions)
             a_z = noise(len(states), self.dim_noise)
-            tau_values = np.tile(curr_tau, (len(states), 1))
 
-            real_score_values = np.mean((self.disc.predict([actions, states, tau_values]).squeeze()))
-            fake_score_values = np.mean((self.DG.predict([a_z, states]).squeeze()))
-            print "Real score values ",  real_score_values
-            print "Generator score error",  fake_score_values
-            if real_score_values <= fake_score_values:
-                print "Changing weight values"
-                g_lr = 1e-4
-                d_lr = 1e-1 
-                K.set_value(self.opt_G.lr, g_lr)
-                K.set_value(self.opt_D.lr, d_lr)    
-            else:
-                print "Maintaining balance"
-                g_lr = 1e-3
-                d_lr = 1e-3
-                K.set_value(self.opt_G.lr, g_lr)
-                K.set_value(self.opt_D.lr, d_lr)    
-
-            print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tau_values]).squeeze()))
+            tttau_values = np.tile(curr_tau, (len(states), 1))
+            print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tttau_values]).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", gen_w_norm
             print "Disc weight norm diff", disc_w_norm
