@@ -57,7 +57,7 @@ def train_admon(config):
     sum_rewards = sum_rewards[:5000]
     print "Number of data", len(states)
     
-    admon.train(states, actions, sum_rewards)
+    admon.train(states, actions, sum_rewards, epochs=30)
 
 
 

@@ -293,15 +293,13 @@ class AdversarialMonteCarlo:
                 #print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
-                    g_lr = 1e-4
-                    d_lr = 1e-3
-                    #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
+                    g_lr = 1e-4 / (1+1e-1*i)
+                    d_lr = 1e-3 / (1+1e-1*i) 
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
                 else:
-                    g_lr = 1e-3
-                    d_lr = 1e-4
-                    #print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
+                    g_lr = 1e-3 / (1+1e-1*i)
+                    d_lr = 1e-4 / (1+1e-1*i)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)    
 
@@ -311,6 +309,7 @@ class AdversarialMonteCarlo:
             disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
 
             print 'Completed: %d / %d' % (i, float(epochs))
+            print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
             #curr_tau = curr_tau * 1 /
             curr_tau = self.tau / (1.0 + 1e-1 * i)
             self.save_weights(additional_name='_epoch_' + str(i))
