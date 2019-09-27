@@ -186,7 +186,7 @@ class AdversarialMonteCarloWithPose:
         disc.compile(loss=tau_loss(self.tau_input), optimizer=self.opt_D)
         return disc
 
-    def generate(self, state, n_samples=1):
+    def generate(self, state, poses, n_samples=1):
         if state.shape[0] == 1 and n_samples > 1:
             a_z = noise(n_samples, self.dim_action)
             state = np.tile(state, (n_samples, 1))
@@ -197,7 +197,7 @@ class AdversarialMonteCarloWithPose:
             a_z = noise(state.shape[0], self.dim_action)
             # state = state.reshape((1, self.n_key_confs, self.dim_collision[1]))
             # g = self.action_scaler.inverse_transform(self.a_gen.predict([a_z, state]))
-            g = self.a_gen.predict([a_z, state])
+            g = self.a_gen.predict([a_z, state, poses])
         else:
             raise NotImplementedError
         return g

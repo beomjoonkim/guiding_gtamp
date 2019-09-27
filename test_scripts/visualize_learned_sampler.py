@@ -3,6 +3,7 @@ from gtamp_utils import utils
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from generators.learned_generator import LearnedGenerator
 from generators.learning.AdMon import AdversarialMonteCarlo
+from generators.learning.AdMonWithPose import AdversarialMonteCarloWithPose
 
 import numpy as np
 import random
@@ -10,16 +11,26 @@ import pickle
 import sys
 
 
-def get_learned_smpler():
+def get_learned_smpler(algo):
     n_key_configs = 620
     dim_state = (n_key_configs, 2, 1)
     dim_action = 8
-    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
-                                  save_folder='./generators/learning/learned_weights/',
-                                  tau=1.0,
-                                  explr_const=0.0)
-    admon.load_weights(agen_file='a_gen_epoch_19.h5')
-    return admon
+    weight_folder = './generators/learning/learned_weights/'
+    if algo == 'admon':
+        model = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
+                                      save_folder=weight_folder,
+                                      tau=1.0,
+                                      explr_const=0.0)
+    elif algo == 'admonpose':
+        model = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
+                                              save_folder=weight_folder,
+                                              tau=1.0,
+                                              explr_const=0.0)
+
+    else:
+        raise NotImplementedError
+    model.load_weights(agen_file='a_gen_epoch_19.h5')
+    return model
 
 
 def get_pick_base_poses(action, smples):
@@ -59,7 +70,7 @@ def create_environment(problem_idx):
     return problem_env, openrave_env
 
 
-def visualize(plan, problem_idx):
+def visualize(plan, problem_idx, algo):
     np.random.seed(problem_idx)
     random.seed(problem_idx)
 
@@ -67,7 +78,7 @@ def visualize(plan, problem_idx):
     key_configs = pickle.load(open('prm.pkl', 'r'))[0]
 
     state = None
-    learned_smpler = get_learned_smpler()
+    learned_smpler = get_learned_smpler(algo)
     utils.viewer()
     for action_idx, action in enumerate(plan):
         if 'pick' in action.type:
@@ -76,8 +87,7 @@ def visualize(plan, problem_idx):
                                   associated_place.discrete_parameters['region'],
                                   problem_env,
                                   key_configs)
-
-            smpler = LearnedGenerator(action, problem_env, learned_smpler, state.state_vec)
+            smpler = LearnedGenerator(action, problem_env, learned_smpler, state)
             smples = np.vstack([smpler.sampler.generate(state.state_vec) for _ in range(10)])
             action.discrete_parameters['region'] = associated_place.discrete_parameters['region']
             pick_base_poses = get_pick_base_poses(action, smples)
@@ -91,10 +101,11 @@ def visualize(plan, problem_idx):
 
 def main():
     pidx = int(sys.argv[1])
+    algo = str(sys.argv[2])
     filename = './planning_experience/raw/two_arm_mover/n_objs_pack_1//' + 'seed_0_pidx_' + str(pidx) + '.pkl'
     plan_data = pickle.load(open(filename, 'r'))
     plan = plan_data['plan']
-    visualize(plan, pidx)
+    visualize(plan, pidx, algo)
 
 
 if __name__ == '__main__':

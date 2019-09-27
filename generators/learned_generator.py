@@ -4,17 +4,20 @@ import numpy as np
 
 
 class LearnedGenerator(PaPUniformGenerator):
-    def __init__(self, operator_skeleton, problem_env, sampler, key_config_obstacles, swept_volume_constraint=None):
+    def __init__(self, operator_skeleton, problem_env, sampler, state, swept_volume_constraint=None):
         PaPUniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
         self.feasible_pick_params = {}
         self.sampler = sampler
-        self.key_config_obstacles = key_config_obstacles
+        self.state = state
 
     def sample_feasible_op_parameters(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning):
         assert n_iter > 0
         feasible_op_parameters = []
         for i in range(n_iter):
-            pick_place_base_poses = self.sampler.generate(self.key_config_obstacles)  # I need grasp parameters;
+            # fix it to take in the pose
+            poses = np.array([np.hstack([self.state.obj_pose, self.state.robot_wrt_obj]).squeeze()])
+            import pdb;pdb.set_trace()
+            pick_place_base_poses = self.sampler.generate(self.state.collision_vector, poses)  # I need grasp parameters;
             grasp_parameters = self.sample_from_uniform()[0:3][None, :]
             op_parameters = np.hstack([grasp_parameters, pick_place_base_poses]).squeeze()
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,
