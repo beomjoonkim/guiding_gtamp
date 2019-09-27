@@ -37,16 +37,28 @@ def create_state_vec(key_config_obstacles, action, goal_entities):
 
 
 def get_pick_base_poses(action, smples):
-    pick_base_poses = [
-        utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object'])
-        for smpl in smples[:, 0:3]]
+    pick_base_poses = []
+    for smpl in smples:
+        smpl = smpl[0:4]
+        sin_cos_encoding = smpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        smpl = np.hstack([smpl[0:2], decoded_angle])
+        abs_base_pose = utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object'])
+        pick_base_poses.append(abs_base_pose)
     return pick_base_poses
 
 
 def get_place_base_poses(action, smples, mover):
-    place_base_poses = smples[:, 3:]
-    place_base_poses[:, 0:2] += mover.regions[action.discrete_parameters['region']].box[0]
-    return place_base_poses
+    place_base_poses = smples[:, 4:]
+    to_return = []
+    for bsmpl in place_base_poses:
+        sin_cos_encoding = bsmpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        bsmpl = np.hstack([bsmpl[0:2], decoded_angle])
+        to_return.append(bsmpl)
+    to_return = np.array(to_return)
+    to_return[:, 0:2] += mover.regions[action.discrete_parameters['region']].box[0]
+    return to_return
 
 
 def search(mover, config, pap_model, learned_smpler=None):
@@ -63,8 +75,9 @@ def search(mover, config, pap_model, learned_smpler=None):
 
     actions = get_actions(mover, goal, config)
 
+    """
     utils.viewer()
-    action = actions[1]
+    action = actions[0]
     utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
     state_vec = create_state_vec(state.key_config_obstacles, action, goal)
     smpler = LearnedGenerator(action, mover, learned_smpler, state_vec)
@@ -79,8 +92,7 @@ def search(mover, config, pap_model, learned_smpler=None):
     smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)
-    import pdb;
-    pdb.set_trace()
+    """
 
     # lowest valued items are retrieved first in PriorityQueue
     action_queue = Queue.PriorityQueue()  # (heuristic, nan, operator skeleton, state. trajectory);
@@ -135,6 +147,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
+                import pdb;pdb.set_trace()
             """
             smpler = UniformPaPGenerator(None, action, mover, None,
                                          n_candidate_params_to_smpl=3,

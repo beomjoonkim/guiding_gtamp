@@ -1,11 +1,50 @@
 from gtamp_problem_environments.mover_env import Mover
 from gtamp_utils import utils
 from trajectory_representation.concrete_node_state import ConcreteNodeState
+from generators.learned_generator import LearnedGenerator
+from generators.learning.AdMon import AdversarialMonteCarlo
 
 import copy
 import openravepy
 import numpy as np
 import random
+
+
+def get_learned_smpler():
+    n_key_configs = 620
+    dim_state = (n_key_configs, 2, 1)
+    dim_action = 8
+    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
+                                  save_folder='./generators/learning/learned_weights/',
+                                  tau=1.0,
+                                  explr_const=0.0)
+    admon.load_weights(agen_file='a_gen_epoch_30.h5')
+    return admon
+
+
+def get_pick_base_poses(action, smples):
+    pick_base_poses = []
+    for smpl in smples:
+        smpl = smpl[0:4]
+        sin_cos_encoding = smpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        smpl = np.hstack([smpl[0:2], decoded_angle])
+        abs_base_pose = utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object'])
+        pick_base_poses.append(abs_base_pose)
+    return pick_base_poses
+
+
+def get_place_base_poses(action, smples, mover):
+    place_base_poses = smples[:, 4:]
+    to_return = []
+    for bsmpl in place_base_poses:
+        sin_cos_encoding = bsmpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        bsmpl = np.hstack([bsmpl[0:2], decoded_angle])
+        to_return.append(bsmpl)
+    to_return = np.array(to_return)
+    to_return[:, 0:2] += mover.regions[action.discrete_parameters['region']].box[0]
+    return to_return
 
 
 class SamplerTrajectory:
@@ -53,13 +92,26 @@ class SamplerTrajectory:
         self.problem_env = problem_env
 
         state = None
+        learned_smpler = get_learned_smpler()
+        utils.viewer()
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
                 associated_place = plan[action_idx+1]
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
+                import pdb;pdb.set_trace()
                 #incollision_configs = self.key_configs[state.state_vec[:-2,0]==1]
+
+                """
+                smpler = LearnedGenerator(action, problem_env, learned_smpler, state.state_vec)
+                smples = np.vstack([smpler.sampler.generate(state.state_vec) for _ in range(10)])
+                action.discrete_parameters['region'] =  associated_place.discrete_parameters['region']
+                pick_base_poses = get_pick_base_poses(action, smples)
+                place_base_poses = get_place_base_poses(action, smples, problem_env)
+                utils.visualize_path(place_base_poses)
+                import pdb;pdb.set_trace()
                 action.execute()
+                """
                 pick_rel_pose = utils.get_relative_base_pose_from_absolute_base_pose(
                     action.discrete_parameters['object'])
 
