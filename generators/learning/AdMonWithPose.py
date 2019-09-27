@@ -72,7 +72,7 @@ class AdversarialMonteCarloWithPose:
         # define inputs
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
-        self.pose_input = Input(shape=(self.dim_poses, ), name='pose', dtype='float32')  # collision vector
+        self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
         self.tau_input = Input(shape=(1,), name='tau', dtype='float32')  # collision vector
 
         self.explr_const = explr_const
@@ -227,16 +227,6 @@ class AdversarialMonteCarloWithPose:
         print "IR params", np.mean(np.linalg.norm(gen_ir_params - data_ir_params, axis=-1))
         print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
 
-        # todo
-        #   the trouble here is that the pick parameter consists of:
-        #       - how close you are to the object expressed in terms of the proportion of the radius [0.4, 0.9]
-        #       - base angle wrt the object [0,2pi)
-        #       - angle offset from where it should look [-30,30]
-        #   and so it is not really a configuration.
-        #   How should we compare the distance in this domain?
-        #   Also, how do I make sure it is in the right unit with the place base config?
-        #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
-
     def get_batch(self, states, poses, actions, sum_rewards, batch_size):
         indices = np.random.randint(0, actions.shape[0], size=batch_size)
         s_batch = np.array(states[indices, :])  # collision vector
@@ -267,10 +257,10 @@ class AdversarialMonteCarloWithPose:
             disc_before = self.disc.get_weights()
             batch_idxs = range(0, actions.shape[0], batch_size)
             for k, idx in enumerate(batch_idxs):
-                #print 'Epoch completion: %d / %d' % (k, len(batch_idxs))
+                # print 'Epoch completion: %d / %d' % (k, len(batch_idxs))
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
-                                                                               sum_rewards,
-                                                                               batch_size)
+                                                                                 sum_rewards,
+                                                                                 batch_size)
 
                 # train \hat{S}
                 # make fake and reals
@@ -301,19 +291,19 @@ class AdversarialMonteCarloWithPose:
                 tttau_values = np.tile(curr_tau, (batch_size, 1))
                 a_z = noise(batch_size, self.dim_noise)
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions, sum_rewards,
-                                                                     batch_size)
+                                                                                 batch_size)
                 real_score_values = np.mean((self.disc.predict([a_batch, s_batch, pose_batch, tttau_values]).squeeze()))
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
                 # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
-                    g_lr = 1e-4 / (1 + 1e-1 * i)
-                    d_lr = 1e-3 / (1 + 1e-1 * i)
+                    g_lr = 1e-3 / (1 + 1e-1 * i)
+                    d_lr = 1e-2 / (1 + 1e-1 * i)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)
                 else:
-                    g_lr = 1e-3 / (1 + 1e-1 * i)
-                    d_lr = 1e-4 / (1 + 1e-1 * i)
+                    g_lr = 1e-2 / (1 + 1e-1 * i)
+                    d_lr = 1e-3 / (1 + 1e-1 * i)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)
 
