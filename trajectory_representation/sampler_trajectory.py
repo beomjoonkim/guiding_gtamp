@@ -99,7 +99,6 @@ class SamplerTrajectory:
                 associated_place = plan[action_idx+1]
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
-                import pdb;pdb.set_trace()
                 #incollision_configs = self.key_configs[state.state_vec[:-2,0]==1]
 
                 """
@@ -110,11 +109,10 @@ class SamplerTrajectory:
                 place_base_poses = get_place_base_poses(action, smples, problem_env)
                 utils.visualize_path(place_base_poses)
                 import pdb;pdb.set_trace()
-                action.execute()
                 """
+                action.execute()
                 pick_rel_pose = utils.get_relative_base_pose_from_absolute_base_pose(
                     action.discrete_parameters['object'])
-
                 base_pose_angle = pick_rel_pose[-1]
                 sin_cos_encoding = utils.encode_angle_in_sin_and_cos(base_pose_angle)
                 decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
