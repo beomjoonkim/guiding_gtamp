@@ -29,7 +29,7 @@ def get_learned_smpler(algo):
 
     else:
         raise NotImplementedError
-    model.load_weights(agen_file='a_gen_epoch_19.h5')
+    model.load_weights(agen_file='a_gen_epoch_18.h5')
     return model
 
 
@@ -88,13 +88,12 @@ def visualize(plan, problem_idx, algo):
                                   problem_env,
                                   key_configs)
             smpler = LearnedGenerator(action, problem_env, learned_smpler, state)
-            smples = np.vstack([smpler.sampler.generate(state.state_vec) for _ in range(10)])
+            smples = np.vstack([smpler.generate() for _ in range(10)])
             action.discrete_parameters['region'] = associated_place.discrete_parameters['region']
             pick_base_poses = get_pick_base_poses(action, smples)
             place_base_poses = get_place_base_poses(action, smples, problem_env)
             utils.visualize_path(place_base_poses)
-            import pdb;
-            pdb.set_trace()
+            import pdb;pdb.set_trace()
 
         action.execute()
 
