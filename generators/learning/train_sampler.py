@@ -23,6 +23,7 @@ def load_data(traj_dir):
         traj = pickle.load(open(traj_dir + traj_file, 'r'))
         if len(traj.states) == 0:
             continue
+
         states = np.array([s.state_vec for s in traj.states])
         actions = [a[1] for a in traj.actions]
         rewards = traj.rewards

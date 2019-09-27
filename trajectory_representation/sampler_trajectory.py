@@ -93,7 +93,6 @@ class SamplerTrajectory:
 
         state = None
         learned_smpler = get_learned_smpler()
-        utils.viewer()
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
                 associated_place = plan[action_idx+1]
