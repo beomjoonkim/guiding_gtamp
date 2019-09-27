@@ -333,7 +333,7 @@ class AdversarialMonteCarloWithPose:
             tttau_values = np.tile(curr_tau, (len(states), 1))
             print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
             print "Discriminiator MSE error", np.mean(np.linalg.norm(
-                np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, pose_batch, tttau_values]).squeeze()))
+                np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, poses, tttau_values]).squeeze()))
             print "Epoch took: %.2fs" % (time.time() - stime)
             print "Generator weight norm diff", gen_w_norm
             print "Disc weight norm diff", disc_w_norm
