@@ -101,8 +101,7 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
     smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=abs_state.collides,
                                             cached_holding_collisions=None)
-    problem_env.env.Destroy()
-    openravepy.RaveDestroy()
+    print smpled_param['is_feasible']
     if smpled_param['is_feasible']:
         return True
     else:
