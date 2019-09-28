@@ -8,6 +8,7 @@ from AdMonWithPose import AdversarialMonteCarloWithPose
 import collections
 import pickle
 import os
+import openravepy
 import numpy as np
 
 
@@ -69,9 +70,9 @@ def evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed
     mover = get_problem_env(config)
     smpler_traj = pickle.load(open(smpler_processed_path + smpler_processed_file, 'r'))
 
-    #raw_path = './planning_experience/raw/two_arm_mover/n_objs_pack_1//'
-    #raw_file = 'seed_0_pidx_%d.pkl' % pidx
-    #raw_plan = pickle.load(open(raw_path + raw_file, 'r'))['plan']
+    # raw_path = './planning_experience/raw/two_arm_mover/n_objs_pack_1//'
+    # raw_file = 'seed_0_pidx_%d.pkl' % pidx
+    # raw_plan = pickle.load(open(raw_path + raw_file, 'r'))['plan']
 
     path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/mc/'
     fname = 'pap_traj_seed_0_pidx_%d.pkl' % pidx
@@ -81,23 +82,35 @@ def evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed
 
     smpler_states = smpler_traj.states
     smpler_state_idx = 0
+
     for state, action in zip(states, plan):
         smpler_state = smpler_states[smpler_state_idx]
         smpler = LearnedGenerator(action, mover, policy, smpler_state)
-        smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+        action.discrete_parameters['region'] = action.discrete_parameters['two_arm_place_region']
+        smpled_param = smpler.sample_next_point(action, n_iter=100, n_parameters_to_try_motion_planning=3,
                                                 cached_collisions=state.collides,
                                                 cached_holding_collisions=None)
-        import pdb;pdb.set_trace()
+        if not smpled_param['is_feasible']:
+            mover.env.Destroy()
+            openravepy.RaveDestroy()
+            import pdb;
+            pdb.set_trace()
+            return None
+        else:
+            import pdb;
+            pdb.set_trace()
 
 
 def evaluate_policy(policy):
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
                             'sampler_trajectory_data/'
-    smpler_processed_files = np.random.permutation(os.listdir(smpler_processed_path))
+    smpler_processed_files = os.listdir(smpler_processed_path)
+    smpler_processed_file = smpler_processed_files[1]
 
-    for smpler_processed_file in smpler_processed_files:
-        hcount = evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed_file, config_type)
+    hcount = evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed_file, config_type)
+    if hcount is None:
+        return
 
 
 def main():
@@ -109,7 +122,8 @@ def main():
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                            save_folder=savedir, tau=1.0, explr_const=0.0)
 
-    epoch_number = 10
+    epoch_number = 15
+    print "Trying epoch number ", epoch_number
     policy.load_weights(agen_file='a_gen_epoch_%d.h5' % epoch_number)
     evaluate_policy(policy)
 
