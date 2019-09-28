@@ -92,7 +92,6 @@ class SamplerTrajectory:
         self.problem_env = problem_env
 
         state = None
-        learned_smpler = get_learned_smpler()
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
                 associated_place = plan[action_idx+1]
