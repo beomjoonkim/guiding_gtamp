@@ -38,7 +38,7 @@ def test_mse(config):
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
     model = create_model(config, actions.shape[1])
-    n_train = config.n_train
+    n_train = config.n_data
     test_states = states[n_train:, :]
     test_poses = poses[n_train:, :]
     test_actions = actions[n_train:, :]
