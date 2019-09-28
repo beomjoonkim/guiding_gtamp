@@ -1,12 +1,17 @@
 import copy
 import numpy as np
 import openravepy
+import random
+
 from openravepy import DOFAffine, Environment
 from gtamp_utils.utils import grab_obj, release_obj, set_robot_config, check_collision_except, set_active_config
+from gtamp_utils import utils
 
 
 class ProblemEnvironment:
     def __init__(self, problem_idx):
+        np.random.seed(problem_idx)
+        random.seed(problem_idx)
         self.env = Environment()
         collisionChecker = openravepy.RaveCreateCollisionChecker(self.env, 'fcl_')
         self.env.SetCollisionChecker(collisionChecker)
@@ -38,6 +43,10 @@ class ProblemEnvironment:
         self.fetch_planner = None
         self.env.StopSimulation()  # openrave crashes with physics engine on
         self.motion_planner = None
+
+    def set_body_poses(self, poses):
+        for body_name, body_pose in zip(poses.keys(), poses.values()):
+            utils.set_obj_xytheta(body_pose, self.env.GetKinBody(body_name))
 
     def set_motion_planner(self, motion_planner):
         self.motion_planner = motion_planner

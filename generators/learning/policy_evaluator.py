@@ -2,6 +2,7 @@ from test_scripts.run_greedy import get_problem_env
 from planners.sahs.helper import compute_q_bonus, compute_hcount
 from learn.data_traj import extract_individual_example
 from generators.learned_generator import LearnedGenerator
+from gtamp_utils import utils
 
 from AdMonWithPose import AdversarialMonteCarloWithPose
 
@@ -14,6 +15,7 @@ import numpy as np
 smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
                         'sampler_trajectory_data/'
 abs_plan_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/mc/'
+cached_env_path = './generators/learning/evaluation_pidxs/'
 
 
 def qlearned_hcount_old_number_in_goal(state, action, problem_env, pap_model, config):
@@ -74,11 +76,14 @@ def get_smpler_and_abstract_action_trajectories(pidx):
     return smpler_traj, abs_traj
 
 
-def evaluate_in_problem_instance(policy, pidx):
-    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
-    config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
+def load_pose_file(pidx):
+    poses = pickle.load(open(cached_env_path + 'pidx_%d.pkl' % pidx, 'r'))
+    return poses
 
-    mover = get_problem_env(config)
+
+def evaluate_in_problem_instance(policy, pidx, problem_env):
+    pidx_poses = load_pose_file(pidx)
+    problem_env.set_body_poses(pidx_poses)
     smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
 
     abs_plan = abs_traj.actions
@@ -91,13 +96,12 @@ def evaluate_in_problem_instance(policy, pidx):
 
     # Evaluate it in the first state
     smpler_state = smpler_states[smpler_state_idx]
-    smpler = LearnedGenerator(abs_action, mover, policy, smpler_state)
+    smpler = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
     smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=abs_state.collides,
                                             cached_holding_collisions=None)
-    smpled_param = {'is_feasible': False}
-    mover.env.Destroy()
+    problem_env.env.Destroy()
     openravepy.RaveDestroy()
     if smpled_param['is_feasible']:
         return True
@@ -119,10 +123,28 @@ def get_pidxs_to_evaluate_policy(n_evals):
     return pidxs[:n_evals]
 
 
+def cache_poses_of_robot_and_objs(pidxs):
+    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
+    for pidx in pidxs:
+        config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
+        problem_env = get_problem_env(config)
+        body_poses = {}
+        for o in problem_env.objects:
+            body_poses[o.GetName()] = utils.get_body_xytheta(o)
+        body_poses['pr2'] = utils.get_body_xytheta(problem_env.robot)
+        pickle.dump(body_poses, open(cached_env_path + 'pidx_%d.pkl' % pidx, 'wb'))
+        problem_env.env.Destroy()
+        openravepy.RaveDestroy()
+
+
 def evaluate_policy(policy):
     n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-    n_successes = [evaluate_in_problem_instance(policy, pidx) for pidx in pidxs]
+
+    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
+    config = config_type(pidx=437, n_objs_pack=1, domain='two_arm_mover')
+    problem_env = get_problem_env(config)
+    n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs]
     return n_successes
 
 
