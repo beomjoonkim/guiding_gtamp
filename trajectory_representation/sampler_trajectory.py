@@ -99,12 +99,9 @@ class SamplerTrajectory:
                                            associated_place.discrete_parameters['region'])
 
                 action.execute()
-                pick_rel_pose = utils.get_relative_base_pose_from_absolute_base_pose(
+                pick_parameters = utils.get_pick_ir_parameters_from_absolute_base_pose(
                     action.discrete_parameters['object'])
-                base_pose_angle = pick_rel_pose[-1]
-                sin_cos_encoding = utils.encode_angle_in_sin_and_cos(base_pose_angle)
-                decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
-                transformed_pick_rel_pose = np.hstack([pick_rel_pose[0], pick_rel_pose[1], sin_cos_encoding])
+                pick_base_pose = action.continuous_parameters['q_goal']
             else:
                 if action == plan[-1]:
                     reward = 0
@@ -112,14 +109,15 @@ class SamplerTrajectory:
                     reward = -1
                 action.execute()
                 place_base_pose = action.continuous_parameters['q_goal']
-                region_origin = self.problem_env.regions[action.discrete_parameters['region']].box[0]
-                place_rel_pose = place_base_pose
-                place_rel_pose[0:2] = place_base_pose[0:2] - region_origin
-                place_rel_pose_angle = place_rel_pose[-1]
-                sin_cos_encoding = utils.encode_angle_in_sin_and_cos(place_rel_pose_angle)
-                transformed_place_rel_pose = np.hstack([place_rel_pose[0], place_rel_pose[1], sin_cos_encoding])
-                cont_pap_params = np.hstack([transformed_pick_rel_pose, transformed_place_rel_pose])
-                self.add_sar_tuples(state, [action.discrete_parameters['object'], cont_pap_params], reward)
+
+                action_info = {
+                    'object_name': action.discrete_parameters['object'],
+                    'region_name': action.discrete_parameters['region'],
+                    'pick_base_ir_parameters': pick_parameters,
+                    'place_abs_base_pose': place_base_pose,
+                    'pick_abs_base_pose': pick_base_pose
+                }
+                self.add_sar_tuples(state, action_info, reward)
 
         self.add_state_prime()
         openrave_env.Destroy()

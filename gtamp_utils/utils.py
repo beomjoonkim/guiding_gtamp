@@ -508,6 +508,10 @@ def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, obj, rad
     return np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
 
 
+def get_relative_transform_body1_wrt_body2(body1, body2):
+    body1_wrt_body2 = np.dot(np.linalg.inv(body1.GetTransform()), body2.GetTransform())
+
+
 def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR2_ARM_LENGTH):
     dist_to_obj = np.linalg.norm(robot_xy - obj_xy)
     portion_of_dist_to_obj = dist_to_obj / radius
@@ -560,7 +564,7 @@ def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj):
     return pick_base_pose
 
 
-def get_relative_base_pose_from_absolute_base_pose(obj):
+def get_pick_ir_parameters_from_absolute_base_pose(obj):
     env = openravepy.RaveGetEnvironments()[0]
     if type(obj) == str or type(obj) == unicode:
         obj = env.GetKinBody(obj)
@@ -572,14 +576,15 @@ def get_relative_base_pose_from_absolute_base_pose(obj):
     robot_th = get_body_xytheta(robot).squeeze()[-1]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
     facing_angle_offset = robot_th - angle_to_be_set
-    while facing_angle_offset > 30./180 * np.pi:
-        facing_angle_offset -= 2*np.pi
-    while facing_angle_offset < -30./180 * np.pi:
-        facing_angle_offset += 2*np.pi
+    while facing_angle_offset > 30. / 180 * np.pi:
+        facing_angle_offset -= 2 * np.pi
+    while facing_angle_offset < -30. / 180 * np.pi:
+        facing_angle_offset += 2 * np.pi
 
     portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot)
-    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset], obj)
-    #base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                          obj)
+    # base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
     recovered_robot_xyth = clean_pose_data(recovered_robot_xyth)
     robot_xyth = clean_pose_data(robot_xyth)
     assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))
@@ -593,7 +598,6 @@ def encode_pose_with_sin_and_cos_angle(pose):
     th = pose[2]
     sin_th_cos_th = encode_angle_in_sin_and_cos(th)
     return np.hstack([x, y, sin_th_cos_th])
-
 
 
 def encode_angle_in_sin_and_cos(angle):
