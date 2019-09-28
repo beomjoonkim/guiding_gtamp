@@ -125,6 +125,7 @@ def parse_arguments():
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_node_limit', type=int, default=3000)
     parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-epoch_number', type=int, default=19)
     parser.add_argument('-timelimit', type=float, default=300)
     parser.add_argument('-mixrate', type=float, default=1.0)
     parser.add_argument('-mse_weight', type=float, default=1.0)
@@ -212,7 +213,7 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
-def get_learned_smpler():
+def get_learned_smpler(epoch_number):
     n_key_configs = 620
     dim_state = (n_key_configs, 2, 1)
     dim_action = 8
@@ -220,7 +221,7 @@ def get_learned_smpler():
                                   save_folder='./generators/learning/learned_weights/',
                                   tau=1.0,
                                   explr_const=0.0)
-    admon.load_weights(agen_file='a_gen_epoch_20.h5')
+    admon.load_weights(agen_file='a_gen_epoch_%d.h5' % epoch_number)
     return admon
 
 
@@ -250,7 +251,7 @@ def main():
     else:
         pap_model = None
     if config.integrated:
-        smpler = get_learned_smpler()
+        smpler = get_learned_smpler(config.epoch_number)
     else:
         smpler = None
 

@@ -29,7 +29,7 @@ def get_learned_smpler(algo):
 
     else:
         raise NotImplementedError
-    model.load_weights(agen_file='a_gen_epoch_18.h5')
+    model.load_weights(agen_file='a_gen_epoch_10.h5')
     return model
 
 

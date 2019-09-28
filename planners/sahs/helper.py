@@ -4,7 +4,6 @@ from trajectory_representation.shortest_path_pick_and_place_state import Shortes
 from trajectory_representation.one_arm_pap_state import OneArmPaPState
 from learn.data_traj import get_actions as convert_action_to_predictable_form
 import numpy as np
-import time
 
 
 def get_actions(mover, goal, config):
@@ -64,7 +63,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
     if 'two_arm' in problem_env.name:
         goal_objs = [tmp_o for tmp_o in state.goal_entities if 'box' in tmp_o]
         goal_region = 'home_region'
-
     else:
         goal_objs = [tmp_o for tmp_o in state.goal_entities if 'region' not in tmp_o]
         goal_region = 'rectangular_packing_box1_region'
@@ -100,7 +98,6 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
 
         hcount = compute_hcount_with_action(state, action, problem_env)
         return hcount - number_in_goal
-
     elif config.state_hcount:
         hcount = compute_hcount(state, problem_env)
         print "state_hcount %s %s %.4f" % (target_o, target_r, hcount)
@@ -136,6 +133,9 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                         if is_r_goal_region:
                             number_in_goal += is_i_in_r
         number_in_goal += int(region_is_goal)  # encourage moving goal obj to goal region
+
+        nodes, edges, actions, _ = extract_individual_example(state, action)
+        nodes = nodes[..., 6:]
 
         q_bonus = compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env)
         hcount = compute_hcount(state, problem_env)

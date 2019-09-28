@@ -11,7 +11,6 @@ class LearnedGenerator(PaPUniformGenerator):
         self.state = state
 
     def generate(self):
-        import pdb;pdb.set_trace()
         if "Pose" in self.sampler.__module__:
             poses = np.array([np.hstack([self.state.obj_pose, self.state.robot_wrt_obj]).squeeze()])
             pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;

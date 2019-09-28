@@ -73,9 +73,9 @@ def search(mover, config, pap_model, learned_smpler=None):
 
     state = statecls(mover, goal)
 
-    actions = get_actions(mover, goal, config)
 
     """
+    actions = get_actions(mover, goal, config)
     utils.viewer()
     action = actions[0]
     utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
@@ -147,7 +147,6 @@ def search(mover, config, pap_model, learned_smpler=None):
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
-                import pdb;pdb.set_trace()
             """
             smpler = UniformPaPGenerator(None, action, mover, None,
                                          n_candidate_params_to_smpl=3,
