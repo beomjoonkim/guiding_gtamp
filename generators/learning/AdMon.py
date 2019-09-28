@@ -4,88 +4,21 @@ from keras.models import Sequential, Model
 from keras.optimizers import *
 from keras import backend as K
 from keras import initializers
+from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
+from AdversarialPolicy import AdversarialPolicy
 
 import time
-import tensorflow as tf
-import sys
 import numpy as np
 import os
 
-from gtamp_utils import utils
 
-INFEASIBLE_SCORE = -sys.float_info.max
-
-
-def tau_loss(tau):
-    def augmented_mse(score_data, D_pred):
-        # Determine which of Dpred correspond to fake val
-        neg_mask = tf.equal(score_data, INFEASIBLE_SCORE)
-        y_neg = tf.boolean_mask(D_pred, neg_mask)
-
-        # Determine which of Dpred correspond to true fcn val
-        pos_mask = tf.not_equal(score_data, INFEASIBLE_SCORE)
-        y_pos = tf.boolean_mask(D_pred, pos_mask)
-        score_pos = tf.boolean_mask(score_data, pos_mask)
-
-        # compute mse w.r.t true function values
-        mse_on_true_data = K.mean((K.square(score_pos - y_pos)), axis=-1)
-        return mse_on_true_data + tau[0] * K.mean(y_neg)  # try to minimize the value of y_neg
-
-    return augmented_mse
-
-
-def G_loss(dummy, pred):
-    return -K.mean(pred, axis=-1)  # try to maximize the value of pred
-
-
-def noise(n, z_size):
-    return np.random.normal(size=(n, z_size)).astype('float32')
-
-
-def tile(x):
-    reps = [1, 1, 32]
-    return K.tile(x, reps)
-
-
-class AdversarialMonteCarlo:
-    def __init__(self, dim_action, dim_state, save_folder, tau, explr_const, key_configs=None,
+class AdversarialMonteCarlo(AdversarialPolicy):
+    def __init__(self, dim_action, dim_state, save_folder, tau, key_configs=None,
                  action_scaler=None):
-
-        if not os.path.isdir(save_folder):
-            os.makedirs(save_folder)
-
-        self.opt_G = Adam(lr=1e-4, beta_1=0.5)
-        self.opt_D = Adam(lr=1e-3, beta_1=0.5)
-
-        # initialize
-        self.initializer = initializers.glorot_uniform()
-
-        # get setup dimensions for inputs
-        self.dim_action = dim_action
-        self.dim_state = dim_state
-        self.n_key_confs = dim_state[0]
-        self.key_configs = key_configs
-
-        self.action_scaler = action_scaler
-
-        # define inputs
+        AdversarialPolicy.__init__(self, dim_action, dim_state, save_folder, tau, key_configs, action_scaler)
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.state_input = Input(shape=dim_state, name='s', dtype='float32')  # collision vector
-        self.tau_input = Input(shape=(1,), name='tau', dtype='float32')  # collision vector
-
-        self.explr_const = explr_const
-
-        if dim_action < 10:
-            dim_z = dim_action
-        else:
-            dim_z = int(dim_action / 2)
-
-        self.dim_noise = dim_z
-        self.noise_input = Input(shape=(self.dim_noise,), name='z', dtype='float32')
-
         self.a_gen, self.disc, self.DG, = self.createGAN()
-        self.save_folder = save_folder
-        self.tau = tau
 
     def createGAN(self):
         disc = self.create_discriminator()
@@ -101,7 +34,6 @@ class AdversarialMonteCarlo:
 
     def save_weights(self, additional_name=''):
         self.a_gen.save_weights(self.save_folder + '/a_gen' + additional_name + '.h5')
-        #self.disc.save_weights(self.save_folder + '/disc' + additional_name + '.h5')
 
     def load_weights(self, agen_file):
         self.a_gen.load_weights(self.save_folder + agen_file)

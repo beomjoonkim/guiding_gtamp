@@ -50,7 +50,6 @@ def load_data(traj_dir):
 def get_data():
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
-
     n_data = 5000
     states = states[:5000, :]
     poses = poses[:n_data, :]
@@ -68,8 +67,7 @@ def train_admon(config):
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     savedir = './generators/learning/learned_weights/'
-    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
-                                  explr_const=0.0)
+    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau)
     admon.train(states, actions, sum_rewards, epochs=20)
 
 
@@ -81,14 +79,15 @@ def train_admon_with_pose(config):
     dim_action = actions.shape[1]
     savedir = './generators/learning/learned_weights/'
     admon = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                          save_folder=savedir, tau=config.tau, explr_const=0.0)
+                                          save_folder=savedir, tau=config.tau)
     admon.train(states, poses, actions, sum_rewards, epochs=20)
 
 
 def train_mse(config):
     # Loads the processed data
-    states, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
-                                             'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
+                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    import pdb;pdb.set_trace()
     savedir = './generators/learning/learned_weights/'
     n_key_configs = 618
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
