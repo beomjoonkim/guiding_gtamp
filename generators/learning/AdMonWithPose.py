@@ -13,10 +13,11 @@ from AdversarialPolicy import AdversarialPolicy
 
 
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
-    def __init__(self, dim_action, dim_state, dim_collision, save_folder, tau, key_configs=None,
+    def __init__(self, dim_action, dim_collision, save_folder, tau, key_configs=None,
                  action_scaler=None):
-        AdversarialPolicy.__init__(self, dim_action, dim_state, save_folder, tau, key_configs, action_scaler)
+        AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau, key_configs, action_scaler)
         self.dim_poses = 4
+        self.dim_collision = dim_collision
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector

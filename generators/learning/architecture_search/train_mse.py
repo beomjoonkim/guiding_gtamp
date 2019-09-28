@@ -5,7 +5,7 @@ import numpy as np
 import tensorflow as tf
 import random
 
-from Qmse import Qmse
+from Qmse import Qmse, QmseWithPose
 from generators.learning.train_sampler import load_data
 
 
@@ -13,15 +13,26 @@ def train_mse(config):
     # Loads the processed data
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
-    import pdb;
-    pdb.set_trace()
     savedir = './generators/learning/learned_weights/'
     n_key_configs = 618
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
-    model = Qmse(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau)
-    model.train(states, actions, sum_rewards)
+    model = QmseWithPose(dim_action=dim_action, dim_collision=dim_state, save_folder=savedir, tau=config.tau)
+
+    n_train = 5000
+    test_states = states[n_train:, :]
+    test_poses = poses[n_train:, :]
+    test_actions = actions[n_train:, :]
+    test_sum_rewards = sum_rewards[n_train:, :]
+
+    train_states = states[:n_train, :]
+    train_poses = poses[:n_train, :]
+    train_actions = actions[:n_train, :]
+    train_sum_rewards = sum_rewards[:n_train, :]
+    model.train(train_states, train_poses, train_actions, train_sum_rewards)
+
+    import pdb;pdb.set_trace()
 
 
 def parse_args():
