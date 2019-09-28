@@ -10,7 +10,6 @@ import collections
 import pickle
 import os
 import openravepy
-import numpy as np
 
 smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
                         'sampler_trajectory_data/'

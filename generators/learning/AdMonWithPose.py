@@ -236,7 +236,6 @@ class AdversarialMonteCarloWithPose:
         return s_batch, pose_batch, a_batch, sum_reward_batch
 
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-2, g_lr=1e-3):
-
         batch_size = np.min([32, int(len(actions) * 0.1)])
         if batch_size == 0:
             batch_size = 1

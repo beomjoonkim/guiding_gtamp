@@ -586,6 +586,16 @@ def get_relative_base_pose_from_absolute_base_pose(obj):
     return portion, base_angle, facing_angle_offset
 
 
+def encode_pose_with_sin_and_cos_angle(pose):
+    pose = pose.reshape((3,))
+    x = pose[0]
+    y = pose[1]
+    th = pose[2]
+    sin_th_cos_th = encode_angle_in_sin_and_cos(th)
+    return np.hstack([x, y, sin_th_cos_th])
+
+
+
 def encode_angle_in_sin_and_cos(angle):
     return np.array([np.sin(angle), np.cos(angle)])
 

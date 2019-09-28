@@ -25,7 +25,12 @@ class ConcreteNodeState:
 
         if type(obj) == str or type(obj) == unicode:
             obj = problem_env.env.GetKinBody(obj)
-        robot_xy_wrt_o = np.dot(np.linalg.inv(obj.GetTransform()), problem_env.robot.GetTransform())[:-2, 3]
-        self.robot_wrt_obj = robot_xy_wrt_o.reshape((1, 2))
-        self.obj_pose = utils.get_body_xytheta(obj)[0, 0:2].reshape((1, 2))
+        #robot_xy_wrt_o = np.dot(np.linalg.inv(obj.GetTransform()), problem_env.robot.GetTransform())[:-2, 3]
+        #self.robot_wrt_obj = robot_xy_wrt_o.reshape((1, 2))
+        #self.obj_pose = utils.get_body_xytheta(obj)[0, 0:2].reshape((1, 2))
+
+        self.robot_pose = utils.get_body_xytheta(self.problem_env.robot)
+        self.obj_pose = utils.get_body_xytheta(obj)
+
+
 
