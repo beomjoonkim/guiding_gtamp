@@ -11,6 +11,10 @@ import os
 import openravepy
 import numpy as np
 
+smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
+                        'sampler_trajectory_data/'
+abs_plan_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/mc/'
+
 
 def qlearned_hcount_old_number_in_goal(state, action, problem_env, pap_model, config):
     is_two_arm_domain = 'two_arm_place_object' in action.discrete_parameters
@@ -63,54 +67,63 @@ def get_pidx(processed_file_name):
     return int(pidx)
 
 
-def evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed_file, config_type):
-    pidx = get_pidx(smpler_processed_file)
+def get_smpler_and_abstract_action_trajectories(pidx):
+    abs_plan_fname = smpler_plan_fname = 'pap_traj_seed_0_pidx_%d.pkl' % pidx
+    smpler_traj = pickle.load(open(smpler_processed_path + smpler_plan_fname, 'r'))
+    abs_traj = pickle.load(open(abs_plan_path + abs_plan_fname, 'r'))
+    return smpler_traj, abs_traj
+
+
+def evaluate_in_problem_instance(policy, pidx):
+    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
 
     mover = get_problem_env(config)
-    smpler_traj = pickle.load(open(smpler_processed_path + smpler_processed_file, 'r'))
+    smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
 
-    # raw_path = './planning_experience/raw/two_arm_mover/n_objs_pack_1//'
-    # raw_file = 'seed_0_pidx_%d.pkl' % pidx
-    # raw_plan = pickle.load(open(raw_path + raw_file, 'r'))['plan']
-
-    path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/trajectory_data/mc/'
-    fname = 'pap_traj_seed_0_pidx_%d.pkl' % pidx
-    traj = pickle.load(open(path + fname, 'r'))
-    plan = traj.actions
-    states = traj.states
-
+    abs_plan = abs_traj.actions
+    abs_states = abs_traj.states
     smpler_states = smpler_traj.states
     smpler_state_idx = 0
 
-    for state, action in zip(states, plan):
-        smpler_state = smpler_states[smpler_state_idx]
-        smpler = LearnedGenerator(action, mover, policy, smpler_state)
-        action.discrete_parameters['region'] = action.discrete_parameters['two_arm_place_region']
-        smpled_param = smpler.sample_next_point(action, n_iter=100, n_parameters_to_try_motion_planning=3,
-                                                cached_collisions=state.collides,
-                                                cached_holding_collisions=None)
-        if not smpled_param['is_feasible']:
-            mover.env.Destroy()
-            openravepy.RaveDestroy()
-            import pdb;
-            pdb.set_trace()
-            return None
+    abs_state = abs_states[0]
+    abs_action = abs_plan[0]
+
+    # Evaluate it in the first state
+    smpler_state = smpler_states[smpler_state_idx]
+    smpler = LearnedGenerator(abs_action, mover, policy, smpler_state)
+    abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
+    smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
+                                            cached_collisions=abs_state.collides,
+                                            cached_holding_collisions=None)
+    smpled_param = {'is_feasible': False}
+    mover.env.Destroy()
+    openravepy.RaveDestroy()
+    if smpled_param['is_feasible']:
+        return True
+    else:
+        return False
+
+
+def get_pidxs_to_evaluate_policy(n_evals):
+    smpler_processed_files = [f for f in os.listdir(smpler_processed_path) if 'pap_traj' in f]
+
+    pidxs = []
+    for smpler_processed_file in smpler_processed_files:
+        pidx = get_pidx(smpler_processed_file)
+        abs_plan_fname = 'pap_traj_seed_0_pidx_%d.pkl' % pidx
+        if not os.path.isfile(abs_plan_path + abs_plan_fname):
+            continue
         else:
-            import pdb;
-            pdb.set_trace()
+            pidxs.append(pidx)
+    return pidxs[:n_evals]
 
 
 def evaluate_policy(policy):
-    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
-    smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
-                            'sampler_trajectory_data/'
-    smpler_processed_files = os.listdir(smpler_processed_path)
-    smpler_processed_file = smpler_processed_files[1]
-
-    hcount = evaluate_in_problem_instance(policy, smpler_processed_path, smpler_processed_file, config_type)
-    if hcount is None:
-        return
+    n_evals = 10
+    pidxs = get_pidxs_to_evaluate_policy(n_evals)
+    n_successes = [evaluate_in_problem_instance(policy, pidx) for pidx in pidxs]
+    return n_successes
 
 
 def main():
@@ -125,7 +138,8 @@ def main():
     epoch_number = 15
     print "Trying epoch number ", epoch_number
     policy.load_weights(agen_file='a_gen_epoch_%d.h5' % epoch_number)
-    evaluate_policy(policy)
+    n_successes = evaluate_policy(policy)
+    print n_successes
 
 
 if __name__ == '__main__':

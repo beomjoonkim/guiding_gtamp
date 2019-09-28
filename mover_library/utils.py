@@ -68,7 +68,7 @@ def set_obj_xytheta(xytheta, obj):
 
 def set_active_config(conf, robot=None):
     if robot is None:
-        env = openravepy.RaveGetEnvironment(1)
+        env = openravepy.RaveGetEnvironments()[0]
         robot = env.GetRobot('pr2')
     robot.SetActiveDOFValues(conf.squeeze())
 
@@ -110,7 +110,7 @@ def draw_robot_at_conf(conf, transparency, name, robot, env, color=None):
 
 
 def visualize_pick_and_place(pick, place):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     obj = pick.discrete_parameters['object']
     if type(obj) == unicode or type(object) == str:
         obj = env.GetKinBody(obj)
@@ -124,7 +124,7 @@ def visualize_pick_and_place(pick, place):
 
 def visualize_path(path):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     dim_path = len(path[0])
@@ -153,7 +153,7 @@ def visualize_path(path):
 
 def open_gripper(robot=None):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
     robot.SetDOFValues(np.array([0.54800022]), robot.GetActiveManipulator().GetGripperIndices())
 
@@ -180,7 +180,7 @@ def check_collision_except(exception_body, env):
 
 def set_robot_config(base_pose, robot=None):
     if robot is None:
-        env = openravepy.RaveGetEnvironment(1)
+        env = openravepy.RaveGetEnvironments()[0]
         robot = env.GetRobot('pr2')
 
     base_pose = np.array(base_pose)
@@ -345,7 +345,7 @@ def get_body_xytheta(body):
 
 def grab_obj(obj):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     robot.Grab(obj)
@@ -353,22 +353,24 @@ def grab_obj(obj):
 
 def release_obj():
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
     obj = robot.GetGrabbed()[0]
     robot.Release(obj)
 
+
 def convert_to_kin_body(obj):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if isinstance(obj, openravepy.KinBody):
         obj = obj
     else:
         obj = env.GetKinBody(obj)
     return obj
 
+
 def one_arm_pick_object(obj, pick_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     open_gripper(robot)
@@ -381,7 +383,7 @@ def one_arm_pick_object(obj, pick_action):
 
 def one_arm_place_object(place_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     manip = robot.GetManipulator('rightarm_torso')
@@ -394,7 +396,7 @@ def one_arm_place_object(place_action):
 
 def two_arm_place_object(place_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     try:
@@ -412,7 +414,7 @@ def two_arm_place_object(place_action):
 
 def fold_arms():
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     leftarm_manip = robot.GetManipulator('leftarm')
@@ -425,7 +427,7 @@ def fold_arms():
 
 def two_arm_pick_object(obj, pick_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     if type(obj) == str or type(obj) == unicode:
@@ -446,12 +448,12 @@ def two_arm_pick_object(obj, pick_action):
 
 
 def viewer():
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     env.SetViewer('qtcoin')
 
 
 def set_color(obj, color):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if type(obj) == str or type(obj) == unicode:
         obj = env.GetKinBody(obj)
 
@@ -616,12 +618,12 @@ def set_obj_xyztheta(xyztheta, obj):
 
 
 def get_body_with_name(obj_name):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     return env.GetKinBody(obj_name)
 
 
 def randomly_place_region(body, region):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if env.GetKinBody(get_name(body)) is None:
         env.Add(body)
     while True:
@@ -633,6 +635,7 @@ def randomly_place_region(body, region):
             region.z + aabb.extents()[2] + BODY_PLACEMENT_Z_OFFSET]) - aabb.pos() + get_point(body))
         if not body_collision(env, body):
             return
+
 
 class CustomStateSaver:
     def __init__(self, env):
