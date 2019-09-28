@@ -152,8 +152,8 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
 
         # input for place
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([place_action, abs_obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 8)
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([pick_action, place_action, abs_obj_pose, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 12)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
 
