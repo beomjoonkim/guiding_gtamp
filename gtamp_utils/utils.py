@@ -316,7 +316,6 @@ def get_relative_pose1_wrt_pose2(pose1, pose2):
     rel_pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     xy = rel_t[0:2, 3]
     rel_pose_vec[0:2] = xy
-    import pdb;pdb.set_trace()
     return rel_pose_vec
 
 
