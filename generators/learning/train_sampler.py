@@ -30,7 +30,7 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif data_mode == 'pick_relative':
-        pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
+        pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
