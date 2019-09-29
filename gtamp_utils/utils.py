@@ -10,6 +10,7 @@ import numpy as np
 import math
 import time
 import scipy as sp
+from openravepy import DOFAffine, RaveCreateKinBody, RaveCreateRobot
 
 FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
 
@@ -538,12 +539,12 @@ def place_distance(a1, a2):
     return base_distance
 
 
-def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, obj, radius=PR2_ARM_LENGTH):
+def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, t_obj, radius=PR2_ARM_LENGTH):
     dist_to_obj = radius * portion_of_dist_to_obj  # how close are you to obj?
     x = dist_to_obj * np.cos(angle)  # Relative pose to the object
     y = dist_to_obj * np.sin(angle)
     robot_wrt_o = np.array([x, y, 0, 1])
-    return np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
+    return np.dot(t_obj, robot_wrt_o)[:-1]
 
 
 def get_relative_transform_T1_wrt_T2(T1, T2):
@@ -554,7 +555,9 @@ def get_relative_transform_body1_wrt_body2(body1, body2):
     return get_relative_transform_T1_wrt_T2(body1.GetTransform(), body2.GetTransform())
 
 
-def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR2_ARM_LENGTH):
+def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_ARM_LENGTH):
+    robot_xy = robot_xytheta[0:2]
+    obj_xy = obj_xytheta[0:2]
     dist_to_obj = np.linalg.norm(robot_xy - obj_xy)
     portion_of_dist_to_obj = dist_to_obj / radius
 
@@ -565,20 +568,19 @@ def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR
     robot_wrt_o = np.array([robot_x_wrt_obj, robot_y_wrt_obj, 0, 1])
     recovered = np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
     """
+    t_robot = get_transform_from_pose(robot_xytheta, 'robot')
+    t_obj = get_transform_from_pose(obj_xytheta, 'kinbody')
 
-    robot_xy_wrt_o = np.dot(np.linalg.inv(obj.GetTransform()), robot.GetTransform())[:-2, 3]
+    robot_xy_wrt_o = np.dot(np.linalg.inv(t_obj), t_robot)[:-2, 3]
     robot_x_wrt_obj = robot_xy_wrt_o[0]
     robot_y_wrt_obj = robot_xy_wrt_o[1]
 
     angle = np.arccos(abs(robot_x_wrt_obj / dist_to_obj))
     if robot_x_wrt_obj < 0 < robot_y_wrt_obj:
-        print "a"
         angle = np.pi - angle
     elif robot_x_wrt_obj < 0 and robot_y_wrt_obj < 0:
-        print "b"
         angle += np.pi
     elif robot_x_wrt_obj > 0 > robot_y_wrt_obj:
-        print "c"
         angle = -angle
 
     return portion_of_dist_to_obj, angle
@@ -587,35 +589,32 @@ def compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot, radius=PR
 def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
     grasp_params = pick_parameters[0:3]
     ir_params = pick_parameters[3:]
-    pick_base_pose = get_absolute_pick_base_pose_from_ir_parameters(ir_params, obj)
+    obj_xyth = get_body_xytheta(obj)
+    pick_base_pose = get_absolute_pick_base_pose_from_ir_parameters(ir_params, obj_xyth)
     return grasp_params, pick_base_pose
 
 
-def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj):
-    env = openravepy.RaveGetEnvironments()[0]
-    if type(obj) == str or type(obj) == unicode:
-        obj = env.GetKinBody(obj)
+def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj_xyth):
+
     portion_of_dist_to_obj = ir_parameters[0]
     base_angle = ir_parameters[1]
     angle_offset = ir_parameters[2]
-    pick_base_pose = compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, base_angle, obj)
-    obj_xy = get_body_xytheta(obj).squeeze()[:-1]
+    t_obj = get_transform_from_pose(obj_xyth, 'kinbody')
+    pick_base_pose = compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, base_angle, t_obj)
+    obj_xy = obj_xyth.squeeze()[:-1]
     robot_xy = pick_base_pose[0:2]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
     pick_base_pose[-1] = angle_to_be_set + angle_offset
     return pick_base_pose
 
 
-def get_pick_ir_parameters_from_absolute_base_pose(obj):
-    env = openravepy.RaveGetEnvironments()[0]
-    if type(obj) == str or type(obj) == unicode:
-        obj = env.GetKinBody(obj)
-    robot = env.GetRobot('pr2')
-    obj_xy = get_body_xytheta(obj).squeeze()[:-1]
-    robot_xyth = copy.deepcopy(get_body_xytheta(robot))
+def get_ir_parameters_from_robot_obj_poses(robot_xyth, obj_xyth):
+    robot_xyth = robot_xyth.squeeze()
+    obj_xyth = obj_xyth.squeeze()
+    obj_xy = obj_xyth.squeeze()[0:2]
+    robot_xy = robot_xyth.squeeze()[:-1]
+    robot_th = robot_xyth.squeeze()[-1]
 
-    robot_xy = get_body_xytheta(robot).squeeze()[:-1]
-    robot_th = get_body_xytheta(robot).squeeze()[-1]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
     facing_angle_offset = robot_th - angle_to_be_set
     while facing_angle_offset > 30. / 180 * np.pi:
@@ -623,10 +622,9 @@ def get_pick_ir_parameters_from_absolute_base_pose(obj):
     while facing_angle_offset < -30. / 180 * np.pi:
         facing_angle_offset += 2 * np.pi
 
-    portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xy, obj_xy, obj, robot)
-    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
-                                                                          obj)
-    # base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
+    portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xyth, obj_xyth)
+
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset], obj_xyth)
     recovered_robot_xyth = clean_pose_data(recovered_robot_xyth)
     robot_xyth = clean_pose_data(robot_xyth)
     assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))

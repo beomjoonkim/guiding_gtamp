@@ -90,6 +90,16 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_pick = Dense(dense_num, activation='relu')(H_pick)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
 
+
+        # what if I used H_pick as an input to the network?
+        # I have no way of measuring the impact of doing so.
+        """
+        pick_output = Dense(4, activation='linear',
+                            kernel_initializer=self.initializer,
+                            bias_initializer=self.initializer)(H_pick)
+        """
+
+
         # process state var relevant to predicting place
         abs_obj_pose = self.get_abs_obj_pose()
         H_col_abs_obj_pose_place = Concatenate(axis=2)([abs_obj_pose, C_H])

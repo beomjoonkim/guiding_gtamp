@@ -52,7 +52,10 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
     elif data_mode == 'pick_parameters_place_relative_to_region':
-        raise NotImplementedError
+        portion, base_angle, facing_angle_offset\
+            = utils.get_ir_parameters_from_robot_obj_poses(state.robot_pose, state.obj_pose)
+        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
+        pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
 
     action = np.hstack([pick_pose, place_pose])
@@ -60,7 +63,10 @@ def get_processed_poses_from_action(state, action, data_mode):
     return action
 
 
-def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pick_relative_place_relative_to_region'):
+def load_data(traj_dir, state_data_mode='robot_rel_to_obj',
+              #action_data_mode='pick_relative_place_relative_to_region'
+              action_data_mode='pick_parameters_place_relative_to_region'
+              ):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):

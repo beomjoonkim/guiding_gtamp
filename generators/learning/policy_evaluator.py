@@ -127,7 +127,7 @@ def main():
 
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                            save_folder=savedir, tau=config.tau, config=config)
-    epoch_number = 19
+    epoch_number = int(sys.argv[2])
     print "Trying epoch number ", epoch_number
     policy.load_weights(additional_name='_epoch_%d' % epoch_number)
     n_successes = evaluate_policy(policy)
