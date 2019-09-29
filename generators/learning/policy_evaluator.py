@@ -53,18 +53,21 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
     smpler = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
     base_poses = np.array([(smpler.generate(abs_action)[0], smpler.generate(abs_action)[1]) for _ in range(10)])
-    utils.viewer()
 
+    utils.viewer()
+    #utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
+    #utils.visualize_path([abs_action.continuous_parameters['place']['q_goal']])
     picks = base_poses[:, 0]
     places = base_poses[:, 1]
     utils.visualize_path(picks)
     utils.visualize_path(places)
-
     import pdb;pdb.set_trace()
-    #smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
-    #                                        cached_collisions=abs_state.collides,
-    #                                        cached_holding_collisions=None)
+
+    smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
+                                            cached_collisions=abs_state.collides,
+                                            cached_holding_collisions=None)
     print smpled_param['is_feasible']
+    import pdb;pdb.set_trace()
     if smpled_param['is_feasible']:
         return True
     else:

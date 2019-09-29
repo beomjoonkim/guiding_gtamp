@@ -12,7 +12,7 @@ class LearnedGenerator(PaPUniformGenerator):
         self.sampler = sampler
         self.state = state
 
-    def generate(self, operator_skeleton, action_data_mode='pick_relative_place_relative_to_region'):
+    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
         if "Pose" in self.sampler.__module__:
             poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
             pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;
@@ -24,6 +24,17 @@ class LearnedGenerator(PaPUniformGenerator):
             relative_pick_pose_wrt_obj = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[:4])
             pick_pose = utils.get_global_pose_from_relative_pose_to_body(operator_skeleton.discrete_parameters['object'],
                                                                          relative_pick_pose_wrt_obj)
+            place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
+            if operator_skeleton.discrete_parameters['region'] == 'home_region':
+                place_pose[0:2] += [-1.75, 5.25]
+            elif operator_skeleton.discrete_parameters['region'] == 'loading_region':
+                place_pose[0:2] += [-0.7, 4.3]
+        elif action_data_mode == 'pick_parameters_place_relative_to_region':
+            pick_params = pick_place_base_poses[:4]
+            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
+            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
+            pick_pose = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                             self.state.obj_pose)
             place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
             if operator_skeleton.discrete_parameters['region'] == 'home_region':
                 place_pose[0:2] += [-1.75, 5.25]
