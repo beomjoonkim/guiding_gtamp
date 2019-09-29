@@ -12,16 +12,32 @@ from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
 from AdversarialPolicy import AdversarialPolicy
 
 
+def slice_pick_pose_from_action(x):
+    return x[:, :4]
+
+
+def slice_place_pose_from_action(x):
+    return x[:, 4:]
+
+
+def slice_prepick_robot_pose_from_pose(x):
+    return x[:, 4:]
+
+
+def slice_object_pose_from_pose(x):
+    return x[:, :4]
+
+
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
-    def __init__(self, dim_action, dim_collision, save_folder, tau, key_configs=None,
-                 action_scaler=None):
-        AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau, key_configs, action_scaler)
+    def __init__(self, dim_action, dim_collision, save_folder, tau, config):
+        AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau, None, None)
         self.dim_poses = 8
         self.dim_collision = dim_collision
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
         self.a_gen, self.disc, self.DG, = self.createGAN()
+        self.weight_file_name = 'admonpose_seed_%d' % config.seed
 
     def createGAN(self):
         disc = self.create_discriminator()
@@ -36,7 +52,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         return a_gen, disc, DG
 
     def save_weights(self, additional_name=''):
-        self.a_gen.save_weights(self.save_folder + '/a_gen' + additional_name + '.h5')
+        self.a_gen.save_weights(self.save_folder + '/' + self.weight_file_name + additional_name + '.h5')
 
     def load_weights(self, agen_file):
         self.a_gen.load_weights(self.save_folder + agen_file)
@@ -49,57 +65,60 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
             self.a_gen.load_weights(self.save_folder + '/a_gen.h5')
             self.disc.load_weights(self.save_folder + '/disc.h5')
 
-    def create_generator(self):
-        dense_num = 64
-        n_filters = 64
+    def get_prepick_robot_pose(self):
+        prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
+        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)
+        prepick_robot_pose = Reshape((self.n_key_confs, 4, 1))(prepick_robot_pose)
+        return prepick_robot_pose
 
-        P_H = RepeatVector(self.n_key_confs)(self.pose_input)
-        P_H = Reshape((self.n_key_confs, self.dim_poses, 1))(P_H)
+    def get_abs_obj_pose(self):
+        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
+        abs_obj_pose = RepeatVector(self.n_key_confs)(abs_obj_pose)
+        abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
+        return abs_obj_pose
+
+    def create_a_gen_output(self):
+        dense_num = 64
+
+        # Collision vector
         C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
-        CP_H = Concatenate(axis=2)([P_H, C_H])
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, self.dim_collision[1]),
-                   strides=(1, 1),
-                   activation='relu')(CP_H)
-        for _ in range(4):
-            H = Conv2D(filters=n_filters,
-                       kernel_size=(1, 1),
-                       strides=(1, 1),
-                       activation='relu')(H)
-        H = MaxPooling2D(pool_size=(2, 1))(H)
-        H = Flatten()(H)
+
+        # process state var relevant to predicting pick
+        prepick_robot_pose = self.get_prepick_robot_pose()
+        H_col_robot_pose_pick = Concatenate(axis=2)([prepick_robot_pose, C_H])
+        H_pick = self.create_conv_layers(H_col_robot_pose_pick, 6)
+        H_pick = Dense(dense_num, activation='relu')(H_pick)
+        H_pick = Dense(dense_num, activation='relu')(H_pick)
+
+        # process state var relevant to predicting place
+        abs_obj_pose = self.get_abs_obj_pose()
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([abs_obj_pose, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 6)
+        H_place = Dense(dense_num, activation='relu')(H_place)
+        H_place = Dense(dense_num, activation='relu')(H_place)
+
+        # Get the output from both processed pick and place
+        H = Concatenate(axis=-1)([H_pick, H_place])
         H = Dense(dense_num, activation='relu')(H)
-        H = Dense(dense_num, activation='relu')(H)
-        Z_H = Dense(dense_num, activation='relu')(self.noise_input)
-        H = Concatenate()([H, Z_H])
         a_gen_output = Dense(self.dim_action,
                              activation='linear',
                              kernel_initializer=self.initializer,
                              bias_initializer=self.initializer,
                              name='a_gen_output')(H)
+        return a_gen_output
+
+    def create_generator(self):
+        a_gen_output = self.create_a_gen_output()
         a_gen = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=a_gen_output)
         return a_gen, a_gen_output
 
-    def create_discriminator(self):
-        init_ = self.initializer
-        dense_num = 64
+    def create_conv_layers(self, input, n_dim):
         n_filters = 64
 
-        # K_H = self.k_input
-
-        # Tile actions and poses
-        P_H = RepeatVector(self.n_key_confs)(self.pose_input)
-        P_H = Reshape((self.n_key_confs, self.dim_poses, 1))(P_H)
-        A_H = RepeatVector(self.n_key_confs)(self.action_input)
-        A_H = Reshape((self.n_key_confs, self.dim_action, 1))(A_H)
-
-        C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
-        XK_H = Concatenate(axis=2)([A_H, P_H, C_H])
-
         H = Conv2D(filters=n_filters,
-                   kernel_size=(1, self.dim_action + self.dim_collision[1] + self.dim_poses),
+                   kernel_size=(1, n_dim),
                    strides=(1, 1),
-                   activation='relu')(XK_H)
+                   activation='relu')(input)
         for _ in range(4):
             H = Conv2D(filters=n_filters,
                        kernel_size=(1, 1),
@@ -107,11 +126,52 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                        activation='relu')(H)
         H = MaxPooling2D(pool_size=(2, 1))(H)
         H = Flatten()(H)
+
+        return H
+
+    def get_disc_output_with_preprocessing_layers(self):
+        dense_num = 64
+
+        # Collision vector
+        C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
+
+        # For computing a sub-network for pick
+        prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
+        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)
+        prepick_robot_pose = Reshape((self.n_key_confs, 4, 1))(prepick_robot_pose)
+
+        pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
+        pick_action = RepeatVector(self.n_key_confs)(pick_action)
+        pick_action = Reshape((self.n_key_confs, 4, 1))(pick_action)
+        H_col_robot_pose_pick = Concatenate(axis=2)([pick_action, prepick_robot_pose, C_H])
+        H_pick = self.create_conv_layers(H_col_robot_pose_pick, 10)
+        H_pick = Dense(dense_num, activation='relu')(H_pick)
+        H_pick = Dense(dense_num, activation='relu')(H_pick)
+
+        # For computing a sub-network for place
+        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
+        abs_obj_pose = RepeatVector(self.n_key_confs)(abs_obj_pose)
+        abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
+        place_action = Lambda(slice_place_pose_from_action)(self.action_input)
+        place_action = RepeatVector(self.n_key_confs)(place_action)
+        place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
+
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([pick_action, place_action, abs_obj_pose, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 14)
+        H_place = Dense(dense_num, activation='relu')(H_place)
+        H_place = Dense(dense_num, activation='relu')(H_place)
+
+        # Get the output from both processed pick and place
+        H = Concatenate(axis=-1)([H_pick, H_place])
         H = Dense(dense_num, activation='relu')(H)
         H = Dense(dense_num, activation='relu')(H)
 
         disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
                             bias_initializer=self.initializer)(H)
+        return disc_output
+
+    def create_discriminator(self):
+        disc_output = self.get_disc_output_with_preprocessing_layers()
         self.disc_output = disc_output
         disc = Model(inputs=[self.action_input, self.collision_input, self.pose_input, self.tau_input],
                      outputs=disc_output,
@@ -134,20 +194,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         else:
             raise NotImplementedError
         return g
-
-    def predict_Q(self, w):
-        a_z = noise(w.shape[0], self.dim_action)
-        w = w.reshape((w.shape[0], self.n_key_confs, self.dim_collision[1]))
-        taus = np.tile(self.tau, (w.shape[0], 1))  # dummy variable when trying to predict
-        g = self.a_gen.predict([a_z, w])
-        return self.disc.predict([g, w, taus])
-
-    def predict_V(self, w):
-        n_samples = 100
-        w = np.tile(w, (n_samples, 1, 1, 1))
-        w = w.reshape((w.shape[0], self.n_key_confs, self.dim_collision[1]))
-        qvals = self.predict_Q(w)
-        return qvals.mean()
 
     def compare_to_data(self, states, poses, actions):
         n_data = len(states)
@@ -248,7 +294,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
             # curr_tau = curr_tau * 1 /
             curr_tau = self.tau / (1.0 + 1e-1 * i)
-            if i == epochs-1:
+            if i == epochs - 1:
                 self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)
             a_z = noise(len(states), self.dim_noise)

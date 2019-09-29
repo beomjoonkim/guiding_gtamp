@@ -71,6 +71,7 @@ def main():
         test_mse(configs)
     else:
         train_mse(configs)
+        test_mse(configs)
 
 
 if __name__ == '__main__':

@@ -60,7 +60,7 @@ def slice_object_pose_from_pose(x):
 
 class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
-        AdversarialMonteCarloWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, None, None)
+        AdversarialMonteCarloWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
 
         #self.disc_output = self.get_disc_output()
         self.disc_output = self.get_disc_output_with_preprocessing_layers()
@@ -101,63 +101,6 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
                        activation='relu')(H)
         H = MaxPooling2D(pool_size=(2, 1))(H)
         H = Flatten()(H)
-        H = Dense(dense_num, activation='relu')(H)
-        H = Dense(dense_num, activation='relu')(H)
-
-        disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(H)
-        return disc_output
-
-    def create_conv_layers(self, input, n_dim):
-        n_filters = 64
-
-        H = Conv2D(filters=n_filters,
-                         kernel_size=(1, n_dim),
-                         strides=(1, 1),
-                         activation='relu')(input)
-        for _ in range(4):
-            H = Conv2D(filters=n_filters,
-                             kernel_size=(1, 1),
-                             strides=(1, 1),
-                             activation='relu')(H)
-        H = MaxPooling2D(pool_size=(2, 1))(H)
-        H = Flatten()(H)
-
-        return H
-
-    def get_disc_output_with_preprocessing_layers(self):
-        dense_num = 64
-
-        # Collision vector
-        C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
-
-        # For computing a sub-network for pick
-        prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
-        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)   
-        prepick_robot_pose = Reshape((self.n_key_confs, 4, 1))(prepick_robot_pose)
-
-        pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
-        pick_action = RepeatVector(self.n_key_confs)(pick_action)
-        pick_action = Reshape((self.n_key_confs, 4, 1))(pick_action)
-        H_col_robot_pose_pick = Concatenate(axis=2)([pick_action, prepick_robot_pose, C_H])
-        H_pick = self.create_conv_layers(H_col_robot_pose_pick, 10)
-        H_pick = Dense(dense_num, activation='relu')(H_pick)
-        H_pick = Dense(dense_num, activation='relu')(H_pick)
-
-        # For computing a sub-network for pick
-        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
-        abs_obj_pose = RepeatVector(self.n_key_confs)(abs_obj_pose)
-        abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
-        place_action = Lambda(slice_place_pose_from_action)(self.action_input)
-        place_action = RepeatVector(self.n_key_confs)(place_action)
-        place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([pick_action, place_action, abs_obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 14)
-        H_place = Dense(dense_num, activation='relu')(H_place)
-        H_place = Dense(dense_num, activation='relu')(H_place)
-
-        # Get the output from both processed pick and place
-        H = Concatenate(axis=-1)([H_pick, H_place])
         H = Dense(dense_num, activation='relu')(H)
         H = Dense(dense_num, activation='relu')(H)
 

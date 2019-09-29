@@ -123,7 +123,7 @@ def train_admon_with_pose(config):
     dim_action = actions.shape[1]
     savedir = './generators/learning/learned_weights/'
     admon = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                          save_folder=savedir, tau=config.tau)
+                                          save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=20)
 
 
@@ -138,7 +138,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='admon')
+    parser.add_argument('-algo', type=str, default='admonpose')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
@@ -158,8 +158,8 @@ def main():
         train_admon(configs)
     elif configs.algo == 'admonpose':
         train_admon_with_pose(configs)
-    elif configs.algo == 'mse':
-        train_mse(configs)
+    else:
+        raise NotImplementedError
 
 
 if __name__ == '__main__':
