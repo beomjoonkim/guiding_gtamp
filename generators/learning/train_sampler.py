@@ -39,9 +39,9 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = action['place_abs_base_pose']
-        if action['region'] == 'home_region':
+        if action['region_name'] == 'home_region':
             place_pose[0:2] -= [-1.75, 5.25]
-        elif action['region'] == 'loading_region':
+        elif action['region_name'] == 'loading_region':
             place_pose[0:2] -= [-0.7, 4.3]
         else:
             raise NotImplementedError
@@ -53,7 +53,7 @@ def get_processed_poses_from_action(state, action, data_mode):
     return action
 
 
-def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pick_relative'):
+def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pick_relative_place_relative_to_region'):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
