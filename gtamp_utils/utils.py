@@ -592,6 +592,8 @@ def get_pick_ir_parameters_from_absolute_base_pose(obj):
 
 
 def encode_pose_with_sin_and_cos_angle(pose):
+    if isinstance(pose, list):
+        pose = np.array(pose)
     pose = pose.reshape((3,))
     x = pose[0]
     y = pose[1]

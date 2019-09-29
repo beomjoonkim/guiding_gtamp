@@ -43,19 +43,19 @@ class MSETrainer:
 
 
 def slice_pick_pose_from_action(x):
-    return x[:, 0:4]
+    return x[:, :4]
 
 
 def slice_place_pose_from_action(x):
     return x[:, 4:]
 
 
-def slice_relative_robot_pose_from_pose(x):
-    return x[:, 2:]
+def slice_prepick_robot_pose_from_pose(x):
+    return x[:, 4:]
 
 
 def slice_object_pose_from_pose(x):
-    return x[:, :2]
+    return x[:, :4]
 
 
 class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
@@ -130,17 +130,17 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
 
         C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
 
-        # get relative robot pose to obj
-        robot_pose_rel_to_obj = Lambda(slice_relative_robot_pose_from_pose)(self.pose_input)
-        robot_pose_rel_to_obj = RepeatVector(self.n_key_confs)(robot_pose_rel_to_obj)
-        robot_pose_rel_to_obj = Reshape((self.n_key_confs, 2, 1))(robot_pose_rel_to_obj)
+        # prepick robot pose
+        prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
+        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)
+        prepick_robot_pose = Reshape((self.n_key_confs, 2, 1))(prepick_robot_pose)
 
         pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
         pick_action = RepeatVector(self.n_key_confs)(pick_action)
         pick_action = Reshape((self.n_key_confs, 4, 1))(pick_action)
 
         # input for processing pick
-        H_col_rel_robot_pose_pick = Concatenate(axis=2)([pick_action, robot_pose_rel_to_obj, C_H])
+        H_col_robot_pose_pick = Concatenate(axis=2)([pick_action, prepick_robot_pose, C_H])
 
         # get object pose
         abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
@@ -153,11 +153,11 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
 
         # input for place
         H_col_abs_obj_pose_place = Concatenate(axis=2)([pick_action, place_action, abs_obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 12)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 14)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
 
-        H_pick = self.create_conv_layers(H_col_rel_robot_pose_pick, 8)
+        H_pick = self.create_conv_layers(H_col_robot_pose_pick, 10)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
 

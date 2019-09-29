@@ -5,11 +5,19 @@ import numpy as np
 import tensorflow as tf
 import random
 
+from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from AdMonWithPose import AdversarialMonteCarloWithPose
 
 
-def load_data(traj_dir):
+def get_angle_encoded_poses_from(state):
+    obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
+    robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
+    pose = np.hstack([obj_pose, robot_pose])
+    return pose
+
+
+def load_data(traj_dir, action_data_mode='absolute'):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache.pkl'
     if os.path.isfile(traj_dir + cache_file_name):
@@ -28,8 +36,13 @@ def load_data(traj_dir):
             continue
 
         states = np.array([s.state_vec for s in traj.states])
-        poses = np.array([np.hstack([s.obj_pose, s.robot_wrt_obj]).squeeze() for s in traj.states])
-        actions = [a[1] for a in traj.actions]
+        poses = np.array([get_angle_encoded_poses_from(s) for s in traj.states])
+        if action_data_mode == 'absolute':
+            actions = [np.hstack([utils.encode_pose_with_sin_and_cos_angle(a['pick_abs_base_pose']),
+                                  utils.encode_pose_with_sin_and_cos_angle(a['place_abs_base_pose'])])
+                       for a in traj.actions]
+        else:
+            raise NotImplementedError
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
 
@@ -85,8 +98,9 @@ def train_admon_with_pose(config):
 def train_mse(config):
     # Loads the processed data
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
-                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
-    import pdb;pdb.set_trace()
+                                                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    import pdb;
+    pdb.set_trace()
     savedir = './generators/learning/learned_weights/'
     n_key_configs = 618
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
