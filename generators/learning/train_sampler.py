@@ -31,12 +31,12 @@ def get_processed_poses_from_action(state, action, data_mode):
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif data_mode == 'pick_relative':
         pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
+        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif data_mode == 'pick_relative_place_relative_to_region':
         pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
+        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = action['place_abs_base_pose']
         if action['region_name'] == 'home_region':
@@ -58,6 +58,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pi
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        pass
     print 'caching file...'
     all_states = []
     all_actions = []

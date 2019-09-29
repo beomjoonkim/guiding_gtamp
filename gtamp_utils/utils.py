@@ -308,10 +308,10 @@ def get_robot_xytheta(robot):
     return robot_xytheta
 
 
-def get_relative_pose1_wrt_pose2(pose1, pose2):
-    t_pose1 = get_transform_from_pose(pose1)
-    t_pose2 = get_transform_from_pose(pose2)
-    rel_t = get_relative_transform_T1_wrt_T2(t_pose1, t_pose2)
+def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
+    t_robot = get_transform_from_pose(robot_pose, 'robot')
+    t_obj = get_transform_from_pose(body_pose, 'kinbody')
+    rel_t = get_relative_transform_T1_wrt_T2(t_robot, t_obj)
     rotation = rel_t[0:3, 0:3]
     rel_pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     xy = rel_t[0:2, 3]
@@ -319,7 +319,7 @@ def get_relative_pose1_wrt_pose2(pose1, pose2):
     return rel_pose_vec
 
 
-def get_transform_from_pose(pose):
+def get_transform_from_pose(pose, body_type):
     pose = np.array(pose).squeeze()
     assert len(pose) == 3, "must be x,y, theta where theta is rotation around [0,0,1]"
     rotation_mat = sp.spatial.transform.Rotation.from_rotvec([0, 0, pose[-1]]).as_dcm()
@@ -327,7 +327,13 @@ def get_transform_from_pose(pose):
     transformation_matrix[0:3, 0:3] = rotation_mat
     transformation_matrix[3, 3] = 1
     transformation_matrix[0:2, 3] = pose[0:2]
-    z_for_on_the_floor = 0.139183
+    if body_type == 'robot':
+        z_for_on_the_floor = 0.139183
+    elif body_type == 'kinbody':
+        z_for_on_the_floor = 0.389
+    else:
+        raise NotImplementedError
+
     transformation_matrix[2, 3] = z_for_on_the_floor  # this assume that the body is on the floor
     return transformation_matrix
 
@@ -541,7 +547,7 @@ def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, obj, rad
 
 
 def get_relative_transform_T1_wrt_T2(T1, T2):
-    return np.dot(np.linalg.inv(T1), T2)
+    return np.dot(np.linalg.inv(T2), T1)
 
 
 def get_relative_transform_body1_wrt_body2(body1, body2):
@@ -649,13 +655,14 @@ def decode_pose_with_sin_and_cos_angle(pose):
     return np.hstack([x, y, th])
 
 
-def get_global_transform_from_pose_relative_to_body(body, pose):
+def get_global_pose_from_relative_pose_to_body(body, rel_robot_pose):
     if not isinstance(body, openravepy.KinBody):
         env = openravepy.RaveGetEnvironments()[0]
         body = env.GetKinBody(body)
     t_body = body.GetTransform()
-    t_pose = get_transform_from_pose(pose)
-    t_pose_global = np.dot(t_body, t_pose)
+    t_pose = get_transform_from_pose(rel_robot_pose, 'robot')
+    t_pose_global = get_xytheta_from_transform(np.dot(t_body, t_pose))
+
     return t_pose_global
 
 
