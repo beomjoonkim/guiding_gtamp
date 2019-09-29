@@ -25,6 +25,18 @@ def get_processed_poses_from_state(state, data_mode):
     return pose
 
 
+def get_place_pose_wrt_region(pose, region):
+    place_pose = pose
+    if region == 'home_region':
+        place_pose[0:2] -= [-1.75, 5.25]
+    elif region == 'loading_region':
+        place_pose[0:2] -= [-0.7, 4.3]
+    else:
+        raise NotImplementedError
+    place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
+    return place_pose
+
+
 def get_processed_poses_from_action(state, action, data_mode):
     if data_mode == 'absolute':
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
@@ -38,19 +50,13 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
-
-        place_pose = action['place_abs_base_pose']
-        if action['region_name'] == 'home_region':
-            place_pose[0:2] -= [-1.75, 5.25]
-        elif action['region_name'] == 'loading_region':
-            place_pose[0:2] -= [-0.7, 4.3]
-        else:
-            raise NotImplementedError
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
-    elif data_mode == '':
+        place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+    elif data_mode == 'pick_parameters_place_relative_to_region':
         raise NotImplementedError
+        place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
 
     action = np.hstack([pick_pose, place_pose])
+
     return action
 
 
@@ -75,7 +81,8 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pi
 
         states = np.array([s.state_vec for s in traj.states])  # collision vectors
         poses = np.array([get_processed_poses_from_state(s, state_data_mode) for s in traj.states])
-        actions = np.array([get_processed_poses_from_action(s, a, action_data_mode) for s,a in zip(traj.states, traj.actions)])
+        actions = np.array([get_processed_poses_from_action(s, a, action_data_mode)
+                            for s, a in zip(traj.states, traj.actions)])
 
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])

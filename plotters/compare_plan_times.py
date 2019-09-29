@@ -82,13 +82,13 @@ def get_plan_times(test_dir, test_files, t_limit):
         if pidx < 20000 or pidx > 20100:
             continue
 
-        #if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
+        # if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
         #    continue
 
-        #if 'train_seed_0' not in filename:
+        # if 'train_seed_0' not in filename:
         #    continue
 
-        #print filename
+        # print filename
 
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
@@ -98,11 +98,11 @@ def get_plan_times(test_dir, test_files, t_limit):
             time_taken.append(ftime_taken)
             successes.append(fsuccess)
         else:
-            #if not stat['success']:
+            # if not stat['success']:
             #    continue
             time_taken.append(t_limit)
             successes.append(False)
-            #print 'Failed',filename
+            # print 'Failed',filename
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
@@ -111,25 +111,16 @@ def get_plan_times(test_dir, test_files, t_limit):
 
 def main():
     n_objs = int(sys.argv[1])
-    t_limit = 300* n_objs
+    t_limit = 300 * n_objs
 
-    domain = 'two_arm_mover'
+    domain = 'one_arm_mover'
     if domain == 'one_arm_mover':
         t_limit = 1000
 
     # Customize the below
 
-
-
     # Hcount
     test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-
-
-
-    # qlearned_hcount_obj_already_in_goal_old_number_in_goal
-    test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/' \
-               'n_objs_pack_%d/qlearned_hcount_obj_already_in_goal_old_number_in_goal/shortest_irsc/' \
-               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
 
 
     # qlearned_obj_old_number_in_goal
@@ -139,7 +130,11 @@ def main():
                    domain, n_objs)
 
 
-
+    # qlearned_hcount_obj_already_in_goal_old_number_in_goal
+    test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/' \
+               'n_objs_pack_%d/qlearned_hcount_obj_already_in_goal_old_number_in_goal/shortest_irsc/' \
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (
+               domain, n_objs)
 
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
