@@ -132,8 +132,8 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
 
         # prepick robot pose
         prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
-        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)
-        prepick_robot_pose = Reshape((self.n_key_confs, 2, 1))(prepick_robot_pose)
+        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)   
+        prepick_robot_pose = Reshape((self.n_key_confs, 4, 1))(prepick_robot_pose)
 
         pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
         pick_action = RepeatVector(self.n_key_confs)(pick_action)
@@ -145,7 +145,7 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
         # get object pose
         abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
         abs_obj_pose = RepeatVector(self.n_key_confs)(abs_obj_pose)
-        abs_obj_pose = Reshape((self.n_key_confs, 2, 1))(abs_obj_pose)
+        abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
 
         place_action = Lambda(slice_place_pose_from_action)(self.action_input)
         place_action = RepeatVector(self.n_key_confs)(place_action)
