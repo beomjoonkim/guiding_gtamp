@@ -54,8 +54,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
     def save_weights(self, additional_name=''):
         self.a_gen.save_weights(self.save_folder + '/' + self.weight_file_name + additional_name + '.h5')
 
-    def load_weights(self, agen_file):
-        self.a_gen.load_weights(self.save_folder + agen_file)
+    def load_weights(self, additional_name=''):
+        self.a_gen.load_weights(self.save_folder + '/' + self.weight_file_name + additional_name + '.h5')
 
     def reset_weights(self, init=True):
         if init:
@@ -98,7 +98,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_place = Dense(dense_num, activation='relu')(H_place)
 
         # Get the output from both processed pick and place
-        H = Concatenate(axis=-1)([H_pick, H_place])
+        H = Concatenate(axis=-1)([H_pick, H_place, self.noise_input])
         H = Dense(dense_num, activation='relu')(H)
         a_gen_output = Dense(self.dim_action,
                              activation='linear',
@@ -136,9 +136,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
 
         # For computing a sub-network for pick
-        prepick_robot_pose = Lambda(slice_prepick_robot_pose_from_pose)(self.pose_input)
-        prepick_robot_pose = RepeatVector(self.n_key_confs)(prepick_robot_pose)
-        prepick_robot_pose = Reshape((self.n_key_confs, 4, 1))(prepick_robot_pose)
+        prepick_robot_pose = self.get_prepick_robot_pose()
 
         pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
         pick_action = RepeatVector(self.n_key_confs)(pick_action)
@@ -149,9 +147,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_pick = Dense(dense_num, activation='relu')(H_pick)
 
         # For computing a sub-network for place
-        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
-        abs_obj_pose = RepeatVector(self.n_key_confs)(abs_obj_pose)
-        abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
+        abs_obj_pose = self.get_abs_obj_pose()
         place_action = Lambda(slice_place_pose_from_action)(self.action_input)
         place_action = RepeatVector(self.n_key_confs)(place_action)
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)

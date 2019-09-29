@@ -364,6 +364,13 @@ def get_body_xytheta(body):
     return body_xytheta
 
 
+def get_xytheta_from_transform(T):
+    rotation = T[0:3, 0:3]
+    xytheta = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    xytheta[0:2] = T[0:2, 3]
+    return xytheta
+
+
 def grab_obj(obj):
     assert len(openravepy.RaveGetEnvironments()) == 1
     env = openravepy.RaveGetEnvironments()[0]
@@ -629,6 +636,27 @@ def encode_pose_with_sin_and_cos_angle(pose):
     th = pose[2]
     sin_th_cos_th = encode_angle_in_sin_and_cos(th)
     return np.hstack([x, y, sin_th_cos_th])
+
+
+def decode_pose_with_sin_and_cos_angle(pose):
+    if isinstance(pose, list):
+        pose = np.array(pose)
+    pose = pose.reshape((4,))
+    x = pose[0]
+    y = pose[1]
+    sin_th_cos_th = pose[2:]
+    th = decode_sin_and_cos_to_angle(sin_th_cos_th)
+    return np.hstack([x, y, th])
+
+
+def get_global_transform_from_pose_relative_to_body(body, pose):
+    if not isinstance(body, openravepy.KinBody):
+        env = openravepy.RaveGetEnvironments()[0]
+        body = env.GetKinBody(body)
+    t_body = body.GetTransform()
+    t_pose = get_transform_from_pose(pose)
+    t_pose_global = np.dot(t_body, t_pose)
+    return t_pose_global
 
 
 def encode_angle_in_sin_and_cos(angle):
