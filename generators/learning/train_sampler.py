@@ -63,7 +63,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pi
 
         states = np.array([s.state_vec for s in traj.states])  # collision vectors
         poses = np.array([get_processed_poses_from_state(s, state_data_mode) for s in traj.states])
-        actions = np.array([get_processed_poses_from_action(a, action_data_mode) for a in traj.actions])
+        actions = np.array([get_processed_poses_from_action(s, a, action_data_mode) for s,a in zip(traj.states, traj.actions)])
 
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
