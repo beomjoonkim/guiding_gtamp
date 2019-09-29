@@ -10,16 +10,39 @@ from AdMon import AdversarialMonteCarlo
 from AdMonWithPose import AdversarialMonteCarloWithPose
 
 
-def get_angle_encoded_poses_from(state):
-    obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
-    robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
+def get_processed_poses_from_state(state, data_mode):
+    if data_mode == 'absolute':
+        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
+        robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
+        pose = np.hstack([obj_pose, robot_pose])
+    elif data_mode == 'robot_rel_to_obj':
+        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
+        robot_pose = utils.get_relative_pose1_wrt_pose2(state.robot_pose, state.obj_pose)
+        robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
+    else:
+        raise not NotImplementedError
+
     pose = np.hstack([obj_pose, robot_pose])
     return pose
 
 
-def load_data(traj_dir, action_data_mode='absolute'):
+def get_processed_poses_from_action(action, data_mode):
+    if data_mode == 'absolute':
+        actions = np.hstack([utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose']),
+                             utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])])
+    elif data_mode == 'pick_relative':
+        pass
+    elif data_mode == 'place_relative_to_region':
+        raise NotImplementedError
+    elif data_mode == '':
+        raise NotImplementedError
+
+    return actions
+
+
+def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='absolute'):
     traj_files = os.listdir(traj_dir)
-    cache_file_name = 'cache.pkl'
+    cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
     print 'caching file...'
@@ -35,14 +58,10 @@ def load_data(traj_dir, action_data_mode='absolute'):
         if len(traj.states) == 0:
             continue
 
-        states = np.array([s.state_vec for s in traj.states])
-        poses = np.array([get_angle_encoded_poses_from(s) for s in traj.states])
-        if action_data_mode == 'absolute':
-            actions = [np.hstack([utils.encode_pose_with_sin_and_cos_angle(a['pick_abs_base_pose']),
-                                  utils.encode_pose_with_sin_and_cos_angle(a['place_abs_base_pose'])])
-                       for a in traj.actions]
-        else:
-            raise NotImplementedError
+        states = np.array([s.state_vec for s in traj.states])  # collision vectors
+        poses = np.array([get_processed_poses_from_state(s, state_data_mode) for s in traj.states])
+        actions = np.array([get_processed_poses_from_action(a, action_data_mode) for a in traj.actions])
+
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
 
@@ -93,22 +112,6 @@ def train_admon_with_pose(config):
     admon = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                           save_folder=savedir, tau=config.tau)
     admon.train(states, poses, actions, sum_rewards, epochs=20)
-
-
-def train_mse(config):
-    # Loads the processed data
-    states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
-                                                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
-    import pdb;
-    pdb.set_trace()
-    savedir = './generators/learning/learned_weights/'
-    n_key_configs = 618
-    n_goal_flags = 2  # indicating whether it is a goal obj and goal region
-    dim_state = (n_key_configs + n_goal_flags, 2, 1)
-    dim_action = actions.shape[1]
-    model = Qmse(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau,
-                 explr_const=0.0)
-    model.train(states, actions, sum_rewards)
 
 
 def parse_args():
