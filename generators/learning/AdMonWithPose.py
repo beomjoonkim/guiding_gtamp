@@ -210,7 +210,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_reward_batch = np.array(sum_rewards[indices, :])
         return s_batch, pose_batch, a_batch, sum_reward_batch
 
-    def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-2, g_lr=1e-3):
+    def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
         batch_size = np.min([32, int(len(actions) * 0.1)])
         if batch_size == 0:
             batch_size = 1
@@ -271,13 +271,13 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
-                    g_lr = 1e-3 / (1 + 1e-1 * i)
-                    d_lr = 1e-2 / (1 + 1e-1 * i)
+                    g_lr = 1e-4 / (1 + 1e-1 * i)
+                    d_lr = 1e-3 / (1 + 1e-1 * i)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)
                 else:
-                    g_lr = 1e-2 / (1 + 1e-1 * i)
-                    d_lr = 1e-3 / (1 + 1e-1 * i)
+                    g_lr = 1e-3 / (1 + 1e-1 * i)
+                    d_lr = 1e-4 / (1 + 1e-1 * i)
                     K.set_value(self.opt_G.lr, g_lr)
                     K.set_value(self.opt_D.lr, d_lr)
 

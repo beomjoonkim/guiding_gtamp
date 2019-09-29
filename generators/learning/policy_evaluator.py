@@ -9,6 +9,7 @@ import collections
 import pickle
 import os
 import openravepy
+import sys
 
 smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
                         'sampler_trajectory_data/'
@@ -56,6 +57,8 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
 
     picks = base_poses[:, 0]
     places = base_poses[:, 1]
+    utils.visualize_path(picks)
+    utils.visualize_path(places)
 
     import pdb;pdb.set_trace()
     #smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
@@ -119,7 +122,7 @@ def main():
 
     config = mconfig_type(
         tau=1.0,
-        seed=2
+        seed=int(sys.argv[1])
     )
 
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,

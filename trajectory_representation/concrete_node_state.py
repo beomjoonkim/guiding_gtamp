@@ -42,9 +42,14 @@ class ConcreteNodeState:
         assert np.all(np.isclose(rel_t, true_rel_t))
         """
         rel_pick_pose = utils.get_relative_robot_pose_wrt_body_pose(self.robot_pose, self.obj_pose)
-        recovered = utils.get_global_pose_from_relative_pose_to_body(obj, rel_pick_pose)
+        recovered = utils.clean_pose_data(utils.get_global_pose_from_relative_pose_to_body(obj, rel_pick_pose))
+        self.robot_pose = utils.clean_pose_data(self.robot_pose)
         # why does z not match?
-        np.all(np.isclose(recovered, self.robot_pose.squeeze()))
+        try:
+            assert np.all(np.isclose(recovered, self.robot_pose.squeeze()))
+        except:
+            import pdb;pdb.set_trace()
+
 
 
 

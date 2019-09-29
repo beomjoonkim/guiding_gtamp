@@ -40,7 +40,6 @@ class LearnedGenerator(PaPUniformGenerator):
         for i in range(n_iter):
             # fix it to take in the pose
             pick_place_base_poses = self.generate(operator_skeleton)
-            import pdb;pdb.set_trace()
             grasp_parameters = self.sample_from_uniform()[0:3][None, :]
             op_parameters = np.hstack([grasp_parameters, pick_place_base_poses]).squeeze()
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,

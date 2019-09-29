@@ -16,7 +16,7 @@ def get_processed_poses_from_state(state, data_mode):
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
     elif data_mode == 'robot_rel_to_obj':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
-        robot_pose = utils.get_relative_pose1_wrt_pose2(state.robot_pose, state.obj_pose)
+        robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.robot_pose, state.obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
     else:
         raise not NotImplementedError
@@ -38,6 +38,7 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
+
         place_pose = action['place_abs_base_pose']
         if action['region_name'] == 'home_region':
             place_pose[0:2] -= [-1.75, 5.25]
@@ -57,7 +58,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pi
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
-        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        #return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
@@ -113,7 +114,7 @@ def train_admon(config):
     dim_action = actions.shape[1]
     savedir = './generators/learning/learned_weights/'
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau)
-    admon.train(states, actions, sum_rewards, epochs=20)
+    admon.train(states, actions, sum_rewards, epochs=100)
 
 
 def train_admon_with_pose(config):
@@ -125,7 +126,7 @@ def train_admon_with_pose(config):
     savedir = './generators/learning/learned_weights/'
     admon = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                           save_folder=savedir, tau=config.tau, config=config)
-    admon.train(states, poses, actions, sum_rewards, epochs=20)
+    admon.train(states, poses, actions, sum_rewards, epochs=100)
 
 
 def parse_args():
