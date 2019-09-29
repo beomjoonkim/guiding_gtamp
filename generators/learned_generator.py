@@ -18,14 +18,12 @@ class LearnedGenerator(PaPUniformGenerator):
             pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;
         else:
             pick_place_base_poses = self.sampler.generate(self.state.state_vec)  # I need grasp parameters;
-        import pdb;pdb.set_trace()
         pick_place_base_poses = pick_place_base_poses.squeeze()
 
         if action_data_mode == 'pick_relative_place_relative_to_region':
             relative_pick_pose_wrt_obj = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[:4])
-            t_pick = utils.get_global_transform_from_pose_relative_to_body(operator_skeleton.discrete_parameters['object'],
-                                                                           relative_pick_pose_wrt_obj)
-            pick_pose = utils.get_xytheta_from_transform(t_pick)
+            pick_pose = utils.get_global_pose_from_relative_pose_to_body(operator_skeleton.discrete_parameters['object'],
+                                                                         relative_pick_pose_wrt_obj)
             place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
             if operator_skeleton.discrete_parameters['region'] == 'home_region':
                 place_pose[0:2] += [-1.75, 5.25]

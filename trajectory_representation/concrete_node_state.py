@@ -32,5 +32,19 @@ class ConcreteNodeState:
         self.robot_pose = utils.get_body_xytheta(self.problem_env.robot)
         self.obj_pose = utils.get_body_xytheta(obj)
 
+        """
+        t_robot = utils.get_transform_from_pose(self.robot_pose, 'robot')
+        t_obj = utils.get_transform_from_pose(self.obj_pose, 'kinbody')
+        assert np.all(np.isclose(t_robot, self.problem_env.robot.GetTransform()))
+        assert np.all(np.isclose(t_obj, obj.GetTransform()))
+        rel_t = utils.get_relative_transform_T1_wrt_T2(t_robot, t_obj)
+        true_rel_t = np.dot(np.linalg.inv(t_obj), t_robot)
+        assert np.all(np.isclose(rel_t, true_rel_t))
+        """
+        rel_pick_pose = utils.get_relative_robot_pose_wrt_body_pose(self.robot_pose, self.obj_pose)
+        recovered = utils.get_global_pose_from_relative_pose_to_body(obj, rel_pick_pose)
+        # why does z not match?
+        np.all(np.isclose(recovered, self.robot_pose.squeeze()))
+
 
 
