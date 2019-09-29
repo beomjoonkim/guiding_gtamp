@@ -117,6 +117,7 @@ class SamplerTrajectory:
                     'place_abs_base_pose': place_base_pose,
                     'pick_abs_base_pose': pick_base_pose
                 }
+                import pdb;pdb.set_trace()
                 self.add_sar_tuples(state, action_info, reward)
 
         self.add_state_prime()

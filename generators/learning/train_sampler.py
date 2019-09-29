@@ -34,8 +34,18 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-    elif data_mode == 'place_relative_to_region':
-        raise NotImplementedError
+    elif data_mode == 'pick_relative_place_relative_to_region':
+        pick_pose = action['pick_abs_base_pose']
+        pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
+        pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
+        place_pose = action['place_abs_base_pose']
+        if action['region'] == 'home_region':
+            place_pose[0:2] -= [-1.75, 5.25]
+        elif action['region'] == 'loading_region':
+            place_pose[0:2] -= [-0.7, 4.3]
+        else:
+            raise NotImplementedError
+        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
     elif data_mode == '':
         raise NotImplementedError
 
