@@ -14,7 +14,6 @@ def get_processed_poses_from_state(state, data_mode):
     if data_mode == 'absolute':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
-        pose = np.hstack([obj_pose, robot_pose])
     elif data_mode == 'robot_rel_to_obj':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
         robot_pose = utils.get_relative_pose1_wrt_pose2(state.robot_pose, state.obj_pose)
@@ -26,21 +25,25 @@ def get_processed_poses_from_state(state, data_mode):
     return pose
 
 
-def get_processed_poses_from_action(action, data_mode):
+def get_processed_poses_from_action(state, action, data_mode):
     if data_mode == 'absolute':
-        actions = np.hstack([utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose']),
-                             utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])])
+        pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
+        place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif data_mode == 'pick_relative':
-        pass
+        pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
+        pick_pose = utils.get_relative_pose1_wrt_pose2(pick_pose, state.obj_pose)
+        pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
+        place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif data_mode == 'place_relative_to_region':
         raise NotImplementedError
     elif data_mode == '':
         raise NotImplementedError
 
-    return actions
+    action = np.hstack([pick_pose, place_pose])
+    return action
 
 
-def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='absolute'):
+def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='pick_relative'):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
