@@ -160,6 +160,7 @@ class PaPUniformGenerator(UniformGenerator):
                                                                                 n_parameters_to_try_motion_planning)
             if status == 'HasSolution':
                 break
+
         if status == "NoSolution":
             return {'is_feasible': False}
 

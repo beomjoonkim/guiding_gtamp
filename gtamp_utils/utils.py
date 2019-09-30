@@ -559,7 +559,6 @@ def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_
     robot_xy = robot_xytheta[0:2]
     obj_xy = obj_xytheta[0:2]
     dist_to_obj = np.linalg.norm(robot_xy - obj_xy)
-    portion_of_dist_to_obj = dist_to_obj / radius
 
     """
     robot_x_wrt_obj = robot_xy[0]-obj_xy[0] # Why is this not the case? Because the coordinate frame might not be defined at the center
@@ -571,10 +570,9 @@ def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_
     t_robot = get_transform_from_pose(robot_xytheta, 'robot')
     t_obj = get_transform_from_pose(obj_xytheta, 'kinbody')
 
-    robot_xy_wrt_o = np.dot(np.linalg.inv(t_obj), t_robot)[:-2, 3]
+    robot_xy_wrt_o = get_relative_transform_T1_wrt_T2(t_robot, t_obj)[:-2, 3]
     robot_x_wrt_obj = robot_xy_wrt_o[0]
     robot_y_wrt_obj = robot_xy_wrt_o[1]
-
     angle = np.arccos(abs(robot_x_wrt_obj / dist_to_obj))
     if robot_x_wrt_obj < 0 < robot_y_wrt_obj:
         angle = np.pi - angle
@@ -582,6 +580,8 @@ def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_
         angle += np.pi
     elif robot_x_wrt_obj > 0 > robot_y_wrt_obj:
         angle = -angle
+
+    portion_of_dist_to_obj = dist_to_obj / radius
 
     return portion_of_dist_to_obj, angle
 
@@ -595,7 +595,6 @@ def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
 
 
 def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj_xyth):
-
     portion_of_dist_to_obj = ir_parameters[0]
     base_angle = ir_parameters[1]
     angle_offset = ir_parameters[2]
@@ -624,7 +623,8 @@ def get_ir_parameters_from_robot_obj_poses(robot_xyth, obj_xyth):
 
     portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xyth, obj_xyth)
 
-    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset], obj_xyth)
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                          obj_xyth)
     recovered_robot_xyth = clean_pose_data(recovered_robot_xyth)
     robot_xyth = clean_pose_data(robot_xyth)
     assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))
