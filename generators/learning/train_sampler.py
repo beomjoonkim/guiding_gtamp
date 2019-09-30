@@ -55,9 +55,12 @@ def get_processed_poses_from_action(state, action, data_mode):
     elif data_mode == 'pick_parameters_place_relative_to_region':
         # Bah! this needs to be with respect to the pick base pose
         pick_pose = action['pick_abs_base_pose']
-        portion, base_angle, facing_angle_offset\
+        portion, base_angle, facing_angle_offset \
             = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
-        recovered = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset], state.obj_pose)
+        recovered = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                         state.obj_pose)
+        if portion > 1.0:
+            import pdb;pdb.set_trace() # Why does this still happen?
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
@@ -68,13 +71,13 @@ def get_processed_poses_from_action(state, action, data_mode):
 
 
 def load_data(traj_dir, state_data_mode='robot_rel_to_obj',
-              #action_data_mode='pick_relative_place_relative_to_region'
+              # action_data_mode='pick_relative_place_relative_to_region'
               action_data_mode='pick_parameters_place_relative_to_region'
               ):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
-        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        #return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
@@ -115,13 +118,15 @@ def get_data():
         root_dir = './'
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/planning_experience/processed/'
-    states, poses, actions, sum_rewards = load_data(root_dir+'/planning_experience/processed/domain_two_arm_mover/'
-                                                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    states, poses, actions, sum_rewards = load_data(root_dir + '/planning_experience/processed/domain_two_arm_mover/'
+                                                               'n_objs_pack_1/irsc/sampler_trajectory_data/')
     n_data = 5000
     states = states[:5000, :]
     poses = poses[:n_data, :]
     actions = actions[:5000, :]
     sum_rewards = sum_rewards[:5000]
+    import pdb;
+    pdb.set_trace()
     print "Number of data", len(states)
     return states, poses, actions, sum_rewards
 

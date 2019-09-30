@@ -32,7 +32,6 @@ class LearnedGenerator(PaPUniformGenerator):
         elif action_data_mode == 'pick_parameters_place_relative_to_region':
             pick_params = pick_place_base_poses[:4]
             portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
-            import pdb;pdb.set_trace()
             base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
             pick_pose = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
                                                                              self.state.obj_pose)

@@ -8,7 +8,7 @@ import copy
 import openravepy
 import numpy as np
 import random
-
+import sys
 
 def get_learned_smpler():
     n_key_configs = 620
@@ -97,11 +97,18 @@ class SamplerTrajectory:
                 associated_place = plan[action_idx+1]
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
-
                 action.execute()
-                pick_parameters = utils.get_pick_ir_parameters_from_absolute_base_pose(
-                    action.discrete_parameters['object'])
+                obj_pose = utils.get_body_xytheta(action.discrete_parameters['object'])
+                robot_pose = utils.get_body_xytheta(self.problem_env.robot)
+                pick_parameters = utils.get_ir_parameters_from_robot_obj_poses(robot_pose, obj_pose)
+                recovered = utils.get_absolute_pick_base_pose_from_ir_parameters(pick_parameters, obj_pose)
                 pick_base_pose = action.continuous_parameters['q_goal']
+                pick_base_pose = utils.clean_pose_data(pick_base_pose)
+                recovered = utils.clean_pose_data(recovered)
+                print pick_parameters
+                if pick_parameters[0] > 1:
+                    sys.exit(-1)
+                assert np.all(np.isclose(pick_base_pose, recovered))
             else:
                 if action == plan[-1]:
                     reward = 0
@@ -120,5 +127,6 @@ class SamplerTrajectory:
                 self.add_sar_tuples(state, action_info, reward)
 
         self.add_state_prime()
+        print "Done!"
         openrave_env.Destroy()
         openravepy.RaveDestroy()

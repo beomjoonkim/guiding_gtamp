@@ -340,6 +340,10 @@ def get_transform_from_pose(pose, body_type):
 
 
 def get_body_xytheta(body):
+    if not isinstance(body, openravepy.KinBody):
+        env = openravepy.RaveGetEnvironments()[0]
+        body = env.GetKinBody(body)
+
     Tbefore = body.GetTransform()
     body_quat = get_quat(body)
     th1 = np.arccos(body_quat[0]) * 2

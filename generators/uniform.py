@@ -160,6 +160,14 @@ class PaPUniformGenerator(UniformGenerator):
                                                                                 n_parameters_to_try_motion_planning)
             if status == 'HasSolution':
                 break
+        """
+        ir_params = feasible_op_parameters[0]['pick']['action_parameters'][3:]
+        pick_base_pose = feasible_op_parameters[0]['pick']['q_goal']
+        obj_xyth = utils.get_body_xytheta(self.problem_env.env.GetKinBody(target_obj))
+        ir_params_recovered = utils.get_ir_parameters_from_robot_obj_poses(pick_base_pose, obj_xyth)
+        recovered_base_pose = utils.get_absolute_pick_base_pose_from_ir_parameters(ir_params_recovered, obj_xyth)
+        import pdb;pdb.set_trace()
+        """
 
         if status == "NoSolution":
             return {'is_feasible': False}
