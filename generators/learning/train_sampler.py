@@ -139,7 +139,7 @@ def train_admon_with_pose(config):
     savedir = './generators/learning/learned_weights/'
     admon = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                           save_folder=savedir, tau=config.tau, config=config)
-    admon.train(states, poses, actions, sum_rewards, epochs=100)
+    admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
 def parse_args():
