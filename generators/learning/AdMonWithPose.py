@@ -415,17 +415,6 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
                 # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
-                if real_score_values <= fake_score_values:
-                    g_lr = 1e-4 / (1 + 1e-1 * i)
-                    d_lr = 1e-3 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
-                else:
-                    g_lr = 1e-3 / (1 + 1e-1 * i)
-                    d_lr = 1e-4 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
-
             gen_after = self.a_gen.get_weights()
             disc_after = self.disc.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(gen_before, gen_after)]))
