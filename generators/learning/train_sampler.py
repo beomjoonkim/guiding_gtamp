@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import random
+import socket
 
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
@@ -110,7 +111,11 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj',
 
 
 def get_data():
-    states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
+    if socket.gethostname() == 'lab':
+        root_dir = './'
+    else:
+        root_dir = '/data/public/rw/pass.port/guiding_gtamp/planning_experience/processed/'
+    states, poses, actions, sum_rewards = load_data(root_dir+'/planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
     n_data = 5000
     states = states[:5000, :]
