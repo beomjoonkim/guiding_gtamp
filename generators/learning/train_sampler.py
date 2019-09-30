@@ -68,7 +68,8 @@ def get_processed_poses_from_action(state, action, data_mode):
     return action
 
 
-def load_data(traj_dir, state_data_mode='robot_rel_to_obj',
+def load_data(traj_dir,
+              state_data_mode='robot_rel_to_obj',
               # action_data_mode='pick_relative_place_relative_to_region'
               action_data_mode='pick_parameters_place_relative_to_region'
               ):
