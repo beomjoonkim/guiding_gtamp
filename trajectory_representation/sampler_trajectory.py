@@ -129,4 +129,4 @@ class SamplerTrajectory:
         self.add_state_prime()
         print "Done!"
         openrave_env.Destroy()
-        openravepy.RaveDestroy()
+        #openravepy.RaveDestroy()

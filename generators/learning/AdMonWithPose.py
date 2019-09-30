@@ -13,7 +13,7 @@ import os
 from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
 from AdversarialPolicy import AdversarialPolicy
 
-if socket.gethostname() == 'lab':
+if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
     ROOTDIR = './'
 else:
     ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'

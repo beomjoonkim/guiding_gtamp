@@ -114,7 +114,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj',
 
 
 def get_data():
-    if socket.gethostname() == 'lab':
+    if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
         root_dir = './'
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/planning_experience/processed/'

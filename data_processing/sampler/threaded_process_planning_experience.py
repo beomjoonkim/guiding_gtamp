@@ -36,7 +36,7 @@ def main():
         config['pidx'] = pidx
         configs.append(config)
 
-    n_workers = 1 #multiprocessing.cpu_count()
+    n_workers = multiprocessing.cpu_count()
     print configs
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
