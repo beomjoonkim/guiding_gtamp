@@ -1,12 +1,11 @@
 import argparse
-import os
-import pickle
 import numpy as np
 import tensorflow as tf
 import random
 
 from Qmse import QmseWithPose
 from generators.learning.train_sampler import load_data
+from sklearn.preprocessing import StandardScaler
 
 
 def create_model(config, dim_action):
@@ -23,6 +22,7 @@ def train_mse(config):
     # Loads the processed data
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    actions = StandardScaler().fit_transform(actions)
     model = create_model(config, actions.shape[1])
 
     n_train = 5000
@@ -37,6 +37,7 @@ def train_mse(config):
 def test_mse(config):
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    actions = StandardScaler().fit_transform(actions)
     model = create_model(config, actions.shape[1])
     n_train = config.n_data
     test_states = states[n_train:, :]

@@ -77,33 +77,3 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
             callbacks=callbacks,
             validation_split=0.1)
 
-    def get_disc_output(self):
-        dense_num = 64
-        n_filters = 64
-
-        # Tile actions and poses
-        P_H = RepeatVector(self.n_key_confs)(self.pose_input)
-        P_H = Reshape((self.n_key_confs, self.dim_poses, 1))(P_H)
-        A_H = RepeatVector(self.n_key_confs)(self.action_input)
-        A_H = Reshape((self.n_key_confs, self.dim_action, 1))(A_H)
-
-        C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
-        XK_H = Concatenate(axis=2)([A_H, P_H, C_H])
-
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, self.dim_action + self.dim_collision[1] + self.dim_poses),
-                   strides=(1, 1),
-                   activation='relu')(XK_H)
-        for _ in range(4):
-            H = Conv2D(filters=n_filters,
-                       kernel_size=(1, 1),
-                       strides=(1, 1),
-                       activation='relu')(H)
-        H = MaxPooling2D(pool_size=(2, 1))(H)
-        H = Flatten()(H)
-        H = Dense(dense_num, activation='relu')(H)
-        H = Dense(dense_num, activation='relu')(H)
-
-        disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(H)
-        return disc_output
