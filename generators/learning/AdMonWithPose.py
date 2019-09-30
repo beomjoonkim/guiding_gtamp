@@ -7,10 +7,16 @@ from keras import initializers
 
 import time
 import numpy as np
-import sys
+import socket
+import os
 
 from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
 from AdversarialPolicy import AdversarialPolicy
+
+if socket.gethostname() == 'lab':
+    ROOTDIR = './'
+else:
+    ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'
 
 
 def slice_pick_pose_from_action(x):
@@ -53,7 +59,12 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         return a_gen, disc, DG
 
     def save_weights(self, additional_name=''):
-        self.a_gen.save_weights(self.save_folder + '/' + self.weight_file_name + additional_name + '.h5')
+        fdir = ROOTDIR+ '/' + self.save_folder + '/'
+        fname = self.weight_file_name + additional_name + '.h5'
+        if not os.path.isdir(fdir):
+            os.makedirs(fdir)
+
+        self.a_gen.save_weights(fdir+fname)
 
     def load_weights(self, additional_name=''):
         self.a_gen.load_weights(self.save_folder + '/' + self.weight_file_name + additional_name + '.h5')
