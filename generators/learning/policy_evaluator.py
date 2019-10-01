@@ -6,7 +6,7 @@ from trajectory_representation.concrete_node_state import ConcreteNodeState
 from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
 from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
-from generators.learning.train_sampler import get_processed_poses_from_state
+from generators.learning.train_sampler import get_processed_poses_from_state, state_data_mode, action_data_mode
 
 import numpy as np
 import collections
@@ -69,12 +69,12 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
 
     place_poses = []
     poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
-    #pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
-    #action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
-    #poses = pose_scaler.transform(poses)
+    # pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
+    # action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
+    # poses = pose_scaler.transform(poses)
     for _ in range(20):
         pap_base_poses = generator.sampler.generate(smpler_state.state_vec, poses)  # I need grasp parameters;
-        #pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
+        # pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
         place_poses.append(pap_base_poses[0, 4:])
     print np.mean(place_poses, axis=0)
     import pdb;
@@ -162,21 +162,34 @@ def visualize_samples(policy):
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
     pidx_poses = load_pose_file(pidx)
+
     problem_env.set_body_poses(pidx_poses)
     smpler_state = get_smpler_state(pidx)
-    smpler_state.state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
+    state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
+    n_key_configs = 615
 
-    poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
+    obj = 'rectangular_packing_box2'
+    obj = 'square_packing_box2'
+    utils.set_color(obj, [1, 0, 0])
+    is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in smpler_state.goal_entities]))
+    is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+    is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([smpler_state.region in smpler_state.goal_entities]))
+    is_goal_region = np.tile(is_goal_region, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+    state_vec = np.concatenate([state_vec, is_goal_obj, is_goal_region], axis=2)
+
+    poses = np.hstack([utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
+
+    # poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
     places = []
     for _ in range(20):
-        # smpler_state.state_vec[0, -2, :, 0] = [0, 1]
-        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(smpler_state.state_vec, poses))
-        """
-        if smpler_state.region == 'home_region':
-            placement[0:2] += [-1.75, 5.25]
-        elif smpler_state.region == 'loading_region':
-            placement[0:2] += [-0.7, 4.3]
-        """
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
+
+        if 'place_relative_to_region' in action_data_mode:
+            if smpler_state.region == 'home_region':
+                placement[0:2] += [-1.75, 5.25]
+            elif smpler_state.region == 'loading_region':
+                placement[0:2] += [-0.7, 4.3]
+
         places.append(placement)
     utils.viewer()
 
@@ -190,7 +203,8 @@ def main():
     n_key_configs = 615  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs, 2, 1)
     dim_action = 8
-    savedir = './generators/learning/learned_weights/state_data_mode_robot_rel_to_obj_action_data_mode_absolute/place_admon/'
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/place_admon/' % (
+        state_data_mode, action_data_mode)
 
     mconfig_type = collections.namedtuple('mconfig_type',
                                           'tau seed')
@@ -200,7 +214,9 @@ def main():
         seed=int(sys.argv[1])
     )
     epoch_number = int(sys.argv[2])
-    policy = PlaceAdmonWithPose(dim_action=4, dim_collision=dim_state,
+    dim_state = (n_key_configs, 6, 1)
+    dim_action = 4
+    policy = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                 save_folder=savedir, tau=config.tau, config=config)
     print "Trying epoch number ", epoch_number
     policy.load_weights(additional_name='_epoch_%d' % epoch_number)

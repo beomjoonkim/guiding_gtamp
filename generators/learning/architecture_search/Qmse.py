@@ -77,3 +77,5 @@ class QmseWithPose(AdversarialMonteCarloWithPose, MSETrainer):
             callbacks=callbacks,
             validation_split=0.1)
 
+
+
