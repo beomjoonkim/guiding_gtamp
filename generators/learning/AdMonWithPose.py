@@ -118,7 +118,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         tiled_abs_pose_and_pick_output = self.make_tiled_abs_obj_pose_and_pick_output(pick_output)
 
         H_col_abs_obj_pose_place = Concatenate(axis=2)([tiled_abs_pose_and_pick_output, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64+2)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64 + 2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])
@@ -173,19 +173,28 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         tiled_abs_pose_and_pick_output = self.make_tiled_abs_obj_pose_and_pick_output(pick_action)
         H_col_abs_obj_pose_place = Concatenate(axis=2)([tiled_abs_pose_and_pick_output, place_action, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64+2+4)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64 + 2 + 4)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
+        self.discriminator_feature_matching_layer = Concatenate(axis=-1)([H_pick, H_place])
+
+        place_value = Dense(1, activation='linear',
+                            kernel_initializer=self.initializer,
+                            bias_initializer=self.initializer)(H_place)
+        pick_value = Dense(1, activation='linear',
+                           kernel_initializer=self.initializer,
+                           bias_initializer=self.initializer)(H_pick)
+        disc_output = Add()([H_pick, H_place])
 
         # todo make the Q function additive of Q_pick and Q_place, where Q_place takes pick_action as an input
         # Get the output from both processed pick and place
-        H = Concatenate(axis=-1)([H_pick, H_place])
-        H = Dense(dense_num, activation='relu')(H)
-        self.discriminator_feature_matching_layer = H
-        H = Dense(dense_num, activation='relu')(H)
+        # H = Concatenate(axis=-1)([H_pick, H_place])
+        # H = Dense(dense_num, activation='relu')(H)
+        # self.discriminator_feature_matching_layer = H
+        # H = Dense(dense_num, activation='relu')(H)
 
-        disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(H)
+        #disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
+        #                    bias_initializer=self.initializer)(H)
         return disc_output
 
     def create_discriminator(self):
@@ -346,6 +355,7 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
             name='feature_matching_model')
 
         self.discriminator_feature_matching_model.compile(loss='mse', optimizer=self.opt_D)
+        import pdb;pdb.set_trace()
         return disc
 
     def createGAN(self):
@@ -396,10 +406,11 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
                 batch_s_for_disc = np.vstack([s_batch, s_batch])
                 batch_rp_for_disc = np.vstack([pose_batch, pose_batch])
                 batch_scores = np.vstack([fake_action_q, real_action_q])
-                self.disc.fit({'a': batch_a_for_disc, 's': batch_s_for_disc, 'pose': batch_rp_for_disc, 'tau': tau_values},
-                              batch_scores,
-                              epochs=1,
-                              verbose=False)
+                self.disc.fit(
+                    {'a': batch_a_for_disc, 's': batch_s_for_disc, 'pose': batch_rp_for_disc, 'tau': tau_values},
+                    batch_scores,
+                    epochs=1,
+                    verbose=False)
 
                 # train G
                 a_z = noise(batch_size, self.dim_noise)

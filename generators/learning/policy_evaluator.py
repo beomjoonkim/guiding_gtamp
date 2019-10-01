@@ -58,8 +58,8 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
 
     # Evaluate it in the first state
     utils.set_color(smpler_state.obj, [1, 0, 0])
-    abs_action = Operator('two_arm_pick_and_place',
-                          discrete_parameters={'object': smpler_state.object, 'region': smpler_state.region})
+    abs_action = Operator('two_arm_pick_two_arm_place',
+                          discrete_parameters={'object': smpler_state.obj, 'region': smpler_state.region})
     generator = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     base_poses = np.array(
         [(generator.generate_base_poses(abs_action)[0], generator.generate_base_poses(abs_action)[1]) for _ in range(10)])
@@ -144,7 +144,6 @@ def main():
     dim_action = 8
     savedir = './generators/learning/learned_weights/'
 
-    n_successes = evaluate_policy(None)
     mconfig_type = collections.namedtuple('mconfig_type',
                                           'tau seed')
 
