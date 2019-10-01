@@ -47,16 +47,16 @@ def load_pose_file(pidx):
 def evaluate_in_problem_instance(policy, pidx, problem_env):
     pidx_poses = load_pose_file(pidx)
     problem_env.set_body_poses(pidx_poses)
-    #smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
+    # smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
     smpler_state = get_smpler_state(pidx)
 
-    #abs_plan = abs_traj.actions
-    #abs_states = abs_traj.states
-    #smpler_states = smpler_traj.states
-    #smpler_state_idx = 0
+    # abs_plan = abs_traj.actions
+    # abs_states = abs_traj.states
+    # smpler_states = smpler_traj.states
+    # smpler_state_idx = 0
 
-    #abs_state = abs_states[0]
-    #abs_action = abs_plan[0]
+    # abs_state = abs_states[0]
+    # abs_action = abs_plan[0]
 
     # Evaluate it in the first state
     utils.set_color(smpler_state.obj, [1, 0, 0])
@@ -64,7 +64,8 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
                           discrete_parameters={'object': smpler_state.obj, 'region': smpler_state.region})
     generator = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     base_poses = np.array(
-        [(generator.generate_base_poses(abs_action)[0], generator.generate_base_poses(abs_action)[1]) for _ in range(10)])
+        [(generator.generate_base_poses(abs_action)[0], generator.generate_base_poses(abs_action)[1]) for _ in
+         range(10)])
 
     place_poses = []
     poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
@@ -76,13 +77,15 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
         pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
         place_poses.append(pap_base_poses[0, 4:])
     print np.mean(place_poses, axis=0)
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
     utils.viewer()
     # utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
     # utils.visualize_path([abs_action.continuous_parameters['place']['q_goal']])
     picks = base_poses[:, 0]
     places = base_poses[:, 1]
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
     utils.visualize_path(places)
     utils.visualize_path(picks)
     import pdb;
@@ -150,6 +153,7 @@ def evaluate_policy(policy):
     n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs[1:]]
     return n_successes
 
+
 def visualize_samples(policy):
     n_evals = 1
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
@@ -160,11 +164,12 @@ def visualize_samples(policy):
     pidx_poses = load_pose_file(pidx)
     problem_env.set_body_poses(pidx_poses)
     smpler_state = get_smpler_state(pidx)
+    import pdb;pdb.set_trace()
 
     poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
     places = []
     for _ in range(20):
-        smpler_state.state_vec[0,-2,:,0] = [0,1]
+        #smpler_state.state_vec[0, -2, :, 0] = [0, 1]
         placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(smpler_state.state_vec, poses))
         """
         if smpler_state.region == 'home_region':
@@ -176,8 +181,8 @@ def visualize_samples(policy):
     utils.viewer()
 
     utils.visualize_path(places)
-    import pdb;pdb.set_trace()
-
+    import pdb;
+    pdb.set_trace()
 
 
 def main():

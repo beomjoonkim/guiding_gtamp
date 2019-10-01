@@ -64,13 +64,6 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
                      outputs=disc_output,
                      name='disc_output')
         disc.compile(loss=tau_loss(self.tau_input), optimizer=self.opt_D)
-
-        self.discriminator_feature_matching_model = Model(
-            inputs=[self.action_input, self.collision_input, self.pose_input],
-            outputs=self.discriminator_feature_matching_layer,
-            name='feature_matching_model')
-
-        self.discriminator_feature_matching_model.compile(loss='mse', optimizer=self.opt_D)
         return disc
 
     def get_disc_output_with_preprocessing_layers(self):
@@ -100,7 +93,6 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         disc_output = place_value  # Add()([place_value])
         return disc_output
 
-
     def compare_to_data(self, states, poses, actions):
         n_data = len(states)
         a_z = noise(n_data, self.dim_noise)
@@ -108,8 +100,6 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         gen_place_base = pred[:, :4]
         data_place_base = actions[:, :4]
         print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
-
-
 
 
 class PlaceFeatureMatchingAdMonWithPose(FeatureMatchingAdMonWithPose):

@@ -12,12 +12,15 @@ from AdMonWithPose import AdversarialMonteCarloWithPose, FeatureMatchingAdMonWit
 from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
 from sklearn.preprocessing import StandardScaler
 
+state_data_mode = 'robot_rel_to_obj'
+action_data_mode = 'absolute'
 
-def get_processed_poses_from_state(state, data_mode):
-    if data_mode == 'absolute':
+
+def get_processed_poses_from_state(state):
+    if state_data_mode == 'absolute':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
-    elif data_mode == 'robot_rel_to_obj':
+    elif state_data_mode == 'robot_rel_to_obj':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
         robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.robot_pose, state.obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
@@ -40,21 +43,21 @@ def get_place_pose_wrt_region(pose, region):
     return place_pose
 
 
-def get_processed_poses_from_action(state, action, data_mode):
-    if data_mode == 'absolute':
+def get_processed_poses_from_action(state, action):
+    if action_data_mode == 'absolute':
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-    elif data_mode == 'pick_relative':
+    elif action_data_mode == 'pick_relative':
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-    elif data_mode == 'pick_relative_place_relative_to_region':
+    elif action_data_mode == 'pick_relative_place_relative_to_region':
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-    elif data_mode == 'pick_parameters_place_relative_to_region':
+    elif action_data_mode == 'pick_parameters_place_relative_to_region':
         # Bah! this needs to be with respect to the pick base pose
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
@@ -62,8 +65,7 @@ def get_processed_poses_from_action(state, action, data_mode):
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-
-    elif data_mode == 'pick_parameters_place_relative_to_pick':
+    elif action_data_mode == 'pick_parameters_place_relative_to_pick':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
             = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
@@ -83,14 +85,11 @@ def get_processed_poses_from_action(state, action, data_mode):
     return action
 
 
-def load_data(traj_dir,
-              state_data_mode='robot_rel_to_obj',
-              action_data_mode='absolute'
-              ):
+def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='absolute'):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
-        print "Loading the cache file", cache_file_name
+        print "Loading the cache file", traj_dir+cache_file_name
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
@@ -106,9 +105,14 @@ def load_data(traj_dir,
         if len(traj.states) == 0:
             continue
 
-        states = np.array([s.state_vec for s in traj.states])  # collision vectors
-        poses = np.array([get_processed_poses_from_state(s, state_data_mode) for s in traj.states])
-        actions = np.array([get_processed_poses_from_action(s, a, action_data_mode)
+        # states = np.array([s.state_vec for s in traj.states])  # collision vectors
+        states = []
+        for s in traj.states:
+            state_vec = np.delete(s.state_vec, [415, 586, 615], axis=1)
+            states.append(state_vec)
+        states = np.array(states)
+        poses = np.array([get_processed_poses_from_state(s) for s in traj.states])
+        actions = np.array([get_processed_poses_from_action(s, a)
                             for s, a in zip(traj.states, traj.actions)])
 
         rewards = traj.rewards
@@ -151,27 +155,22 @@ def train_admon(config):
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
-    savedir = './generators/learning/learned_weights/'
+    savedir = './generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/admon/' % (
+    state_data_mode, action_data_mode)
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau)
     admon.train(states, actions, sum_rewards, epochs=100)
 
 
 def train_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
-    """
-    action_scaler = StandardScaler().fit(actions)
-    pose_scaler = StandardScaler().fit(poses)
-    actions = action_scaler.transform(actions)
-    poses = pose_scaler.transform(poses)
-    pickle.dump({'pose': pose_scaler, 'action': action_scaler}, open('scalers.pkl', 'wb'))
-    """
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
-    savedir = 'generators/learning/learned_weights/'
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/admon_with_pose/' % (
+    state_data_mode, action_data_mode)
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                         save_folder=savedir, tau=config.tau, config=config)
+                               save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
@@ -179,12 +178,13 @@ def train_place_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
-    n_key_configs = 618  # indicating whether it is a goal obj and goal region
-    dim_state = (n_key_configs + n_goal_flags, 2, 1)
-    dim_action = 4 #actions.shape[1]
-    savedir = 'generators/learning/learned_weights/'
+    n_key_configs = states.shape[1]  # indicating whether it is a goal obj and goal region
+    dim_state = (n_key_configs, 2, 1)
+    dim_action = 4
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/place_admon/' % (
+    state_data_mode, action_data_mode)
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                              save_folder=savedir, tau=config.tau, config=config)
+                               save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 

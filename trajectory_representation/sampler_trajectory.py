@@ -105,7 +105,6 @@ class SamplerTrajectory:
                 pick_base_pose = action.continuous_parameters['q_goal']
                 pick_base_pose = utils.clean_pose_data(pick_base_pose)
                 recovered = utils.clean_pose_data(recovered)
-                print pick_parameters
                 if pick_parameters[0] > 1:
                     sys.exit(-1)
                 assert np.all(np.isclose(pick_base_pose, recovered))
