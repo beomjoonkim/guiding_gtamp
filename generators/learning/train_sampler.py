@@ -58,11 +58,19 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
             = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
-        recovered = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
-                                                                         state.obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
+
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+    elif data_mode == 'pick_parameters_place_relative_to_pick':
+        pick_pose = action['pick_abs_base_pose']
+        portion, base_angle, facing_angle_offset \
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
+        pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
+
+        place_pose = action['place_abs_base_pose']
+        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, pick_pose) #get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
 
     action = np.hstack([pick_pose, place_pose])
 
@@ -71,8 +79,7 @@ def get_processed_poses_from_action(state, action, data_mode):
 
 def load_data(traj_dir,
               state_data_mode='robot_rel_to_obj',
-              # action_data_mode='pick_relative_place_relative_to_region'
-              action_data_mode='pick_parameters_place_relative_to_region'
+              action_data_mode='pick_parameters_place_relative_to_pick'
               ):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
@@ -144,15 +151,19 @@ def train_admon(config):
 
 def train_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
-    actions = StandardScaler().fit_transform(actions)
-    poses = StandardScaler().fit_transform(poses)
+    action_scaler = StandardScaler().fit(actions)
+    pose_scaler = StandardScaler().fit(poses)
+    actions = action_scaler.transform(actions)
+    poses = pose_scaler.transform(poses)
+
+    pickle.dump({'pose': pose_scaler, 'action': action_scaler}, open('scalers.pkl', 'wb'))
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     savedir = 'generators/learning/learned_weights/'
     admon = FeatureMatchingAdMonWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                          save_folder=savedir, tau=config.tau, config=config)
+                                         save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 

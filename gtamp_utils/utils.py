@@ -313,6 +313,7 @@ def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
     t_robot = get_transform_from_pose(robot_pose, 'robot')
     t_obj = get_transform_from_pose(body_pose, 'kinbody')
     rel_t = get_relative_transform_T1_wrt_T2(t_robot, t_obj)
+
     rotation = rel_t[0:3, 0:3]
     rel_pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     xy = rel_t[0:2, 3]
