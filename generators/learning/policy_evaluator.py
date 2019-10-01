@@ -7,6 +7,8 @@ from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
 from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
 from generators.learning.train_sampler import get_processed_poses_from_state, state_data_mode, action_data_mode
+from generators.learning.architecture_search.train_policy_mse import create_model as create_mse_policy
+from generators.learning.architecture_search.train_policy_mse import PolicyWithPose
 
 import numpy as np
 import collections
@@ -182,7 +184,8 @@ def visualize_samples(policy):
     # poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
     places = []
     for _ in range(20):
-        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
+        #placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.predict(state_vec, poses))
 
         if 'place_relative_to_region' in action_data_mode:
             if smpler_state.region == 'home_region':
@@ -216,10 +219,21 @@ def main():
     epoch_number = int(sys.argv[2])
     dim_state = (n_key_configs, 6, 1)
     dim_action = 4
+    """
     policy = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                 save_folder=savedir, tau=config.tau, config=config)
+    """
+
+    savedir = './generators/learning/architecture_search/learned_weights/'
+    n_key_configs = 615
+    dim_state = (n_key_configs, 6, 1)
+    policy = PolicyWithPose(dim_action=dim_action, dim_collision=dim_state, save_folder=savedir,
+                           tau=config.tau, config=config)
+
     print "Trying epoch number ", epoch_number
-    policy.load_weights(additional_name='_epoch_%d' % epoch_number)
+    #policy.load_weights(additional_name='_epoch_%d' % epoch_number)
+    policy.load_weights()
+    import pdb;pdb.set_trace()
     visualize_samples(policy)
     """
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,

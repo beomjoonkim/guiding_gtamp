@@ -19,6 +19,9 @@ class PolicyWithPose(PlaceAdmonWithPose, MSETrainer):
             l.trainable = True
         MSETrainer.__init__(self, save_folder, tau, self.disc, self.opt_D, config)
 
+    def load_weights(self):
+        self.disc.load_weights(self.save_folder + self.weight_file_name)
+
     def create_a_gen_output(self):
         dense_num = 64
 
