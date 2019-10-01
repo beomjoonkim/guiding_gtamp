@@ -321,6 +321,20 @@ def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
     return rel_pose_vec
 
 
+def get_pose_from_transform(transform):
+    rotation = transform[0:3, 0:3]
+    pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    pose_vec[0:2] = transform[0:2, 3]
+    return pose_vec
+
+
+def get_absolute_pose_from_relative_pose(relative_pose, pose_relative_to):
+    t_relative_pose = get_transform_from_pose(relative_pose, 'robot')
+    t_pose_relative_to = get_transform_from_pose(pose_relative_to, 'robot')
+    t_absolute = np.dot(t_pose_relative_to, t_relative_pose)
+    return get_pose_from_transform(t_absolute)
+
+
 def get_transform_from_pose(pose, body_type):
     pose = np.array(pose).squeeze()
     assert len(pose) == 3, "must be x,y, theta where theta is rotation around [0,0,1]"

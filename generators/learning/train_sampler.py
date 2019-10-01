@@ -9,6 +9,7 @@ import socket
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from AdMonWithPose import AdversarialMonteCarloWithPose, FeatureMatchingAdMonWithPose
+from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose
 from sklearn.preprocessing import StandardScaler
 
 
@@ -70,7 +71,10 @@ def get_processed_poses_from_action(state, action, data_mode):
         pick_params = np.hstack([portion, base_angle, facing_angle_offset])
 
         place_pose = action['place_abs_base_pose']
-        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, pick_pose) #get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose,
+                                                                 pick_pose)  # get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+        # todo test converting to the absolute pose
+        recovered = utils.get_absolute_pose_from_relative_pose(place_pose, pick_pose)
         pick_pose = pick_params
         place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
 
@@ -169,6 +173,19 @@ def train_admon_with_pose(config):
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
+def train_place_admon_with_pose(config):
+    states, poses, actions, sum_rewards = get_data()
+    actions = actions[:, 4:]
+    n_goal_flags = 2  # indicating whether it is a goal obj and goal region
+    n_key_configs = 618  # indicating whether it is a goal obj and goal region
+    dim_state = (n_key_configs + n_goal_flags, 2, 1)
+    dim_action = 4 #actions.shape[1]
+    savedir = 'generators/learning/learned_weights/'
+    admon = PlaceFeatureMatchingAdMonWithPose(dim_action=dim_action, dim_collision=dim_state,
+                                              save_folder=savedir, tau=config.tau, config=config)
+    admon.train(states, poses, actions, sum_rewards, epochs=500)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Process configurations')
     parser.add_argument('-n_data', type=int, default=100)
@@ -180,7 +197,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='admonpose')
+    parser.add_argument('-algo', type=str, default='placeadmonpose')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
@@ -200,6 +217,8 @@ def main():
         train_admon(configs)
     elif configs.algo == 'admonpose':
         train_admon_with_pose(configs)
+    elif configs.algo == 'placeadmonpose':
+        train_place_admon_with_pose(configs)
     else:
         raise NotImplementedError
 

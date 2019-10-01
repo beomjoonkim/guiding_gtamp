@@ -5,6 +5,7 @@ from gtamp_utils import utils
 import numpy as np
 import pickle
 
+
 class LearnedGenerator(PaPUniformGenerator):
     def __init__(self, operator_skeleton, problem_env, sampler, state, swept_volume_constraint=None):
         PaPUniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
@@ -14,7 +15,7 @@ class LearnedGenerator(PaPUniformGenerator):
         self.pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
         self.action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
 
-    def generate_base_poses(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
+    def generate_base_poses(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_pick'):
         if "Pose" in self.sampler.__module__:
             poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
             poses = self.pose_scaler.transform(poses)
@@ -26,8 +27,9 @@ class LearnedGenerator(PaPUniformGenerator):
 
         if action_data_mode == 'pick_relative_place_relative_to_region':
             relative_pick_pose_wrt_obj = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[:4])
-            pick_pose = utils.get_global_pose_from_relative_pose_to_body(operator_skeleton.discrete_parameters['object'],
-                                                                         relative_pick_pose_wrt_obj)
+            pick_pose = utils.get_global_pose_from_relative_pose_to_body(
+                operator_skeleton.discrete_parameters['object'],
+                relative_pick_pose_wrt_obj)
             place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
             if operator_skeleton.discrete_parameters['region'] == 'home_region':
                 place_pose[0:2] += [-1.75, 5.25]
@@ -44,12 +46,20 @@ class LearnedGenerator(PaPUniformGenerator):
                 place_pose[0:2] += [-1.75, 5.25]
             elif operator_skeleton.discrete_parameters['region'] == 'loading_region':
                 place_pose[0:2] += [-0.7, 4.3]
+        elif action_data_mode == 'pick_parameters_place_relative_to_pick':
+            pick_params = pick_place_base_poses[:4]
+            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
+            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
+            pick_pose = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                             self.state.obj_pose)
+            place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
+            place_pose = utils.get_absolute_pose_from_relative_pose(place_pose, pick_pose)
         else:
             raise NotImplementedError
 
         return pick_pose, place_pose
 
-    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
+    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_pick'):
         if "Pose" in self.sampler.__module__:
             poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
             smpl = self.sampler.generate(self.state.state_vec, poses).squeeze()  # I need grasp parameters;
@@ -110,7 +120,6 @@ class LearnedGenerator(PaPUniformGenerator):
                 break
         if status == "NoSolution":
             return {'is_feasible': False}
-
 
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)

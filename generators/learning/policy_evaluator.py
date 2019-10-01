@@ -5,6 +5,7 @@ from trajectory_representation.shortest_path_pick_and_place_state import Shortes
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
+from generators.learning.train_sampler import get_processed_poses_from_state
 
 import numpy as np
 import collections
@@ -64,13 +65,25 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
     base_poses = np.array(
         [(generator.generate_base_poses(abs_action)[0], generator.generate_base_poses(abs_action)[1]) for _ in range(10)])
 
+    place_poses = []
+    poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
+    pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
+    action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
+    poses = pose_scaler.transform(poses)
+    for _ in range(20):
+        pap_base_poses = generator.sampler.generate(smpler_state.state_vec, poses)  # I need grasp parameters;
+        pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
+        place_poses.append(pap_base_poses[0, 4:])
+    print np.mean(place_poses, axis=0)
+    import pdb;pdb.set_trace()
     utils.viewer()
     # utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
     # utils.visualize_path([abs_action.continuous_parameters['place']['q_goal']])
     picks = base_poses[:, 0]
     places = base_poses[:, 1]
-    utils.visualize_path(picks)
+    import pdb;pdb.set_trace()
     utils.visualize_path(places)
+    utils.visualize_path(picks)
     import pdb;
     pdb.set_trace()
     """
