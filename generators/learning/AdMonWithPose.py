@@ -159,24 +159,25 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         prepick_robot_pose = self.get_prepick_robot_pose()
 
         pick_action = Lambda(slice_pick_pose_from_action)(self.action_input)
-        pick_action = RepeatVector(self.n_key_confs)(pick_action)
-        pick_action = Reshape((self.n_key_confs, 4, 1))(pick_action)
-        H_col_robot_pose_pick = Concatenate(axis=2)([pick_action, prepick_robot_pose, C_H])
+        tiled_pick_action = RepeatVector(self.n_key_confs)(pick_action)
+        tiled_pick_action = Reshape((self.n_key_confs, 4, 1))(tiled_pick_action)
+        H_col_robot_pose_pick = Concatenate(axis=2)([tiled_pick_action, prepick_robot_pose, C_H])
         H_pick = self.create_conv_layers(H_col_robot_pose_pick, 10)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
 
         # For computing a sub-network for place
-        abs_obj_pose = self.get_abs_obj_pose()
         place_action = Lambda(slice_place_pose_from_action)(self.action_input)
         place_action = RepeatVector(self.n_key_confs)(place_action)
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
 
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([pick_action, place_action, abs_obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 14)
+        tiled_abs_pose_and_pick_output = self.make_tiled_abs_obj_pose_and_pick_output(pick_action)
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([tiled_abs_pose_and_pick_output, place_action, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64+2+4)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
 
+        # todo make the Q function additive of Q_pick and Q_place, where Q_place takes pick_action as an input
         # Get the output from both processed pick and place
         H = Concatenate(axis=-1)([H_pick, H_place])
         H = Dense(dense_num, activation='relu')(H)

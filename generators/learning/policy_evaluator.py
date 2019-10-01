@@ -1,7 +1,9 @@
 from test_scripts.run_greedy import get_problem_env
 from generators.learned_generator import LearnedGenerator
 from gtamp_utils import utils
-
+from trajectory_representation.shortest_path_pick_and_place_state import ShortestPathPaPState
+from trajectory_representation.concrete_node_state import ConcreteNodeState
+from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
 
 import numpy as np
@@ -30,41 +32,47 @@ def get_smpler_and_abstract_action_trajectories(pidx):
     return smpler_traj, abs_traj
 
 
+def get_smpler_state(pidx):
+    state = pickle.load(open(cached_env_path + 'pidx_%d.pkl' % pidx, 'r'))['state']
+    return state
+
+
 def load_pose_file(pidx):
-    poses = pickle.load(open(cached_env_path + 'pidx_%d.pkl' % pidx, 'r'))
+    poses = pickle.load(open(cached_env_path + 'pidx_%d.pkl' % pidx, 'r'))['body_poses']
     return poses
 
 
 def evaluate_in_problem_instance(policy, pidx, problem_env):
     pidx_poses = load_pose_file(pidx)
-
     problem_env.set_body_poses(pidx_poses)
-    smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
+    #smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
+    smpler_state = get_smpler_state(pidx)
 
-    abs_plan = abs_traj.actions
-    abs_states = abs_traj.states
-    smpler_states = smpler_traj.states
-    smpler_state_idx = 0
+    #abs_plan = abs_traj.actions
+    #abs_states = abs_traj.states
+    #smpler_states = smpler_traj.states
+    #smpler_state_idx = 0
 
-    abs_state = abs_states[0]
-    abs_action = abs_plan[0]
+    #abs_state = abs_states[0]
+    #abs_action = abs_plan[0]
 
     # Evaluate it in the first state
-    utils.set_color(abs_action.discrete_parameters['object'],[1, 0, 0])
-
-    smpler_state = smpler_states[smpler_state_idx]
-    smpler = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
-    abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
-    base_poses = np.array([(smpler.generate_base_poses(abs_action)[0], smpler.generate_base_poses(abs_action)[1]) for _ in range(10)])
+    utils.set_color(smpler_state.obj, [1, 0, 0])
+    abs_action = Operator('two_arm_pick_and_place',
+                          discrete_parameters={'object': smpler_state.object, 'region': smpler_state.region})
+    generator = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
+    base_poses = np.array(
+        [(generator.generate_base_poses(abs_action)[0], generator.generate_base_poses(abs_action)[1]) for _ in range(10)])
 
     utils.viewer()
-    #utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
-    #utils.visualize_path([abs_action.continuous_parameters['place']['q_goal']])
+    # utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
+    # utils.visualize_path([abs_action.continuous_parameters['place']['q_goal']])
     picks = base_poses[:, 0]
     places = base_poses[:, 1]
     utils.visualize_path(picks)
     utils.visualize_path(places)
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
     """
     abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
     smpler_state = smpler_states[smpler_state_idx]
@@ -99,16 +107,22 @@ def get_pidxs_to_evaluate_policy(n_evals):
 
 def cache_poses_of_robot_and_objs(pidxs):
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
+    key_configs = pickle.load(open('prm.pkl', 'r'))[0]
     for pidx in pidxs:
         config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
         problem_env = get_problem_env(config)
 
-        # todo store the state collisions too
+        obj = 'square_packing_box1'
+        region = 'loading_region'
+        smpler_state = ConcreteNodeState(problem_env, obj, region, problem_env.goal, key_configs)
         body_poses = {}
         for o in problem_env.objects:
             body_poses[o.GetName()] = utils.get_body_xytheta(o)
         body_poses['pr2'] = utils.get_body_xytheta(problem_env.robot)
-        pickle.dump(body_poses, open(cached_env_path + 'pidx_%d.pkl' % pidx, 'wb'))
+        smpler_state.problem_env = None
+        pickle.dump({'state': smpler_state,
+                     'body_poses': body_poses},
+                    open(cached_env_path + 'pidx_%d.pkl' % pidx, 'wb'))
         problem_env.env.Destroy()
         openravepy.RaveDestroy()
 
@@ -116,7 +130,6 @@ def cache_poses_of_robot_and_objs(pidxs):
 def evaluate_policy(policy):
     n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=437, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
@@ -131,6 +144,7 @@ def main():
     dim_action = 8
     savedir = './generators/learning/learned_weights/'
 
+    n_successes = evaluate_policy(None)
     mconfig_type = collections.namedtuple('mconfig_type',
                                           'tau seed')
 
