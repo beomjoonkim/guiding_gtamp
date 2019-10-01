@@ -85,11 +85,12 @@ def get_processed_poses_from_action(state, action, data_mode):
 
 def load_data(traj_dir,
               state_data_mode='robot_rel_to_obj',
-              action_data_mode='pick_parameters_place_relative_to_region'
+              action_data_mode='absolute'
               ):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
+        print "Loading the cache file", cache_file_name
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
@@ -219,6 +220,7 @@ def main():
     elif configs.algo == 'admonpose':
         train_admon_with_pose(configs)
     elif configs.algo == 'placeadmonpose':
+        print "Training place only"
         train_place_admon_with_pose(configs)
     else:
         raise NotImplementedError
