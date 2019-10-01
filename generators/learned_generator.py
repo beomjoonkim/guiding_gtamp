@@ -12,7 +12,7 @@ class LearnedGenerator(PaPUniformGenerator):
         self.sampler = sampler
         self.state = state
 
-    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
+    def generate_base_poses(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
         if "Pose" in self.sampler.__module__:
             poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
             pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;
@@ -45,14 +45,36 @@ class LearnedGenerator(PaPUniformGenerator):
 
         return pick_pose, place_pose
 
+    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
+        if "Pose" in self.sampler.__module__:
+            poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
+            smpl = self.sampler.generate(self.state.state_vec, poses).squeeze()  # I need grasp parameters;
+        else:
+            smpl = self.sampler.generate(self.state.state_vec).squeeze()  # I need grasp parameters;
+        if action_data_mode == 'pick_parameters_place_relative_to_region':
+            pick_params = smpl[:4]
+            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
+            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
+            pick_params = np.array([portion, base_angle, facing_angle_offset])
+
+            place_pose = utils.decode_pose_with_sin_and_cos_angle(smpl[4:])
+            if operator_skeleton.discrete_parameters['two_arm_place_region'] == 'home_region':
+                place_pose[0:2] += [-1.75, 5.25]
+            elif operator_skeleton.discrete_parameters['two_arm_place_region'] == 'loading_region':
+                place_pose[0:2] += [-0.7, 4.3]
+        else:
+            raise NotImplementedError
+
+        return np.hstack([pick_params, place_pose])
+
     def sample_feasible_op_parameters(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning):
         assert n_iter > 0
         feasible_op_parameters = []
         for i in range(n_iter):
             # fix it to take in the pose
-            pick_place_base_poses = self.generate(operator_skeleton)
+            smpl = self.generate(operator_skeleton)[None, :]
             grasp_parameters = self.sample_from_uniform()[0:3][None, :]
-            op_parameters = np.hstack([grasp_parameters, pick_place_base_poses]).squeeze()
+            op_parameters = np.hstack([grasp_parameters, smpl]).squeeze()
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,
                                                                                   self.swept_volume_constraint)
 
@@ -84,6 +106,7 @@ class LearnedGenerator(PaPUniformGenerator):
                 break
         if status == "NoSolution":
             return {'is_feasible': False}
+
 
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)

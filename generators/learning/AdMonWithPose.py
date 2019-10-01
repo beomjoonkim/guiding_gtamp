@@ -89,6 +89,17 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
         return abs_obj_pose
 
+    def make_tiled_abs_obj_pose_and_pick_output(self, pick_output):
+        dense_num = 64
+        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
+        H = Concatenate(axis=-1)([abs_obj_pose, pick_output])
+        for _ in range(2):
+            H = Dense(dense_num, activation='relu')(H)
+
+        H = RepeatVector(self.n_key_confs)(H)
+        H = Reshape((self.n_key_confs, dense_num, 1))(H)
+        return H
+
     def create_a_gen_output(self):
         dense_num = 64
 
@@ -104,18 +115,10 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_pick = Concatenate(axis=-1)([H_pick, self.noise_input])
         pick_output = Dense(4, activation='linear')(H_pick)
 
-        abs_obj_pose = self.get_abs_obj_pose()
-        tiled_pick = Lambda(slice_object_pose_from_pose)(pick_output)
-        tiled_pick = RepeatVector(self.n_key_confs)(tiled_pick)
-        tiled_pick = Reshape((self.n_key_confs, 4, 1))(tiled_pick)
-        # todo
-        #   - tile pick_output; I think we have to predict our placement output based on pick pose; although,
-        #     I thought abs_obj_pose would allow us to infer something.
-        #   why does generator score goes to zero? DG value is the value of the features. Its minimum value is 0,
-        #   because it is ReLU function. This means that the discriminator is dominating. What I need to do is
-        #   to schedule lr based on the discriminator output, not the DG value.
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([abs_obj_pose, tiled_pick, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 10)
+        tiled_abs_pose_and_pick_output = self.make_tiled_abs_obj_pose_and_pick_output(pick_output)
+
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([tiled_abs_pose_and_pick_output, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64+2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])

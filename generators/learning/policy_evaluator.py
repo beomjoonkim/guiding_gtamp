@@ -24,6 +24,7 @@ def get_pidx(processed_file_name):
 
 def get_smpler_and_abstract_action_trajectories(pidx):
     abs_plan_fname = smpler_plan_fname = 'pap_traj_seed_0_pidx_%d.pkl' % pidx
+    print "Loading the plan ", abs_plan_fname
     smpler_traj = pickle.load(open(smpler_processed_path + smpler_plan_fname, 'r'))
     abs_traj = pickle.load(open(abs_plan_path + abs_plan_fname, 'r'))
     return smpler_traj, abs_traj
@@ -36,6 +37,7 @@ def load_pose_file(pidx):
 
 def evaluate_in_problem_instance(policy, pidx, problem_env):
     pidx_poses = load_pose_file(pidx)
+
     problem_env.set_body_poses(pidx_poses)
     smpler_traj, abs_traj = get_smpler_and_abstract_action_trajectories(pidx)
 
@@ -49,10 +51,11 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
 
     # Evaluate it in the first state
     utils.set_color(abs_action.discrete_parameters['object'],[1, 0, 0])
+
     smpler_state = smpler_states[smpler_state_idx]
     smpler = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
-    base_poses = np.array([(smpler.generate(abs_action)[0], smpler.generate(abs_action)[1]) for _ in range(10)])
+    base_poses = np.array([(smpler.generate_base_poses(abs_action)[0], smpler.generate_base_poses(abs_action)[1]) for _ in range(10)])
 
     utils.viewer()
     #utils.visualize_path([abs_action.continuous_parameters['pick']['q_goal']])
@@ -62,12 +65,18 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
     utils.visualize_path(picks)
     utils.visualize_path(places)
     import pdb;pdb.set_trace()
-
+    """
+    abs_action.discrete_parameters['region'] = abs_action.discrete_parameters['two_arm_place_region']
+    smpler_state = smpler_states[smpler_state_idx]
+    smpler = LearnedGenerator(abs_action, problem_env, policy, smpler_state)
     smpled_param = smpler.sample_next_point(abs_action, n_iter=50, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=abs_state.collides,
-                                            cached_holding_collisions=None)
+                                            cached_holding_collisions=None,
+                                            dont_check_motion_existence=True)
+    """
+    utils.set_color(abs_action.discrete_parameters['object'], [0, 0, 0])
+    smpled_param = {'is_feasible': True}
     print smpled_param['is_feasible']
-    import pdb;pdb.set_trace()
     if smpled_param['is_feasible']:
         return True
     else:
@@ -93,6 +102,8 @@ def cache_poses_of_robot_and_objs(pidxs):
     for pidx in pidxs:
         config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
         problem_env = get_problem_env(config)
+
+        # todo store the state collisions too
         body_poses = {}
         for o in problem_env.objects:
             body_poses[o.GetName()] = utils.get_body_xytheta(o)
@@ -109,7 +120,7 @@ def evaluate_policy(policy):
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=437, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
-    n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs]
+    n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs[1:]]
     return n_successes
 
 
