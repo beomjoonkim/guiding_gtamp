@@ -89,7 +89,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='ab
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
-        print "Loading the cache file", traj_dir+cache_file_name
+        print "Loading the cache file", traj_dir + cache_file_name
         return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
@@ -108,7 +108,7 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='ab
         # states = np.array([s.state_vec for s in traj.states])  # collision vectors
         states = []
         for s in traj.states:
-            state_vec = np.delete(s.state_vec, [415, 586, 615], axis=1)
+            state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
             states.append(state_vec)
         states = np.array(states)
         poses = np.array([get_processed_poses_from_state(s) for s in traj.states])
@@ -156,7 +156,7 @@ def train_admon(config):
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     savedir = './generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/admon/' % (
-    state_data_mode, action_data_mode)
+        state_data_mode, action_data_mode)
     admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state, save_folder=savedir, tau=config.tau)
     admon.train(states, actions, sum_rewards, epochs=100)
 
@@ -168,7 +168,7 @@ def train_admon_with_pose(config):
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/admon_with_pose/' % (
-    state_data_mode, action_data_mode)
+        state_data_mode, action_data_mode)
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
@@ -182,7 +182,7 @@ def train_place_admon_with_pose(config):
     dim_state = (n_key_configs, 2, 1)
     dim_action = 4
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/place_admon/' % (
-    state_data_mode, action_data_mode)
+        state_data_mode, action_data_mode)
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
