@@ -5,7 +5,7 @@ from trajectory_representation.shortest_path_pick_and_place_state import Shortes
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
-from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose
+from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
 from generators.learning.train_sampler import get_processed_poses_from_state
 
 import numpy as np
@@ -68,13 +68,13 @@ def evaluate_in_problem_instance(policy, pidx, problem_env):
          range(10)])
 
     place_poses = []
-    poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
-    pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
-    action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
-    poses = pose_scaler.transform(poses)
+    poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
+    #pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
+    #action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
+    #poses = pose_scaler.transform(poses)
     for _ in range(20):
         pap_base_poses = generator.sampler.generate(smpler_state.state_vec, poses)  # I need grasp parameters;
-        pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
+        #pap_base_poses = action_scaler.inverse_transform(pap_base_poses)
         place_poses.append(pap_base_poses[0, 4:])
     print np.mean(place_poses, axis=0)
     import pdb;
@@ -164,12 +164,12 @@ def visualize_samples(policy):
     pidx_poses = load_pose_file(pidx)
     problem_env.set_body_poses(pidx_poses)
     smpler_state = get_smpler_state(pidx)
-    import pdb;pdb.set_trace()
+    smpler_state.state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
+    poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
     places = []
     for _ in range(20):
-        #smpler_state.state_vec[0, -2, :, 0] = [0, 1]
+        # smpler_state.state_vec[0, -2, :, 0] = [0, 1]
         placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(smpler_state.state_vec, poses))
         """
         if smpler_state.region == 'home_region':
@@ -187,10 +187,10 @@ def visualize_samples(policy):
 
 def main():
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
-    n_key_configs = 618  # indicating whether it is a goal obj and goal region
-    dim_state = (n_key_configs + n_goal_flags, 2, 1)
+    n_key_configs = 615  # indicating whether it is a goal obj and goal region
+    dim_state = (n_key_configs, 2, 1)
     dim_action = 8
-    savedir = './generators/learning/learned_weights/'
+    savedir = './generators/learning/learned_weights/state_data_mode_robot_rel_to_obj_action_data_mode_absolute/place_admon/'
 
     mconfig_type = collections.namedtuple('mconfig_type',
                                           'tau seed')
@@ -199,15 +199,15 @@ def main():
         tau=1.0,
         seed=int(sys.argv[1])
     )
-    policy = PlaceFeatureMatchingAdMonWithPose(dim_action=4, dim_collision=dim_state,
-                                               save_folder=savedir, tau=config.tau, config=config)
+    epoch_number = int(sys.argv[2])
+    policy = PlaceAdmonWithPose(dim_action=4, dim_collision=dim_state,
+                                save_folder=savedir, tau=config.tau, config=config)
+    print "Trying epoch number ", epoch_number
+    policy.load_weights(additional_name='_epoch_%d' % epoch_number)
     visualize_samples(policy)
     """
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                            save_folder=savedir, tau=config.tau, config=config)
-    epoch_number = int(sys.argv[2])
-    print "Trying epoch number ", epoch_number
-    policy.load_weights(additional_name='_epoch_%d' % epoch_number)
     n_successes = evaluate_policy(policy)
     print n_successes
     """

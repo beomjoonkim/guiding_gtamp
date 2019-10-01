@@ -109,7 +109,15 @@ def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='ab
         states = []
         for s in traj.states:
             state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
+            n_key_configs = state_vec.shape[1]
+
+            is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([s.obj in s.goal_entities]))
+            is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+            is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([s.region in s.goal_entities]))
+            is_goal_region = np.tile(is_goal_region, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+            state_vec = np.concatenate([state_vec, is_goal_obj, is_goal_region], axis=2)
             states.append(state_vec)
+
         states = np.array(states)
         poses = np.array([get_processed_poses_from_state(s) for s in traj.states])
         actions = np.array([get_processed_poses_from_action(s, a)
