@@ -15,7 +15,7 @@ class MSETrainer:
         for l in self.disc.layers:
             l.trainable = True
         self.disc.compile(loss='mse', optimizer=opt_D)
-        self.weight_file_name = 'mse_seed_%d.h5' % config.seed
+        self.weight_file_name = 'mse_seed_%d' % config.seed
 
     def load_weights(self, weight_file):
         self.disc.load_weights(self.save_folder + weight_file)
