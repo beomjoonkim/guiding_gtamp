@@ -1,9 +1,9 @@
 from uniform import PaPUniformGenerator
-
 from generators.learning.train_sampler import get_processed_poses_from_state
 from gtamp_utils import utils
-import numpy as np
 
+import numpy as np
+import pickle
 
 class LearnedGenerator(PaPUniformGenerator):
     def __init__(self, operator_skeleton, problem_env, sampler, state, swept_volume_constraint=None):
@@ -11,11 +11,15 @@ class LearnedGenerator(PaPUniformGenerator):
         self.feasible_pick_params = {}
         self.sampler = sampler
         self.state = state
+        self.pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
+        self.action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
 
     def generate_base_poses(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_region'):
         if "Pose" in self.sampler.__module__:
             poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
+            poses = self.pose_scaler.transform(poses)
             pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;
+            pick_place_base_poses = self.action_scaler.inverse_transform(pick_place_base_poses)
         else:
             pick_place_base_poses = self.sampler.generate(self.state.state_vec)  # I need grasp parameters;
         pick_place_base_poses = pick_place_base_poses.squeeze()
