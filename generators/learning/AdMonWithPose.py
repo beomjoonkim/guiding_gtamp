@@ -135,7 +135,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
     def create_conv_layers(self, input, n_dim):
         n_filters = 64
-
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, n_dim),
                    strides=(1, 1),

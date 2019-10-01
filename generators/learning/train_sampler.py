@@ -188,7 +188,7 @@ def train_place_admon_with_pose(config):
     actions = actions[:, 4:]
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = states.shape[1]  # indicating whether it is a goal obj and goal region
-    dim_state = (n_key_configs, 2, 1)
+    dim_state = (n_key_configs, 6, 1)
     dim_action = 4
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/place_admon/' % (
         state_data_mode, action_data_mode)

@@ -49,7 +49,7 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         obj_pose = self.get_abs_obj_pose()
 
         H_col_abs_obj_pose_place = Concatenate(axis=2)([obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4 + 2)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4 + 6)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])
@@ -81,7 +81,7 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
 
         H_col_abs_obj_pose_place = Concatenate(axis=2)([obj_pose, place_action, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4 + 4 + 2)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 6 + 4 + 2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         self.discriminator_feature_matching_layer = H_place  # Concatenate(axis=-1)([H_place])
