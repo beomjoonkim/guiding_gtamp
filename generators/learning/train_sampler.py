@@ -157,12 +157,13 @@ def train_admon(config):
 
 def train_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
+    """
     action_scaler = StandardScaler().fit(actions)
     pose_scaler = StandardScaler().fit(poses)
     actions = action_scaler.transform(actions)
     poses = pose_scaler.transform(poses)
     pickle.dump({'pose': pose_scaler, 'action': action_scaler}, open('scalers.pkl', 'wb'))
-
+    """
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
