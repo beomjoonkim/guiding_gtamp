@@ -122,9 +122,10 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])
-        place_output = Dense(4, activation='linear')(H_place)
+        place_output = Dense(8, activation='linear')(H_place)
 
-        a_gen_output = Concatenate(axis=-1)([pick_output, place_output])
+        #a_gen_output = Concatenate(axis=-1)([pick_output, place_output])
+        a_gen_output = place_output
         return a_gen_output
 
     def create_generator(self):
@@ -176,7 +177,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64 + 2 + 4)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
-        self.discriminator_feature_matching_layer = Concatenate(axis=-1)([H_pick, H_place])
+        self.discriminator_feature_matching_layer = H_place#Concatenate(axis=-1)([H_place])
 
         place_value = Dense(1, activation='linear',
                             kernel_initializer=self.initializer,
@@ -184,7 +185,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         pick_value = Dense(1, activation='linear',
                            kernel_initializer=self.initializer,
                            bias_initializer=self.initializer)(H_pick)
-        disc_output = Add()([pick_value, place_value])
+        disc_output = place_value #Add()([place_value])
 
         # todo make the Q function additive of Q_pick and Q_place, where Q_place takes pick_action as an input
         # Get the output from both processed pick and place
@@ -443,7 +444,7 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
             print 'Completed: %d / %d' % (i, float(epochs))
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
             # curr_tau = curr_tau * 1 /
-            curr_tau = self.tau / (1.0 + 1e-1 * i)
+            #curr_tau = self.tau / (1.0 + 1e-1 * i)
             if i > 20:
                 self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)

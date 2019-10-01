@@ -9,6 +9,7 @@ import socket
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from AdMonWithPose import AdversarialMonteCarloWithPose, FeatureMatchingAdMonWithPose
+from sklearn.preprocessing import StandardScaler
 
 
 def get_processed_poses_from_state(state, data_mode):
@@ -143,6 +144,8 @@ def train_admon(config):
 
 def train_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
+    actions = StandardScaler().fit_transform(actions)
+    poses = StandardScaler().fit_transform(poses)
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
