@@ -184,7 +184,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         pick_value = Dense(1, activation='linear',
                            kernel_initializer=self.initializer,
                            bias_initializer=self.initializer)(H_pick)
-        disc_output = Add()([H_pick, H_place])
+        disc_output = Add()([pick_value, place_value])
 
         # todo make the Q function additive of Q_pick and Q_place, where Q_place takes pick_action as an input
         # Get the output from both processed pick and place
@@ -355,7 +355,6 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
             name='feature_matching_model')
 
         self.discriminator_feature_matching_model.compile(loss='mse', optimizer=self.opt_D)
-        import pdb;pdb.set_trace()
         return disc
 
     def createGAN(self):
