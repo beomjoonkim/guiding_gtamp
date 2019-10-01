@@ -9,7 +9,7 @@ import socket
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from AdMonWithPose import AdversarialMonteCarloWithPose, FeatureMatchingAdMonWithPose
-from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose
+from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
 from sklearn.preprocessing import StandardScaler
 
 
@@ -61,8 +61,8 @@ def get_processed_poses_from_action(state, action, data_mode):
             = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
-
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+
     elif data_mode == 'pick_parameters_place_relative_to_pick':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
@@ -169,7 +169,7 @@ def train_admon_with_pose(config):
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = actions.shape[1]
     savedir = 'generators/learning/learned_weights/'
-    admon = FeatureMatchingAdMonWithPose(dim_action=dim_action, dim_collision=dim_state,
+    admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                          save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 

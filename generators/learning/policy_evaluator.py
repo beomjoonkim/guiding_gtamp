@@ -5,6 +5,7 @@ from trajectory_representation.shortest_path_pick_and_place_state import Shortes
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
+from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose
 from generators.learning.train_sampler import get_processed_poses_from_state
 
 import numpy as np
@@ -149,6 +150,35 @@ def evaluate_policy(policy):
     n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs[1:]]
     return n_successes
 
+def visualize_samples(policy):
+    n_evals = 1
+    pidxs = get_pidxs_to_evaluate_policy(n_evals)
+    pidx = pidxs[0]
+    config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
+    config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
+    problem_env = get_problem_env(config)
+    pidx_poses = load_pose_file(pidx)
+    problem_env.set_body_poses(pidx_poses)
+    smpler_state = get_smpler_state(pidx)
+
+    poses = get_processed_poses_from_state(smpler_state, 'robot_rel_to_obj').reshape((1, 8))
+    places = []
+    for _ in range(20):
+        smpler_state.state_vec[0,-2,:,0] = [0,1]
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(smpler_state.state_vec, poses))
+        """
+        if smpler_state.region == 'home_region':
+            placement[0:2] += [-1.75, 5.25]
+        elif smpler_state.region == 'loading_region':
+            placement[0:2] += [-0.7, 4.3]
+        """
+        places.append(placement)
+    utils.viewer()
+
+    utils.visualize_path(places)
+    import pdb;pdb.set_trace()
+
+
 
 def main():
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
@@ -164,7 +194,10 @@ def main():
         tau=1.0,
         seed=int(sys.argv[1])
     )
-
+    policy = PlaceFeatureMatchingAdMonWithPose(dim_action=4, dim_collision=dim_state,
+                                               save_folder=savedir, tau=config.tau, config=config)
+    visualize_samples(policy)
+    """
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                            save_folder=savedir, tau=config.tau, config=config)
     epoch_number = int(sys.argv[2])
@@ -172,6 +205,7 @@ def main():
     policy.load_weights(additional_name='_epoch_%d' % epoch_number)
     n_successes = evaluate_policy(policy)
     print n_successes
+    """
 
 
 if __name__ == '__main__':
