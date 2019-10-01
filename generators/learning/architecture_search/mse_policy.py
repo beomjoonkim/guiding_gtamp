@@ -20,8 +20,8 @@ class PolicyWithPose(PlaceAdmonWithPose, MSETrainer):
         MSETrainer.__init__(self, save_folder, tau, self.disc, self.opt_D, config)
 
     def load_weights(self):
-        print "Loading weights", self.save_folder+self.weight_file_name
-        self.disc.load_weights(self.save_folder + self.weight_file_name)
+        print "Loading weights", self.save_folder + self.weight_file_name
+        self.a_gen.load_weights(self.save_folder + self.weight_file_name)
         print "Weight loaded"
 
     def create_a_gen_output(self):

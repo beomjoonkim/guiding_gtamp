@@ -21,7 +21,6 @@ def train_mse(config):
     # Loads the processed data
     states, poses, actions, sum_rewards = load_data('./planning_experience/processed/domain_two_arm_mover/'
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
-
     model = create_model(config, 4)
     n_train = 5000
 
@@ -36,6 +35,7 @@ def test_mse(config):
                                                     'n_objs_pack_1/irsc/sampler_trajectory_data/')
     model = create_model(config, 4)
     model.load_weights()
+
     n_train = config.n_data
     test_states = states[n_train:, :]
     test_poses = poses[n_train:, :]
