@@ -85,7 +85,7 @@ def get_processed_poses_from_action(state, action, data_mode):
 
 def load_data(traj_dir,
               state_data_mode='robot_rel_to_obj',
-              action_data_mode='pick_parameters_place_relative_to_pick'
+              action_data_mode='pick_parameters_place_relative_to_region'
               ):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
