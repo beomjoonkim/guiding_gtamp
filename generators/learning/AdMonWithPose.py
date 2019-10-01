@@ -407,7 +407,7 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions, sum_rewards,
                                                                                  batch_size)
                 real_score_values = np.mean((self.disc.predict([a_batch, s_batch, pose_batch, tttau_values]).squeeze()))
-                fake_score_values = np.mean((self.disc.predict([fake, s_batch, pose_batch]).squeeze()))
+                fake_score_values = np.mean((self.disc.predict([fake, s_batch, pose_batch, tttau_values]).squeeze()))
                 # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
