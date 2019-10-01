@@ -187,6 +187,7 @@ def visualize_samples(policy):
     for _ in range(1):
         #placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
         placement = utils.decode_pose_with_sin_and_cos_angle(policy.a_gen.predict([state_vec, poses]))
+        placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
 
         if 'place_relative_to_region' in action_data_mode:
             if smpler_state.region == 'home_region':
