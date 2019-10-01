@@ -14,7 +14,7 @@ from sklearn.preprocessing import StandardScaler
 
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'absolute'
-action_data_mode = 'pick_parameters_place_relative_to_region'
+action_data_mode = 'pick_parameters_place_relative_to_object'
 
 
 def get_processed_poses_from_state(state):
@@ -76,10 +76,19 @@ def get_processed_poses_from_action(state, action):
         place_pose = action['place_abs_base_pose']
         place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose,
                                                                  pick_pose)  # get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-        # todo test converting to the absolute pose
         recovered = utils.get_absolute_pose_from_relative_pose(place_pose, pick_pose)
         pick_pose = pick_params
         place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
+    elif action_data_mode == 'pick_parameters_place_relative_to_object':
+        pick_pose = action['pick_abs_base_pose']
+        portion, base_angle, facing_angle_offset \
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
+        pick_params = np.hstack([portion, base_angle, facing_angle_offset])
+        pick_pose = pick_params
+
+        place_pose = action['place_abs_base_pose']
+        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, state.obj_pose)
 
     action = np.hstack([pick_pose, place_pose])
 

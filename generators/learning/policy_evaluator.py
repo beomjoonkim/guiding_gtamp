@@ -170,8 +170,9 @@ def visualize_samples(policy):
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
     n_key_configs = 615
 
-    obj = 'rectangular_packing_box2'
-    obj = 'square_packing_box2'
+    obj = 'square_packing_box4'
+    #obj = 'rectangular_packing_box2'
+
     utils.set_color(obj, [1, 0, 0])
     is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in smpler_state.goal_entities]))
     is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
@@ -183,9 +184,9 @@ def visualize_samples(policy):
 
     # poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
     places = []
-    for _ in range(20):
+    for _ in range(1):
         #placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
-        placement = utils.decode_pose_with_sin_and_cos_angle(policy.predict(state_vec, poses))
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.a_gen.predict([state_vec, poses]))
 
         if 'place_relative_to_region' in action_data_mode:
             if smpler_state.region == 'home_region':
