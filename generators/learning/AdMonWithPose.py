@@ -101,32 +101,27 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         H_pick = self.create_conv_layers(H_col_robot_pose_pick, 6)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
         H_pick = Dense(dense_num, activation='relu')(H_pick)
+        H_pick = Concatenate(axis=-1)([H_pick, self.noise_input])
+        pick_output = Dense(4, activation='linear')(H_pick)
 
-        # what if I used H_pick as an input to the network?
-        # I have no way of measuring the impact of doing so.
-        # I really have to get the evaluator going.
-        #   Naive: the number of feasible parameters that you get within the 200 trials
-        """
-        pick_output = Dense(4, activation='linear',
-                            kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(H_pick)
-        """
-
-        # process state var relevant to predicting place
         abs_obj_pose = self.get_abs_obj_pose()
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([abs_obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 6)
+        tiled_pick = Lambda(slice_object_pose_from_pose)(pick_output)
+        tiled_pick = RepeatVector(self.n_key_confs)(tiled_pick)
+        tiled_pick = Reshape((self.n_key_confs, 4, 1))(tiled_pick)
+        # todo
+        #   - tile pick_output; I think we have to predict our placement output based on pick pose; although,
+        #     I thought abs_obj_pose would allow us to infer something.
+        #   why does generator score goes to zero? DG value is the value of the features. Its minimum value is 0,
+        #   because it is ReLU function. This means that the discriminator is dominating. What I need to do is
+        #   to schedule lr based on the discriminator output, not the DG value.
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([abs_obj_pose, tiled_pick, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 10)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
+        H_place = Concatenate(axis=-1)([H_place, self.noise_input])
+        place_output = Dense(4, activation='linear')(H_place)
 
-        # Get the output from both processed pick and place
-        H = Concatenate(axis=-1)([H_pick, H_place, self.noise_input])
-        H = Dense(dense_num, activation='relu')(H)
-        a_gen_output = Dense(self.dim_action,
-                             activation='linear',
-                             kernel_initializer=self.initializer,
-                             bias_initializer=self.initializer,
-                             name='a_gen_output')(H)
+        a_gen_output = Concatenate(axis=-1)([pick_output, place_output])
         return a_gen_output
 
     def create_generator(self):
@@ -412,8 +407,19 @@ class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions, sum_rewards,
                                                                                  batch_size)
                 real_score_values = np.mean((self.disc.predict([a_batch, s_batch, pose_batch, tttau_values]).squeeze()))
-                fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
+                fake_score_values = np.mean((self.disc.predict([fake, s_batch, pose_batch]).squeeze()))
                 # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
+
+                if real_score_values <= fake_score_values:
+                    g_lr = 1e-4 / (1 + 1e-1 * i)
+                    d_lr = 1e-3 / (1 + 1e-1 * i)
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)
+                else:
+                    g_lr = 1e-3 / (1 + 1e-1 * i)
+                    d_lr = 1e-4 / (1 + 1e-1 * i)
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)
 
             gen_after = self.a_gen.get_weights()
             disc_after = self.disc.get_weights()

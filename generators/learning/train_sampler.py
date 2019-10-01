@@ -119,6 +119,7 @@ def get_data():
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/planning_experience/processed/'
     states, poses, actions, sum_rewards = load_data(root_dir + '/planning_experience/processed/domain_two_arm_mover/'
                                                                'n_objs_pack_1/irsc/sampler_trajectory_data/')
+
     n_data = 5000
     states = states[:5000, :]
     poses = poses[:n_data, :]
