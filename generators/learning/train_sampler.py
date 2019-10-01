@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'absolute'
+action_data_mode = 'pick_parameters_place_relative_to_region'
 
 
 def get_processed_poses_from_state(state):
@@ -85,7 +86,7 @@ def get_processed_poses_from_action(state, action):
     return action
 
 
-def load_data(traj_dir, state_data_mode='robot_rel_to_obj', action_data_mode='absolute'):
+def load_data(traj_dir):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
