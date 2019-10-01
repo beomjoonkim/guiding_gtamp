@@ -20,7 +20,9 @@ class PolicyWithPose(PlaceAdmonWithPose, MSETrainer):
         MSETrainer.__init__(self, save_folder, tau, self.disc, self.opt_D, config)
 
     def load_weights(self):
+        print "Loading weights", self.save_folder+self.weight_file_name
         self.disc.load_weights(self.save_folder + self.weight_file_name)
+        print "Weight loaded"
 
     def create_a_gen_output(self):
         dense_num = 64
@@ -44,3 +46,5 @@ class PolicyWithPose(PlaceAdmonWithPose, MSETrainer):
             [states, poses], actions, batch_size=32, epochs=epochs, verbose=2,
             callbacks=callbacks,
             validation_split=0.1)
+
+
