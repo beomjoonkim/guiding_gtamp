@@ -35,6 +35,7 @@ def slice_prepick_robot_pose_from_pose(x):
 def slice_object_pose_from_pose(x):
     return x[:, :4]
 
+
 class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         AdversarialMonteCarloWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
@@ -48,7 +49,7 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         obj_pose = self.get_abs_obj_pose()
 
         H_col_abs_obj_pose_place = Concatenate(axis=2)([obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4+2)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4 + 2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])
@@ -100,6 +101,17 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         return disc_output
 
 
+    def compare_to_data(self, states, poses, actions):
+        n_data = len(states)
+        a_z = noise(n_data, self.dim_noise)
+        pred = self.a_gen.predict([a_z, states, poses])
+        gen_place_base = pred[:, :4]
+        data_place_base = actions[:, :4]
+        print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
+
+
+
+
 class PlaceFeatureMatchingAdMonWithPose(FeatureMatchingAdMonWithPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         FeatureMatchingAdMonWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
@@ -114,7 +126,7 @@ class PlaceFeatureMatchingAdMonWithPose(FeatureMatchingAdMonWithPose):
         obj_pose = self.get_abs_obj_pose()
 
         H_col_abs_obj_pose_place = Concatenate(axis=2)([obj_pose, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4+2)
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 4 + 2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Concatenate(axis=-1)([H_place, self.noise_input])
@@ -274,4 +286,3 @@ class PlaceFeatureMatchingAdMonWithPose(FeatureMatchingAdMonWithPose):
         gen_place_base = pred[:, :4]
         data_place_base = actions[:, :4]
         print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
-

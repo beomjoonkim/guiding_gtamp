@@ -183,7 +183,7 @@ def train_place_admon_with_pose(config):
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
     dim_action = 4 #actions.shape[1]
     savedir = 'generators/learning/learned_weights/'
-    admon = PlaceFeatureMatchingAdMonWithPose(dim_action=dim_action, dim_collision=dim_state,
+    admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                               save_folder=savedir, tau=config.tau, config=config)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
