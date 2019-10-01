@@ -72,6 +72,7 @@ def get_processed_poses_from_action(state, action, data_mode):
         place_pose = action['place_abs_base_pose']
         place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, pick_pose) #get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
         pick_pose = pick_params
+        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
 
     action = np.hstack([pick_pose, place_pose])
 
