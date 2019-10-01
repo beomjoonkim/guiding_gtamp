@@ -67,10 +67,11 @@ def get_processed_poses_from_action(state, action, data_mode):
         portion, base_angle, facing_angle_offset \
             = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
-        pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
+        pick_params = np.hstack([portion, base_angle, facing_angle_offset])
 
         place_pose = action['place_abs_base_pose']
         place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, pick_pose) #get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
+        pick_pose = pick_params
 
     action = np.hstack([pick_pose, place_pose])
 
@@ -155,8 +156,8 @@ def train_admon_with_pose(config):
     pose_scaler = StandardScaler().fit(poses)
     actions = action_scaler.transform(actions)
     poses = pose_scaler.transform(poses)
-
     pickle.dump({'pose': pose_scaler, 'action': action_scaler}, open('scalers.pkl', 'wb'))
+
     n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = 618  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs + n_goal_flags, 2, 1)
