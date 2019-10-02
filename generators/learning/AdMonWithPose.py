@@ -71,7 +71,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         mse = self.compute_pure_mse(test)
         print "Pretraining test error", mse
-        self.mse_model.fit([train['actions'], train['states'], train['poses']], sum_rewards, batch_size=32, epochs=500,
+        self.mse_model.fit([train['actions'], train['states'], train['poses']], train['sum_rewards'], batch_size=32, epochs=500,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
