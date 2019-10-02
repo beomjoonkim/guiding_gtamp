@@ -51,7 +51,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.train_indices = None
         self.test_indices = None
 
-    def get_train_and_test_data(self, states, poses, actions, sum_rewards, train_idices, test_idices):
+    def get_train_and_test_data(self, states, poses, actions, sum_rewards, train_indices, test_indices):
         train = {'states': states[train_indices, :],
                  'poses': poses[train_indices, :],
                  'actions': actions[train_indices, :],
@@ -70,7 +70,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
     def get_train_and_test_indices(self, n_data):
         test_idxs = np.random.randint(0, n_data, size=int(0.2 * n_data))
         train_idxs = list(set(range(n_data)).difference(set(test_idxs)))
-        pickle.dump({'train_idxs': train_idxs, 'test_idxs': test_idxs},
+        pickle.dump({'train': train_idxs, 'test': test_idxs},
                     open('data_idxs_seed_%s' % self.seed, 'wb'))
         return train_idxs, test_idxs
 
@@ -312,7 +312,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 raise NotImplementedError
 
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        train_idxs, test_idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'wb'))
+        idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'wb'))
+        train_idxs, test_idxs = idxs['train'], idxs['test']
         train_data, test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
                                                              train_idxs, test_idxs)
 
