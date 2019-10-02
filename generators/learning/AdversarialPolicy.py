@@ -74,7 +74,7 @@ class AdversarialPolicy:
         self.test_data = None
         self.desired_test_err = None
         self.disc = None
-        self.pretraining_file_name = 'pretrained.h5'
+
 
     def create_callbacks_for_pretraining(self):
         callbacks = [

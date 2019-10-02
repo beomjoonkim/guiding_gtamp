@@ -45,6 +45,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
         self.a_gen, self.mse_model, self.disc, self.DG, = self.create_models()
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
+        self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
+        self.train_indices = None
+        self.test_indices = None
 
     def get_train_and_test_data(self, states, poses, actions, sum_rewards):
         test_indices = np.random.randint(0, actions.shape[0], size=int(0.2 * len(states)))
@@ -78,8 +81,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                            validation_split=0.1)
         mse = self.compute_pure_mse(test)
         print "Post test error", mse
-        import pdb;
-        pdb.set_trace()
 
     def create_mse_model(self):
         mse_model = Model(inputs=[self.action_input, self.collision_input, self.pose_input],
