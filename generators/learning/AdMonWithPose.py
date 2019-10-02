@@ -9,6 +9,7 @@ import time
 import numpy as np
 import socket
 import os
+import pickle
 
 from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
 from AdversarialPolicy import AdversarialPolicy
@@ -46,13 +47,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.a_gen, self.mse_model, self.disc, self.DG, = self.create_models()
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
+        self.seed = config.seed
         self.train_indices = None
         self.test_indices = None
 
-    def get_train_and_test_data(self, states, poses, actions, sum_rewards):
-        test_indices = np.random.randint(0, actions.shape[0], size=int(0.2 * len(states)))
-        train_indices = list(set(range(actions.shape[0])).difference(set(test_indices)))
-
+    def get_train_and_test_data(self, states, poses, actions, sum_rewards, train_idices, test_idices):
         train = {'states': states[train_indices, :],
                  'poses': poses[train_indices, :],
                  'actions': actions[train_indices, :],
@@ -68,8 +67,17 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         return np.mean(np.power(self.mse_model.predict([data['actions'], data['states'], data['poses']])
                                 - data['sum_rewards'], 2))
 
+    def get_train_and_test_indices(self, n_data):
+        test_idxs = np.random.randint(0, n_data, size=int(0.2 * n_data))
+        train_idxs = list(set(range(n_data)).difference(set(test_idxs)))
+        pickle.dump({'train_idxs': train_idxs, 'test_idxs': test_idxs},
+                    open('data_idxs_seed_%s' % self.seed, 'wb'))
+        return train_idxs, test_idxs
+
     def pretrain_discriminator_with_mse(self, states, poses, actions, sum_rewards):
-        self.train_data, self.test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards)
+        train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
+        self.train_data, self.test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
+                                                                       train_idxs, test_idxs)
         callbacks = self.create_callbacks_for_pretraining()
 
         pre_mse = self.compute_pure_mse(self.test_data)
@@ -80,6 +88,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                            callbacks=callbacks,
                            validation_split=0.1)
         post_mse = self.compute_pure_mse(self.test_data)
+
         print "Pre-and-post test errors", pre_mse, post_mse
 
     def create_mse_model(self):
@@ -302,9 +311,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 # update discriminator
                 raise NotImplementedError
 
-    def train(self, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        train_data = self.train_data
-        test_data = self.test_data
+    def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
+        train_idxs, test_idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'wb'))
+        train_data, test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
+                                                             train_idxs, test_idxs)
+
         n_data = len(train_data['actions'])
         batch_size = self.get_batch_size(n_data)
 

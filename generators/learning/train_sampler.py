@@ -205,7 +205,7 @@ def train_place_admon_with_pose(config):
     is_mse_pretrained = os.path.isfile(admon.save_folder+admon.pretraining_file_name)
     if not is_mse_pretrained:
         admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
-    admon.train(epochs=500)
+    admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
 def parse_args():
