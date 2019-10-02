@@ -367,8 +367,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 post_train_mses[mse_idx] = pretrain_mse - posttrain_mse
                 mse_idx = (mse_idx + 1) % mse_patience
                 #print mse_idx, post_train_mses
-                if np.all(post_train_mses < -1.0):
-                    return
+                #if np.any(post_train_mses < -100):
+                if pretrain_mse - posttrain_mse < -100:
+                    self.save_weights(additional_name='_epoch_%d_batch_idx_%d' % (i, j))
 
                 # train G
                 a_z = noise(batch_size, self.dim_noise)
@@ -401,8 +402,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
             print 'Completed: %d / %d' % (i, float(epochs))
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
             #curr_tau = self.tau / (1.0 + 1e-1 * i)
-            if i > 20:
-                self.save_weights(additional_name='_epoch_' + str(i))
+            #if i > 20:
+            #    self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)
 
             tttau_values = np.tile(curr_tau, (len(states), 1))
