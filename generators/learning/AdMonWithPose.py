@@ -72,14 +72,14 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.train_data, self.test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards)
         callbacks = self.create_callbacks_for_pretraining()
 
-        pre_mse = self.compute_pure_mse(test)
+        pre_mse = self.compute_pure_mse(self.test_data)
         self.mse_model.fit([self.train_data['actions'], self.train_data['states'],
                             self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
                            epochs=500,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
-        post_mse = self.compute_pure_mse(test)
+        post_mse = self.compute_pure_mse(self.test_data)
         print "Pre-and-post test errors", pre_mse, post_mse
 
     def create_mse_model(self):
