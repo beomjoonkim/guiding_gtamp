@@ -69,17 +69,18 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                                 - data['sum_rewards'], 2))
 
     def pretrain_discriminator_with_mse(self, states, poses, actions, sum_rewards):
-        train, test = self.get_train_and_test_data(states, poses, actions, sum_rewards)
+        self.train_data, self.test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards)
         callbacks = self.create_callbacks_for_pretraining()
 
-        mse = self.compute_pure_mse(test)
+        mse = self.compute_pure_mse(self.test_data)
         print "Pretraining test error", mse
-        self.mse_model.fit([train['actions'], train['states'], train['poses']], train['sum_rewards'], batch_size=32,
+        self.mse_model.fit([self.train_data['actions'], self.train_data['states'],
+                            self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
                            epochs=500,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
-        mse = self.compute_pure_mse(test)
+        mse = self.compute_pure_mse(self.test_data)
         print "Post test error", mse
 
     def create_mse_model(self):
@@ -232,15 +233,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                            bias_initializer=self.initializer)(H_pick)
         disc_output = place_value  # Add()([place_value])
 
-        # todo make the Q function additive of Q_pick and Q_place, where Q_place takes pick_action as an input
-        # Get the output from both processed pick and place
-        # H = Concatenate(axis=-1)([H_pick, H_place])
-        # H = Dense(dense_num, activation='relu')(H)
-        # self.discriminator_feature_matching_layer = H
-        # H = Dense(dense_num, activation='relu')(H)
-
-        # disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
-        #                    bias_initializer=self.initializer)(H)
         return disc_output
 
     def create_discriminator(self):
@@ -287,28 +279,54 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_reward_batch = np.array(sum_rewards[indices, :])
         return s_batch, pose_batch, a_batch, sum_reward_batch
 
-    def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        batch_size = np.min([32, int(len(actions) * 0.1)])
-        if batch_size == 0:
-            batch_size = 1
-        print batch_size
+    def train_with_cmaes(self):
+        train_data = self.train_data
+        test_data = self.test_data
+        n_data = len(train_data['actions'])
+        batch_size = self.get_batch_size(n_data)
+        batch_idxs = range(0, n_data, batch_size)
 
+        states = train_data['states']
+        poses = train_data['poses']
+        actions = train_data['actions']
+        sum_rewards = train_data['sum_rewards']
+
+        epochs = 100
+        # get data batch
+        for i in range(1, epochs):
+            for _ in batch_idxs:
+                s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
+                                                                                 sum_rewards,
+                                                                                 batch_size)
+                # generate T sequence data from the cma-es
+
+                # update discriminator
+                raise NotImplementedError
+
+    def train(self, epochs=500, d_lr=1e-3, g_lr=1e-4):
+        train_data = self.train_data
+        test_data = self.test_data
+        n_data = len(train_data['actions'])
+        batch_size = self.get_batch_size(n_data)
+
+        states = train_data['states']
+        poses = train_data['poses']
+        actions = train_data['actions']
+        sum_rewards = train_data['sum_rewards']
+
+        self.set_learning_rates(d_lr, g_lr)
         curr_tau = self.tau
-        K.set_value(self.opt_G.lr, g_lr)
-        K.set_value(self.opt_D.lr, d_lr)
+
         print self.opt_G.get_config()
 
-        n_score_train = 1
         for i in range(1, epochs):
-            self.compare_to_data(states, poses, actions)
             stime = time.time()
             tau_values = np.tile(curr_tau, (batch_size * 2, 1))
             print "Current tau value", curr_tau
             gen_before = self.a_gen.get_weights()
             disc_before = self.disc.get_weights()
             batch_idxs = range(0, actions.shape[0], batch_size)
-            for k, idx in enumerate(batch_idxs):
-                # print 'Epoch completion: %d / %d' % (k, len(batch_idxs))
+            for _ in batch_idxs:
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
                                                                                  sum_rewards,
                                                                                  batch_size)
@@ -326,8 +344,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 batch_s = np.vstack([s_batch, s_batch])
                 batch_rp = np.vstack([pose_batch, pose_batch])
                 batch_scores = np.vstack([fake_action_q, real_action_q])
-
-                # todo I need to take in the norm of gradient wrt \hat{x}. How to compute this?
+                import pdb;
+                pdb.set_trace()
+                pretrain_mse = self.compute_pure_mse(test_data)
                 self.disc.fit({'a': batch_a, 's': batch_s, 'pose': batch_rp, 'tau': tau_values},
                               batch_scores,
                               epochs=1,
@@ -347,18 +366,14 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                                                                                  batch_size)
                 real_score_values = np.mean((self.disc.predict([a_batch, s_batch, pose_batch, tttau_values]).squeeze()))
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
-                # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
                 if real_score_values <= fake_score_values:
                     g_lr = 1e-4 / (1 + 1e-1 * i)
                     d_lr = 1e-3 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
                 else:
                     g_lr = 1e-3 / (1 + 1e-1 * i)
                     d_lr = 1e-4 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
+                self.set_learning_rates(d_lr, g_lr)
 
             gen_after = self.a_gen.get_weights()
             disc_after = self.disc.get_weights()
@@ -367,136 +382,10 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
             print 'Completed: %d / %d' % (i, float(epochs))
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
-            # curr_tau = curr_tau * 1 /
             curr_tau = self.tau / (1.0 + 1e-1 * i)
             if i > 20:
                 self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)
-            a_z = noise(len(states), self.dim_noise)
-
-            tttau_values = np.tile(curr_tau, (len(states), 1))
-            print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
-            print "Discriminiator MSE error", np.mean(np.linalg.norm(
-                np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, poses, tttau_values]).squeeze()))
-            print "Epoch took: %.2fs" % (time.time() - stime)
-            print "Generator weight norm diff", gen_w_norm
-            print "Disc weight norm diff", disc_w_norm
-            print "================================"
-
-
-class FeatureMatchingAdMonWithPose(AdversarialMonteCarloWithPose):
-    def __init__(self, dim_action, dim_collision, save_folder, tau, config):
-        AdversarialMonteCarloWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
-        self.target_feature_match_input = Input(shape=(64,), name='feature', dtype='float32')  # action
-
-    def create_discriminator(self):
-        disc_output = self.get_disc_output_with_preprocessing_layers()
-        self.disc_output = disc_output
-        disc = Model(inputs=[self.action_input, self.collision_input, self.pose_input, self.tau_input],
-                     outputs=disc_output,
-                     name='disc_output')
-        disc.compile(loss=tau_loss(self.tau_input), optimizer=self.opt_D)
-
-        self.discriminator_feature_matching_model = Model(
-            inputs=[self.action_input, self.collision_input, self.pose_input],
-            outputs=self.discriminator_feature_matching_layer,
-            name='feature_matching_model')
-
-        self.discriminator_feature_matching_model.compile(loss='mse', optimizer=self.opt_D)
-        return disc
-
-    def createGAN(self):
-        disc = self.create_discriminator()
-        a_gen, a_gen_output = self.create_generator()
-        for l in disc.layers:
-            l.trainable = False
-        DG_output = self.discriminator_feature_matching_model([a_gen_output, self.collision_input, self.pose_input])
-        DG = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=[DG_output])
-        DG.compile(loss='mse', optimizer=self.opt_G)
-
-        return a_gen, disc, DG
-
-    def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        batch_size = np.min([32, int(len(actions) * 0.1)])
-        if batch_size == 0:
-            batch_size = 1
-        print batch_size
-
-        curr_tau = self.tau
-        K.set_value(self.opt_G.lr, g_lr)
-        K.set_value(self.opt_D.lr, d_lr)
-        print self.opt_G.get_config()
-
-        for i in range(1, epochs):
-            self.compare_to_data(states, poses, actions)
-            stime = time.time()
-            tau_values = np.tile(curr_tau, (batch_size * 2, 1))
-            print "Current tau value", curr_tau
-            gen_before = self.a_gen.get_weights()
-            disc_before = self.disc.get_weights()
-            batch_idxs = range(0, actions.shape[0], batch_size)
-            for k, idx in enumerate(batch_idxs):
-                s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
-                                                                                 sum_rewards,
-                                                                                 batch_size)
-
-                # train \hat{S}
-                # make fake and reals
-                a_z = noise(batch_size, self.dim_noise)
-                fake = self.a_gen.predict([a_z, s_batch, pose_batch])
-                real = a_batch
-
-                # make their scores
-                fake_action_q = np.ones((batch_size, 1)) * INFEASIBLE_SCORE  # marks fake data
-                real_action_q = sum_rewards_batch.reshape((batch_size, 1))
-                batch_a_for_disc = np.vstack([fake, real])
-                batch_s_for_disc = np.vstack([s_batch, s_batch])
-                batch_rp_for_disc = np.vstack([pose_batch, pose_batch])
-                batch_scores = np.vstack([fake_action_q, real_action_q])
-                self.disc.fit(
-                    {'a': batch_a_for_disc, 's': batch_s_for_disc, 'pose': batch_rp_for_disc, 'tau': tau_values},
-                    batch_scores,
-                    epochs=1,
-                    verbose=False)
-
-                # train G
-                a_z = noise(batch_size, self.dim_noise)
-                feature_to_match = self.discriminator_feature_matching_model.predict([a_batch, s_batch, pose_batch])
-                self.DG.fit({'z': a_z, 's': s_batch, 'pose': pose_batch}, feature_to_match, epochs=1, verbose=0)
-
-                tttau_values = np.tile(curr_tau, (batch_size, 1))
-                a_z = noise(batch_size, self.dim_noise)
-                s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions, sum_rewards,
-                                                                                 batch_size)
-                real_score_values = np.mean((self.disc.predict([a_batch, s_batch, pose_batch, tttau_values]).squeeze()))
-                fake_score_values = np.mean((self.disc.predict([fake, s_batch, pose_batch, tttau_values]).squeeze()))
-                # print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
-
-                if real_score_values <= fake_score_values:
-                    g_lr = 1e-4 / (1 + 1e-1 * i)
-                    d_lr = 1e-3 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
-                else:
-                    g_lr = 1e-3 / (1 + 1e-1 * i)
-                    d_lr = 1e-4 / (1 + 1e-1 * i)
-                    K.set_value(self.opt_G.lr, g_lr)
-                    K.set_value(self.opt_D.lr, d_lr)
-
-            gen_after = self.a_gen.get_weights()
-            disc_after = self.disc.get_weights()
-            gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(gen_before, gen_after)]))
-            disc_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(disc_before, disc_after)]))
-
-            print 'Completed: %d / %d' % (i, float(epochs))
-            print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
-            # curr_tau = curr_tau * 1 /
-            curr_tau = self.tau / (1.0 + 1e-1 * i)
-            # curr_tau = self.tau / (1.0 + 1e-1 * i)
-            if i > 20:
-                self.save_weights(additional_name='_epoch_' + str(i))
-            self.compare_to_data(states, poses, actions)
-            a_z = noise(len(states), self.dim_noise)
 
             tttau_values = np.tile(curr_tau, (len(states), 1))
             print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
