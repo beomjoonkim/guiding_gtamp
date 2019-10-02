@@ -367,7 +367,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 post_train_mses[mse_idx] = pretrain_mse - posttrain_mse
                 mse_idx = (mse_idx + 1) % mse_patience
                 #print mse_idx, post_train_mses
-                if np.all(post_train_mses < 1.0):
+                if np.all(post_train_mses < -1.0):
                     return
 
                 # train G
