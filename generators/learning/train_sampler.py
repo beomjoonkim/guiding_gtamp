@@ -204,10 +204,10 @@ def train_place_admon_with_pose(config):
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                save_folder=savedir, tau=config.tau, config=config)
 
-    # test if below works
-    admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
-    import pdb;pdb.set_trace()
-    admon.train(states, poses, actions, sum_rewards, epochs=500)
+    is_mse_pretrained = os.path.isfile(admon.save_folder+admon.pretraining_file_name)
+    if not is_mse_pretrained:
+        admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
+    admon.train(epochs=500)
 
 
 def parse_args():

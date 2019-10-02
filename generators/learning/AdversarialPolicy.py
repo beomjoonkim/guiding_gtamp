@@ -75,6 +75,16 @@ class AdversarialPolicy:
         self.desired_test_err = None
         self.disc = None
 
+    @staticmethod
+    def get_batch_size(n_data):
+        batch_size = np.min([32, n_data])
+        if batch_size == 0:
+            batch_size = 1
+        return batch_size
+
+    def set_learning_rates(self, d_lr, g_lr):
+        K.set_value(self.opt_G.lr, g_lr)
+        K.set_value(self.opt_D.lr, d_lr)
 
     def create_callbacks_for_pretraining(self):
         callbacks = [
