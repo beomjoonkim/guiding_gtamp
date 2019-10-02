@@ -368,8 +368,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 mse_idx = (mse_idx + 1) % mse_patience
                 #print mse_idx, post_train_mses
                 #if np.any(post_train_mses < -100):
-                if pretrain_mse - posttrain_mse < -100:
-                    self.save_weights(additional_name='_epoch_%d_batch_idx_%d' % (i, j))
+                drop_in_mse = pretrain_mse - posttrain_mse
+                if pretrain_mse - posttrain_mse < -1:
+                    self.save_weights(additional_name='_epoch_%d_batch_idx_%d_drop_in_mse_%.5f' % (i, j, drop_in_mse))
 
                 # train G
                 a_z = noise(batch_size, self.dim_noise)
