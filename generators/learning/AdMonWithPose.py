@@ -305,8 +305,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.set_learning_rates(d_lr, g_lr)
         curr_tau = 1  # self.tau
         self.disc_mse_model.load_weights(self.save_folder + self.pretraining_file_name)
-        import pdb;pdb.set_trace()
         pretrain_mse = self.compute_pure_mse(test_data)
+        print "Pretrain mse", pretrain_mse
 
         mse_patience = 10
         post_train_mses = [0] * mse_patience
@@ -348,7 +348,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 # print mse_idx, post_train_mses
                 # if np.any(post_train_mses < -100):
                 drop_in_mse = pretrain_mse - posttrain_mse
-                if pretrain_mse - posttrain_mse < -1:
+                if pretrain_mse - posttrain_mse < -10:
                     self.save_weights(additional_name='_epoch_%d_batch_idx_%d_drop_in_mse_%.5f' % (i, j, drop_in_mse))
 
                 # train G
