@@ -326,7 +326,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_rewards = train_data['sum_rewards']
 
         self.set_learning_rates(d_lr, g_lr)
-        curr_tau = self.tau
+        curr_tau = 1 #self.tau
         pretrain_mse = self.compute_pure_mse(test_data)
 
         mse_patience = 10
@@ -400,7 +400,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
             print 'Completed: %d / %d' % (i, float(epochs))
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
-            curr_tau = self.tau / (1.0 + 1e-1 * i)
+            #curr_tau = self.tau / (1.0 + 1e-1 * i)
             if i > 20:
                 self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)
