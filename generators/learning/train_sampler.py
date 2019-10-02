@@ -11,7 +11,7 @@ from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 
 state_data_mode = 'robot_rel_to_obj'
-action_data_mode = 'absolute'
+action_data_mode = 'pick_parameters_place_relative_to_region'
 
 
 def get_processed_poses_from_state(state):
