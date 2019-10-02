@@ -83,7 +83,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         pre_mse = self.compute_pure_mse(self.test_data)
         self.mse_model.fit([self.train_data['actions'], self.train_data['states'],
                             self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
-                           epochs=1,
+                           epochs=500,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
@@ -406,6 +406,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
             self.compare_to_data(states, poses, actions)
 
             tttau_values = np.tile(curr_tau, (len(states), 1))
+            print "MSE diff", post_train_mses
             print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
             print "Discriminiator MSE error", np.mean(np.linalg.norm(
                 np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, poses, tttau_values]).squeeze()))
