@@ -386,11 +386,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
 
                 if real_score_values <= fake_score_values:
-                    g_lr = 1e-4 / (1 + 1e-1 * i)
-                    d_lr = 1e-3 / (1 + 1e-1 * i)
+                    g_lr = 1e-4 #/ (1 + 1e-1 * i)
+                    d_lr = 1e-3 #/ (1 + 1e-1 * i)
                 else:
-                    g_lr = 1e-3 / (1 + 1e-1 * i)
-                    d_lr = 1e-4 / (1 + 1e-1 * i)
+                    g_lr = 1e-3 #/ (1 + 1e-1 * i)
+                    d_lr = 1e-4 #/ (1 + 1e-1 * i)
                 self.set_learning_rates(d_lr, g_lr)
 
             gen_after = self.a_gen.get_weights()
