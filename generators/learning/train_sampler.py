@@ -8,9 +8,7 @@ import socket
 
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
-from AdMonWithPose import AdversarialMonteCarloWithPose, FeatureMatchingAdMonWithPose
-from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
-from sklearn.preprocessing import StandardScaler
+from PlaceAdMonWithPose import PlaceAdmonWithPose
 
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'absolute'
