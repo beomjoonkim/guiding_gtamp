@@ -83,7 +83,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         pre_mse = self.compute_pure_mse(self.test_data)
         self.mse_model.fit([self.train_data['actions'], self.train_data['states'],
                             self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
-                           epochs=500,
+                           epochs=1,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
@@ -312,7 +312,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 raise NotImplementedError
 
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'wb'))
+        idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
         train_idxs, test_idxs = idxs['train'], idxs['test']
         train_data, test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
                                                              train_idxs, test_idxs)
@@ -327,9 +327,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         self.set_learning_rates(d_lr, g_lr)
         curr_tau = self.tau
+        pretrain_mse = self.compute_pure_mse(test_data)
 
-        print self.opt_G.get_config()
-
+        mse_patience = 10
+        post_train_mses = [0] * mse_patience
+        mse_idx = 0
         for i in range(1, epochs):
             stime = time.time()
             tau_values = np.tile(curr_tau, (batch_size * 2, 1))
@@ -337,7 +339,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
             gen_before = self.a_gen.get_weights()
             disc_before = self.disc.get_weights()
             batch_idxs = range(0, actions.shape[0], batch_size)
-            for _ in batch_idxs:
+            for j in batch_idxs:
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
                                                                                  sum_rewards,
                                                                                  batch_size)
@@ -355,13 +357,18 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 batch_s = np.vstack([s_batch, s_batch])
                 batch_rp = np.vstack([pose_batch, pose_batch])
                 batch_scores = np.vstack([fake_action_q, real_action_q])
-                import pdb;
-                pdb.set_trace()
-                pretrain_mse = self.compute_pure_mse(test_data)
+
                 self.disc.fit({'a': batch_a, 's': batch_s, 'pose': batch_rp, 'tau': tau_values},
                               batch_scores,
                               epochs=1,
                               verbose=False)
+                posttrain_mse = self.compute_pure_mse(test_data)
+                #print 'mse diff', pretrain_mse - posttrain_mse
+                post_train_mses[mse_idx] = pretrain_mse - posttrain_mse
+                mse_idx = (mse_idx + 1) % mse_patience
+                #print mse_idx, post_train_mses
+                if np.all(post_train_mses) < 0:
+                    return
 
                 # train G
                 a_z = noise(batch_size, self.dim_noise)
