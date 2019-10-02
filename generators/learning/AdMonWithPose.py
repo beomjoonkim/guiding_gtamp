@@ -62,8 +62,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         return train, test
 
     def compute_pure_mse(self, data):
-        return np.linalg.norm(
-            self.mse_model.predict([data['actions'], data['states'], data['poses']]) - data['sum_rewards'])
+        return np.mean(np.power(self.mse_model.predict([data['actions'], data['states'], data['poses']])
+                                - data['sum_rewards'], 2))
 
     def pretrain_discriminator_with_mse(self, states, poses, actions, sum_rewards):
         train, test = self.get_train_and_test_data(states, poses, actions, sum_rewards)
@@ -71,7 +71,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         mse = self.compute_pure_mse(test)
         print "Pretraining test error", mse
-        self.mse_model.fit([train['actions'], train['states'], train['poses']], train['sum_rewards'], batch_size=32, epochs=500,
+        self.mse_model.fit([train['actions'], train['states'], train['poses']], train['sum_rewards'], batch_size=32,
+                           epochs=500,
                            verbose=2,
                            callbacks=callbacks,
                            validation_split=0.1)
