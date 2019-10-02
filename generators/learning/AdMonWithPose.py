@@ -37,26 +37,70 @@ def slice_object_pose_from_pose(x):
 
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
-        AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau, None, None)
+        AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
         self.dim_poses = 8
         self.dim_collision = dim_collision
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
-        self.a_gen, self.disc, self.DG, = self.createGAN()
+        self.a_gen, self.mse_model, self.disc, self.DG, = self.create_models()
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
 
-    def createGAN(self):
+    def get_train_and_test_data(self, states, poses, actions, sum_rewards):
+        test_indices = np.random.randint(0, actions.shape[0], size=int(0.2 * len(states)))
+        train_indices = list(set(range(actions.shape[0])).difference(set(test_indices)))
+
+        train = {'states': states[train_indices, :],
+                 'poses': poses[train_indices, :],
+                 'actions': actions[train_indices, :],
+                 'sum_rewards': sum_rewards[train_indices, :]}
+        test = {'states': states[test_indices, :],
+                'poses': poses[test_indices, :],
+                'actions': actions[test_indices, :],
+                'sum_rewards': sum_rewards[test_indices, :]}
+
+        return train, test
+
+    def compute_pure_mse(self, data):
+        return np.linalg.norm(
+            self.mse_model.predict([data['actions'], data['states'], data['poses']]) - data['sum_rewards'])
+
+    def pretrain_discriminator_with_mse(self, states, poses, actions, sum_rewards):
+        train, test = self.get_train_and_test_data(states, poses, actions, sum_rewards)
+        callbacks = self.create_callbacks_for_pretraining()
+
+        mse = self.compute_pure_mse(test)
+        print "Pretraining test error", mse
+        self.mse_model.fit([train['actions'], train['states'], train['poses']], sum_rewards, batch_size=32, epochs=500,
+                           verbose=2,
+                           callbacks=callbacks,
+                           validation_split=0.1)
+        mse = self.compute_pure_mse(test)
+        print "Post test error", mse
+        import pdb;
+        pdb.set_trace()
+
+    def create_mse_model(self):
+        mse_model = Model(inputs=[self.action_input, self.collision_input, self.pose_input],
+                          outputs=self.disc_output,
+                          name='disc_output')
+        mse_model.compile(loss='mse', optimizer=self.opt_D)
+        return mse_model
+
+    def create_models(self):
         disc = self.create_discriminator()
+        mse_model = self.create_mse_model()
         a_gen, a_gen_output = self.create_generator()
         for l in disc.layers:
             l.trainable = False
+            # for some obscure reason, disc weights still get updated when self.disc.fit is called
+            # I speculate that this has to do with the status of the layers at the time it was compiled
         DG_output = disc([a_gen_output, self.collision_input, self.pose_input, self.collision_input])
         DG = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=[DG_output])
         DG.compile(loss={'disc_output': G_loss},
                    optimizer=self.opt_G,
                    metrics=[])
-        return a_gen, disc, DG
+        return a_gen, mse_model, disc, DG
 
     def save_weights(self, additional_name=''):
         fdir = ROOTDIR + '/' + self.save_folder + '/'

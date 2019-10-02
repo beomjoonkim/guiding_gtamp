@@ -204,6 +204,9 @@ def train_place_admon_with_pose(config):
         state_data_mode, action_data_mode)
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                save_folder=savedir, tau=config.tau, config=config)
+
+    # test if below works
+    admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 

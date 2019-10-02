@@ -1,6 +1,7 @@
 from keras.optimizers import *
 from keras import initializers
 from keras.layers import *
+from keras.models import Model
 
 import os
 import sys
@@ -41,9 +42,7 @@ def tile(x):
 
 
 class AdversarialPolicy:
-    def __init__(self, dim_action, dim_state, save_folder, tau, key_configs=None,
-                 action_scaler=None):
-
+    def __init__(self, dim_action, dim_state, save_folder, tau):
         if not os.path.isdir(save_folder):
             os.makedirs(save_folder)
 
@@ -64,12 +63,31 @@ class AdversarialPolicy:
         self.dim_action = dim_action
         self.dim_state = dim_state
         self.n_key_confs = dim_state[0]
-        self.key_configs = key_configs
 
-        self.action_scaler = action_scaler
         self.tau = tau
 
         self.noise_input = Input(shape=(self.dim_noise,), name='z', dtype='float32')
         self.tau_input = Input(shape=(1,), name='tau', dtype='float32')  # collision vector
 
         self.save_folder = save_folder
+
+        self.test_data = None
+        self.desired_test_err = None
+        self.disc = None
+        self.pretraining_file_name = 'pretrained.h5'
+
+    def create_callbacks_for_pretraining(self):
+        callbacks = [
+            tf.keras.callbacks.TerminateOnNaN(),
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=10, ),
+            tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + self.pretraining_file_name,
+                                               verbose=False,
+                                               save_best_only=True,
+                                               save_weights_only=True),
+            # tf.keras.callbacks.TensorBoard()
+        ]
+        return callbacks
+
+
+
+

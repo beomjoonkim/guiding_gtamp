@@ -184,10 +184,11 @@ def visualize_samples(policy):
 
     # poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
     places = []
-    for _ in range(1):
-        #placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
-        placement = utils.decode_pose_with_sin_and_cos_angle(policy.a_gen.predict([state_vec, poses]))
+    for _ in range(20):
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
+        #placement = utils.decode_pose_with_sin_and_cos_angle(policy.a_gen.predict([state_vec, poses]))
         placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
+        # notice that these are object poses
 
         if 'place_relative_to_region' in action_data_mode:
             if smpler_state.region == 'home_region':
@@ -221,7 +222,6 @@ def main():
     epoch_number = int(sys.argv[2])
     dim_state = (n_key_configs, 6, 1)
     dim_action = 4
-    """
     policy = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                 save_folder=savedir, tau=config.tau, config=config)
     """
@@ -231,10 +231,11 @@ def main():
     dim_state = (n_key_configs, 6, 1)
     policy = PolicyWithPose(dim_action=dim_action, dim_collision=dim_state, save_folder=savedir,
                            tau=config.tau, config=config)
+    """
 
     print "Trying epoch number ", epoch_number
-    #policy.load_weights(additional_name='_epoch_%d' % epoch_number)
-    policy.load_weights()
+    policy.load_weights(additional_name='_epoch_%d' % epoch_number)
+    #policy.load_weights()
     import pdb;pdb.set_trace()
     visualize_samples(policy)
     """

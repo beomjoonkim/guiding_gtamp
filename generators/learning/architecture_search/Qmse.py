@@ -32,15 +32,6 @@ class MSETrainer:
         ]
         return callbacks
 
-    def train(self, states, actions, sum_rewards):
-        curr_tau = self.tau
-        callbacks = self.create_callbacks()
-        print "Mean target value", np.mean(np.abs(sum_rewards))
-        self.disc.fit(
-            [actions, states], sum_rewards, batch_size=32, epochs=500, verbose=2,
-            callbacks=callbacks,
-            validation_split=0.1)
-
 
 def slice_pick_pose_from_action(x):
     return x[:, :4]
