@@ -13,7 +13,7 @@ from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWith
 from sklearn.preprocessing import StandardScaler
 
 state_data_mode = 'robot_rel_to_obj'
-action_data_mode = 'absolute'
+action_data_mode = 'pick_parameters_place_relative_to_region'
 
 
 def get_processed_poses_from_state(state):
@@ -206,6 +206,7 @@ def train_place_admon_with_pose(config):
 
     # test if below works
     admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
+    import pdb;pdb.set_trace()
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
