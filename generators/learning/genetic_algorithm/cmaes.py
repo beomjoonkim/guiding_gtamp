@@ -20,8 +20,8 @@ class GeneticAlgoProblem:
         return (self.domain[0], self.domain[1])
 
 
-def genetic_algorithm():
-    prob = pg.problem(GeneticAlgoProblem())
+def genetic_algorithm(q_function, domain):
+    prob = pg.problem(GeneticAlgoProblem(q_function, domain))
     population_size = 5
 
     total_evals = 1000
@@ -41,6 +41,7 @@ def genetic_algorithm():
     pop_best_at_generation = -log[:, 2]
     evaled_x = None
     evaled_y = pop_best_at_generation
+    import pdb;pdb.set_trace()
 
     max_y = [pop_best_at_generation[0]]
     for y in pop_best_at_generation[1:]:
@@ -49,4 +50,4 @@ def genetic_algorithm():
         else:
             max_y.append(max_y[-1])
 
-    return evaled_x, evaled_y, max_y, 0
+    return evaled_y, max_y

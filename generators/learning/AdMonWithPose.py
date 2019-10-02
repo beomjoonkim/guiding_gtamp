@@ -44,7 +44,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
-        self.a_gen, self.mse_model, self.disc, self.DG, = self.create_models()
+        self.a_gen, self.disc_mse_model, self.disc, self.DG, = self.create_models()
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
@@ -64,7 +64,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         return train, test
 
     def compute_pure_mse(self, data):
-        return np.mean(np.power(self.mse_model.predict([data['actions'], data['states'], data['poses']])
+        return np.mean(np.power(self.disc_mse_model.predict([data['actions'], data['states'], data['poses']])
                                 - data['sum_rewards'], 2))
 
     def get_train_and_test_indices(self, n_data):
@@ -81,12 +81,12 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         callbacks = self.create_callbacks_for_pretraining()
 
         pre_mse = self.compute_pure_mse(self.test_data)
-        self.mse_model.fit([self.train_data['actions'], self.train_data['states'],
-                            self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
-                           epochs=500,
-                           verbose=2,
-                           callbacks=callbacks,
-                           validation_split=0.1)
+        self.disc_mse_model.fit([self.train_data['actions'], self.train_data['states'],
+                                 self.train_data['poses']], self.train_data['sum_rewards'], batch_size=32,
+                                epochs=500,
+                                verbose=2,
+                                callbacks=callbacks,
+                                validation_split=0.1)
         post_mse = self.compute_pure_mse(self.test_data)
 
         print "Pre-and-post test errors", pre_mse, post_mse
@@ -102,6 +102,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         disc = self.create_discriminator()
         mse_model = self.create_mse_model()
         a_gen, a_gen_output = self.create_generator()
+
         for l in disc.layers:
             l.trainable = False
             # for some obscure reason, disc weights still get updated when self.disc.fit is called
@@ -287,30 +288,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_reward_batch = np.array(sum_rewards[indices, :])
         return s_batch, pose_batch, a_batch, sum_reward_batch
 
-    def train_with_cmaes(self):
-        train_data = self.train_data
-        test_data = self.test_data
-        n_data = len(train_data['actions'])
-        batch_size = self.get_batch_size(n_data)
-        batch_idxs = range(0, n_data, batch_size)
-
-        states = train_data['states']
-        poses = train_data['poses']
-        actions = train_data['actions']
-        sum_rewards = train_data['sum_rewards']
-
-        epochs = 100
-        # get data batch
-        for i in range(1, epochs):
-            for _ in batch_idxs:
-                s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
-                                                                                 sum_rewards,
-                                                                                 batch_size)
-                # generate T sequence data from the cma-es
-
-                # update discriminator
-                raise NotImplementedError
-
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
         idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
         train_idxs, test_idxs = idxs['train'], idxs['test']
@@ -326,7 +303,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_rewards = train_data['sum_rewards']
 
         self.set_learning_rates(d_lr, g_lr)
-        curr_tau = 1 #self.tau
+        curr_tau = 1  # self.tau
+        self.disc_mse_model.load_weights(self.save_folder + self.pretraining_file_name)
+        import pdb;pdb.set_trace()
         pretrain_mse = self.compute_pure_mse(test_data)
 
         mse_patience = 10
@@ -363,11 +342,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                               epochs=1,
                               verbose=False)
                 posttrain_mse = self.compute_pure_mse(test_data)
-                #print 'mse diff', pretrain_mse - posttrain_mse
+                # print 'mse diff', pretrain_mse - posttrain_mse
                 post_train_mses[mse_idx] = pretrain_mse - posttrain_mse
                 mse_idx = (mse_idx + 1) % mse_patience
-                #print mse_idx, post_train_mses
-                #if np.any(post_train_mses < -100):
+                # print mse_idx, post_train_mses
+                # if np.any(post_train_mses < -100):
                 drop_in_mse = pretrain_mse - posttrain_mse
                 if pretrain_mse - posttrain_mse < -1:
                     self.save_weights(additional_name='_epoch_%d_batch_idx_%d_drop_in_mse_%.5f' % (i, j, drop_in_mse))
@@ -388,11 +367,11 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 fake_score_values = np.mean((self.DG.predict([a_z, s_batch, pose_batch]).squeeze()))
 
                 if real_score_values <= fake_score_values:
-                    g_lr = 1e-4 #/ (1 + 1e-1 * i)
-                    d_lr = 1e-3 #/ (1 + 1e-1 * i)
+                    g_lr = 1e-4  # / (1 + 1e-1 * i)
+                    d_lr = 1e-3  # / (1 + 1e-1 * i)
                 else:
-                    g_lr = 1e-3 #/ (1 + 1e-1 * i)
-                    d_lr = 1e-4 #/ (1 + 1e-1 * i)
+                    g_lr = 1e-3  # / (1 + 1e-1 * i)
+                    d_lr = 1e-4  # / (1 + 1e-1 * i)
                 self.set_learning_rates(d_lr, g_lr)
 
             gen_after = self.a_gen.get_weights()
@@ -402,8 +381,8 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
             print 'Completed: %d / %d' % (i, float(epochs))
             print "g_lr %.5f d_lr %.5f" % (g_lr, d_lr)
-            #curr_tau = self.tau / (1.0 + 1e-1 * i)
-            #if i > 20:
+            # curr_tau = self.tau / (1.0 + 1e-1 * i)
+            # if i > 20:
             #    self.save_weights(additional_name='_epoch_' + str(i))
             self.compare_to_data(states, poses, actions)
 
