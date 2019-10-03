@@ -40,7 +40,7 @@ def noise(n, z_size):
     # todo use the uniform over the entire action space here
     # return np.random.normal(size=(n, z_size)).astype('float32')
     domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
-    return np.random.uniform(low=domain[0], high=domain[1], size=(5, 4))
+    return np.random.uniform(low=domain[0], high=domain[1], size=(1, 4))
 
 
 class AdversarialMonteCarloWithPose(AdversarialPolicy):

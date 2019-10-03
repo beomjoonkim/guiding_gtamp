@@ -242,7 +242,7 @@ def main():
     print "Trying epoch number ", epoch_number
     # admonpose_seed_0_epoch_422_batch_idx_1632_drop_in_mse_ - 359.88276.h5
     #policy.load_weights(additional_name='_epoch_%d_batch_idx_1344_drop_in_mse_-12.44197' % epoch_number)
-    fname = 'admonpose_seed_0_epoch_300_batch_idx_800_drop_in_mse_-42.60719.h5'
+    fname = 'admonpose_seed_3_epoch_174_batch_idx_2880_drop_in_mse_-39.80012.h5'
     policy.a_gen.load_weights(policy.save_folder + fname)
 
     # policy.load_weights()
