@@ -39,7 +39,7 @@ class GNN(object):
         self.weight_file_name = './learn/q-function-weights/' \
                                 'Q_weight_n_msg_passing_1_mse_weight_1.0_optimizer_' \
                                 'adam_seed_%d_lr_0.0001_operator_two_arm_pick_two_arm_place_n_layers_2_n_hidden_32' \
-                                '_top_k_1_num_train_5000_loss_largemargin.hdf5' % self.config.seed
+                                '_top_k_1_num_train_5000_loss_%s.hdf5' % (self.config.seed, self.config.loss)
         print "Loading weight", self.weight_file_name
         self.loss_model.load_weights(self.weight_file_name)
 
