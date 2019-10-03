@@ -489,6 +489,7 @@ def two_arm_pick_object(obj, pick_action):
     try:
         base_pose = pick_action['q_goal']
     except KeyError:
+        import pdb;pdb.set_trace()
         base_pose = pick_action['base_pose']
     set_robot_config(base_pose, robot)
 

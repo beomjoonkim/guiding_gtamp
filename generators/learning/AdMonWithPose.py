@@ -43,7 +43,6 @@ def noise(n, z_size):
     return np.random.uniform(low=domain[0], high=domain[1], size=(n, 4))
 
 
-
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
