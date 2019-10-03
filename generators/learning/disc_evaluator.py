@@ -1,6 +1,7 @@
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
-from policy_evaluator import get_pidxs_to_evaluate_policy, action_data_mode, state_data_mode, load_pose_file, \
-    get_smpler_state
+from policy_evaluator import get_pidxs_to_evaluate_policy, load_pose_file, get_smpler_state
+from data_processing.utils import state_data_mode, action_data_mode, convert_pose_rel_to_region_to_abs_pose, \
+    unnormalize_pose_wrt_region
 
 from gtamp_utils import utils
 from test_scripts.run_greedy import get_problem_env
@@ -29,20 +30,17 @@ def get_placements(state, poses, admon, smpler_state):
     stime = time.time()
     placement, value = admon.get_max_x(state, poses)
     print 'maximizing x time', time.time() - stime
-    # placement = np.array([0.3652491, -12.45440301, -0.99999956, -0.99999985])
-    # placement = np.array([6.057943, -3.52744588,  0.99999967,  0.99999999])
-    # smpler_region = 'home_region'
+
     placement = utils.decode_pose_with_sin_and_cos_angle(placement)
     if 'place_relative_to_obj' in action_data_mode:
         obj = smpler_state.obj
         placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
-    if 'place_relative_to_region' in action_data_mode:
+    elif 'place_relative_to_region' in action_data_mode:
         region = smpler_state.region
-        print 'Region is ', region
-        if region == 'home_region':
-            placement[0:2] += [-1.75, 5.25]
-        elif region == 'loading_region':
-            placement[0:2] += [-0.7, 4.3]
+        placement = convert_pose_rel_to_region_to_abs_pose(placement, region)
+    elif 'place_normalized_relative_to_region' in action_data_mode:
+        region = smpler_state.region
+        placement = unnormalize_pose_wrt_region(placement, region)
 
     return [placement]
 
