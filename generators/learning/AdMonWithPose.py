@@ -11,7 +11,7 @@ import socket
 import os
 import pickle
 
-from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
+from AdversarialPolicy import tau_loss, G_loss, INFEASIBLE_SCORE
 from AdversarialPolicy import AdversarialPolicy
 
 if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
@@ -34,6 +34,13 @@ def slice_prepick_robot_pose_from_pose(x):
 
 def slice_object_pose_from_pose(x):
     return x[:, :4]
+
+
+def noise(n, z_size):
+    # todo use the uniform over the entire action space here
+    # return np.random.normal(size=(n, z_size)).astype('float32')
+    domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
+    return np.random.uniform(low=domain[0], high=domain[1], size=(5, 4))
 
 
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
@@ -224,7 +231,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         # For computing a sub-network for place
         place_action = Lambda(slice_place_pose_from_action)(self.action_input)
-        import pdb;pdb.set_trace()
         place_action = RepeatVector(self.n_key_confs)(place_action)
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
 

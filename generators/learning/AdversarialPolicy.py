@@ -34,7 +34,8 @@ def G_loss(dummy, pred):
 
 def noise(n, z_size):
     # todo use the uniform over the entire action space here
-    return np.random.normal(size=(n, z_size)).astype('float32')
+    #return np.random.normal(size=(n, z_size)).astype('float32')
+    import pdb;pdb.set_trace()
 
 
 def tile(x):

@@ -214,7 +214,7 @@ def train_place_admon_with_pose(config):
 
 
 def train_cmaes_place_admon_with_pose(config):
-    #states, poses, actions, sum_rewards = get_data()
+    states, poses, actions, sum_rewards = get_data()
     n_key_configs = 615
     dim_state = (n_key_configs, 6, 1)
     dim_action = 4
@@ -231,7 +231,8 @@ def train_cmaes_place_admon_with_pose(config):
     # Update the discriminator
     #
 
-    cmaes_objective = lambda x: admon.disc_mse_model.predict(x)
+    import pdb;pdb.set_trace()
+    cmaes_objective = lambda action: admon.disc_mse_model.predict([action[None,:], states[0:1], poses[0:1]])
     max_x, max_y = genetic_algorithm(cmaes_objective, domain)
     import pdb;pdb.set_trace()
 
