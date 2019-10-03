@@ -40,7 +40,8 @@ def noise(n, z_size):
     # todo use the uniform over the entire action space here
     # return np.random.normal(size=(n, z_size)).astype('float32')
     domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
-    return np.random.uniform(low=domain[0], high=domain[1], size=(1, 4))
+    return np.random.uniform(low=domain[0], high=domain[1], size=(n, 4))
+
 
 
 class AdversarialMonteCarloWithPose(AdversarialPolicy):
@@ -343,7 +344,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                 batch_s = np.vstack([s_batch, s_batch])
                 batch_rp = np.vstack([pose_batch, pose_batch])
                 batch_scores = np.vstack([fake_action_q, real_action_q])
-
                 self.disc.fit({'a': batch_a, 's': batch_s, 'pose': batch_rp, 'tau': tau_values},
                               batch_scores,
                               epochs=1,

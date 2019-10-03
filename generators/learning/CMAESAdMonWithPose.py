@@ -102,7 +102,7 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
 
             posttrain_mse = self.compute_pure_mse(test_data)
             drop_in_mse = pretrain_mse - posttrain_mse
-            self.save_weights(additional_name='_epoch_%d_batch_idx_%d_drop_in_mse_%.5f' % (i, j, drop_in_mse))
+            self.save_weights(additional_name='_epoch_%d_drop_in_mse_%.5f' % (i,drop_in_mse))
             time_taken = time.time() - stime
             print "Epoch time", time_taken
 

@@ -10,7 +10,7 @@ import numpy as np
 import socket
 import os
 
-from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
+from AdversarialPolicy import tau_loss, G_loss, INFEASIBLE_SCORE
 from FeatureMatchinAdMonWithPose import FeatureMatchingAdMonWithPose
 from AdversarialPolicy import AdversarialPolicy
 from AdMonWithPose import AdversarialMonteCarloWithPose
@@ -20,6 +20,11 @@ if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
 else:
     ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'
 
+def noise(n, z_size):
+    # todo use the uniform over the entire action space here
+    # return np.random.normal(size=(n, z_size)).astype('float32')
+    domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
+    return np.random.uniform(low=domain[0], high=domain[1], size=(n, 4))
 
 def slice_pick_pose_from_action(x):
     return x[:, :4]
