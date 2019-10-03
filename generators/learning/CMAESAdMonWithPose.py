@@ -1,14 +1,14 @@
+from PlaceAdMonWithPose import PlaceAdmonWithPose
+from AdversarialPolicy import INFEASIBLE_SCORE
+from genetic_algorithm.voo import VOO
+from genetic_algorithm.cmaes import genetic_algorithm
+
+import os
 import socket
 import pickle
 import numpy as np
 import time
-from genetic_algorithm.voo import VOO
 
-from genetic_algorithm.cmaes import genetic_algorithm
-from PlaceAdMonWithPose import PlaceAdmonWithPose
-from AdversarialPolicy import tau_loss, G_loss, INFEASIBLE_SCORE
-
-import os
 if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
     ROOTDIR = './'
 else:
@@ -36,9 +36,9 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
         PlaceAdmonWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
 
     def get_max_x(self, state, pose):
-        domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
+        domain = np.array([[0, 0, -1, -1], [1, 1, 1, 1]])
         objective = lambda action: float(self.disc_mse_model.predict([action[None, :], state, pose])[0, 0])
-        is_cmaes = False
+        is_cmaes = True
         n_evals = 50
         if is_cmaes:
             max_x, max_y = genetic_algorithm(objective, n_evals)
@@ -111,7 +111,6 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
 
             posttrain_mse = self.compute_pure_mse(test_data)
             drop_in_mse = pretrain_mse - posttrain_mse
-            self.save_weights(additional_name='_epoch_%d_drop_in_mse_%.5f' % (i,drop_in_mse))
+            self.save_weights(additional_name='_epoch_%d_drop_in_mse_%.5f' % (i, drop_in_mse))
             time_taken = time.time() - stime
             print "Epoch time", time_taken
-

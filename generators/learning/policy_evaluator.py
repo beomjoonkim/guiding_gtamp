@@ -5,7 +5,7 @@ from trajectory_representation.shortest_path_pick_and_place_state import Shortes
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from trajectory_representation.operator import Operator
 from AdMonWithPose import AdversarialMonteCarloWithPose
-from PlaceAdMonWithPose import PlaceFeatureMatchingAdMonWithPose, PlaceAdmonWithPose
+from PlaceAdMonWithPose import PlaceAdmonWithPose
 from generators.learning.train_sampler import get_processed_poses_from_state, state_data_mode, action_data_mode
 from generators.learning.architecture_search.train_policy_mse import create_model as create_mse_policy
 from generators.learning.architecture_search.train_policy_mse import PolicyWithPose

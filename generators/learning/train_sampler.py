@@ -6,95 +6,13 @@ import tensorflow as tf
 import random
 import socket
 
-from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
+from data_processing.utils import get_processed_poses_from_state, get_processed_poses_from_action, \
+    state_data_mode, action_data_mode
 
-
-from genetic_algorithm.cmaes import genetic_algorithm
-
-state_data_mode = 'robot_rel_to_obj'
-action_data_mode = 'pick_parameters_place_relative_to_region'
-
-
-def get_processed_poses_from_state(state):
-    if state_data_mode == 'absolute':
-        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
-        robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
-    elif state_data_mode == 'robot_rel_to_obj':
-        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
-        robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.robot_pose, state.obj_pose)
-        robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
-    else:
-        raise not NotImplementedError
-
-    pose = np.hstack([obj_pose, robot_pose])
-    return pose
-
-
-def get_place_pose_wrt_region(pose, region):
-    place_pose = pose
-    if region == 'home_region':
-        place_pose[0:2] -= [-1.75, 5.25]
-    elif region == 'loading_region':
-        place_pose[0:2] -= [-0.7, 4.3]
-    else:
-        raise NotImplementedError
-    place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
-    return place_pose
-
-
-def get_processed_poses_from_action(state, action):
-    if action_data_mode == 'absolute':
-        pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-    elif action_data_mode == 'pick_relative':
-        pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
-        pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-    elif action_data_mode == 'pick_relative_place_relative_to_region':
-        pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
-        pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
-        place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-    elif action_data_mode == 'pick_parameters_place_relative_to_region':
-        # Bah! this needs to be with respect to the pick base pose
-        pick_pose = action['pick_abs_base_pose']
-        portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
-        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
-        pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
-        place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-    elif action_data_mode == 'pick_parameters_place_relative_to_pick':
-        pick_pose = action['pick_abs_base_pose']
-        portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
-        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
-        pick_params = np.hstack([portion, base_angle, facing_angle_offset])
-
-        place_pose = action['place_abs_base_pose']
-        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose,
-                                                                 pick_pose)  # get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
-        recovered = utils.get_absolute_pose_from_relative_pose(place_pose, pick_pose)
-        pick_pose = pick_params
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
-    elif action_data_mode == 'pick_parameters_place_relative_to_object':
-        pick_pose = action['pick_abs_base_pose']
-        portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
-        base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
-        pick_params = np.hstack([portion, base_angle, facing_angle_offset])
-        pick_pose = pick_params
-
-        place_pose = action['place_abs_base_pose']
-        place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, state.obj_pose)
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
-
-    action = np.hstack([pick_pose, place_pose])
-
-    return action
+from gtamp_utils import utils
 
 
 def load_data(traj_dir):
@@ -196,6 +114,8 @@ def train_admon_with_pose(config):
 
 def train_place_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
+    import pdb;
+    pdb.set_trace()
     actions = actions[:, 4:]
     n_key_configs = states.shape[1]  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs, 6, 1)
@@ -222,14 +142,8 @@ def train_cmaes_place_admon_with_pose(config):
         state_data_mode, action_data_mode)
     admon = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                save_folder=savedir, tau=config.tau, config=config)
-
-    domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
-    # which states? I would have to do this for each state and pose pair.
-    # Take a batch
-    #   for each (s,p) pair in the batch, I would run CMAES wrt to the action, and produce an output.
-    # We now have a batch of (s,p, cmae_es_action) tuples
-    # Update the discriminator
-    #
+    import pdb;
+    pdb.set_trace()
 
     actions = actions[:, 4:]
     is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
