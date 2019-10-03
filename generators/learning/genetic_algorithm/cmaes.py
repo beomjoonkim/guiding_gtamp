@@ -6,7 +6,7 @@ class GeneticAlgoProblem:
     def __init__(self, q_function, domain):
         self.q_function = q_function
         self.domain = domain
-        self.objective_function = lambda x: self.q_function.predict()
+        self.objective_function = lambda x: self.q_function(x)
 
     def hinge_function(self, x):
         return max(0, x)

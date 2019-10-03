@@ -9,6 +9,10 @@ import socket
 from gtamp_utils import utils
 from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
+from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
+
+
+from genetic_algorithm.cmaes import genetic_algorithm
 
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'pick_parameters_place_relative_to_region'
@@ -193,7 +197,6 @@ def train_admon_with_pose(config):
 def train_place_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
-    n_goal_flags = 2  # indicating whether it is a goal obj and goal region
     n_key_configs = states.shape[1]  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs, 6, 1)
     dim_action = 4
@@ -202,7 +205,39 @@ def train_place_admon_with_pose(config):
     admon = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                save_folder=savedir, tau=config.tau, config=config)
 
-    is_mse_pretrained = os.path.isfile(admon.save_folder+admon.pretraining_file_name)
+    is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
+    if not is_mse_pretrained:
+        admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
+
+    # But I have not loaded the weight?
+    admon.train(states, poses, actions, sum_rewards, epochs=500)
+
+
+def train_cmaes_place_admon_with_pose(config):
+    #states, poses, actions, sum_rewards = get_data()
+    n_key_configs = 615
+    dim_state = (n_key_configs, 6, 1)
+    dim_action = 4
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/cmaes_place_admon/' % (
+        state_data_mode, action_data_mode)
+    admon = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
+                                               save_folder=savedir, tau=config.tau, config=config)
+
+    domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
+    # which states? I would have to do this for each state and pose pair.
+    # Take a batch
+    #   for each (s,p) pair in the batch, I would run CMAES wrt to the action, and produce an output.
+    # We now have a batch of (s,p, cmae_es_action) tuples
+    # Update the discriminator
+    #
+
+    cmaes_objective = lambda x: admon.disc_mse_model.predict(x)
+    max_x, max_y = genetic_algorithm(cmaes_objective, domain)
+    import pdb;pdb.set_trace()
+
+
+    actions = actions[:, 4:]
+    is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
     if not is_mse_pretrained:
         admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
 
@@ -244,6 +279,8 @@ def main():
     elif configs.algo == 'placeadmonpose':
         print "Training place only"
         train_place_admon_with_pose(configs)
+    elif configs.algo == 'cmaes_placeadmonpose':
+        train_cmaes_place_admon_with_pose(configs)
     else:
         raise NotImplementedError
 

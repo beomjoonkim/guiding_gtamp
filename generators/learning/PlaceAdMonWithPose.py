@@ -74,15 +74,18 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
         C_H = Reshape((self.n_key_confs, self.dim_collision[1], 1))(self.collision_input)
 
         # For computing a sub-network for pick
-        prepick_robot_pose = self.get_prepick_robot_pose()
+
+        abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
 
         # For computing a sub-network for place
-        obj_pose = self.get_abs_obj_pose()
-        place_action = RepeatVector(self.n_key_confs)(self.action_input)
-        place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
+        H_preprocess = Concatenate(axis=-1)([abs_obj_pose, self.action_input])
+        H_preprocess = Dense(dense_num, activation='relu')(H_preprocess)
+        H_preprocess = Dense(dense_num, activation='relu')(H_preprocess)
+        H_preprocess = RepeatVector(self.n_key_confs)(H_preprocess)
+        H_preprocess = Reshape((self.n_key_confs, dense_num, 1))(H_preprocess)
 
-        H_col_abs_obj_pose_place = Concatenate(axis=2)([obj_pose, place_action, C_H])
-        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 6 + 4 + 2)
+        H_col_abs_obj_pose_place = Concatenate(axis=2)([H_preprocess, C_H])
+        H_place = self.create_conv_layers(H_col_abs_obj_pose_place, 64 + 2)
         H_place = Dense(dense_num, activation='relu')(H_place)
         H_place = Dense(dense_num, activation='relu')(H_place)
         self.discriminator_feature_matching_layer = H_place  # Concatenate(axis=-1)([H_place])

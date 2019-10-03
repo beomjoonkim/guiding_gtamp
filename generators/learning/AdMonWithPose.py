@@ -224,6 +224,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         # For computing a sub-network for place
         place_action = Lambda(slice_place_pose_from_action)(self.action_input)
+        import pdb;pdb.set_trace()
         place_action = RepeatVector(self.n_key_confs)(place_action)
         place_action = Reshape((self.n_key_confs, 4, 1))(place_action)
 

@@ -152,14 +152,41 @@ def evaluate_policy(policy):
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=437, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
-    n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs[1:]]
+    n_successes = [evaluate_in_problem_instance(policy, pidx, problem_env) for pidx in pidxs[2:]]
     return n_successes
 
 
+def generate(obj, state_vec, smpler_state, policy):
+    n_key_configs = 615
+    utils.set_color(obj, [1, 0, 0])
+    is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in smpler_state.goal_entities]))
+    is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+    is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([smpler_state.region in smpler_state.goal_entities]))
+    is_goal_region = np.tile(is_goal_region, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
+    state_vec = np.concatenate([state_vec, is_goal_obj, is_goal_region], axis=2)
+
+    poses = np.hstack(
+        [utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
+
+    places = []
+    for _ in range(20):
+        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
+        if 'place_relative_to_obj' in action_data_mode:
+            placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
+        if 'place_relative_to_region' in action_data_mode:
+            if smpler_state.region == 'home_region':
+                placement[0:2] += [-1.75, 5.25]
+            elif smpler_state.region == 'loading_region':
+                placement[0:2] += [-0.7, 4.3]
+
+        places.append(placement)
+    return places
+
+
 def visualize_samples(policy):
-    n_evals = 1
+    n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-    pidx = pidxs[0]
+    pidx = pidxs[5]
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
@@ -168,35 +195,15 @@ def visualize_samples(policy):
     problem_env.set_body_poses(pidx_poses)
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
-    n_key_configs = 615
 
-    obj = 'square_packing_box4'
-    #obj = 'rectangular_packing_box2'
-
-    utils.set_color(obj, [1, 0, 0])
-    is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in smpler_state.goal_entities]))
-    is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
-    is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([smpler_state.region in smpler_state.goal_entities]))
-    is_goal_region = np.tile(is_goal_region, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
-    state_vec = np.concatenate([state_vec, is_goal_obj, is_goal_region], axis=2)
-
-    poses = np.hstack([utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
+    obj = 'square_packing_box1'
+    # obj = 'rectangular_packing_box2'
 
     # poses = get_processed_poses_from_state(smpler_state).reshape((1, 8))
-    places = []
-    for _ in range(20):
-        placement = utils.decode_pose_with_sin_and_cos_angle(policy.generate(state_vec, poses))
-        #placement = utils.decode_pose_with_sin_and_cos_angle(policy.a_gen.predict([state_vec, poses]))
-        placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
-        # notice that these are object poses
 
-        if 'place_relative_to_region' in action_data_mode:
-            if smpler_state.region == 'home_region':
-                placement[0:2] += [-1.75, 5.25]
-            elif smpler_state.region == 'loading_region':
-                placement[0:2] += [-0.7, 4.3]
+    print 'generating..'
+    places = generate(obj, state_vec, smpler_state, policy)
 
-        places.append(placement)
     utils.viewer()
 
     utils.visualize_path(places)
@@ -225,7 +232,6 @@ def main():
     policy = PlaceAdmonWithPose(dim_action=dim_action, dim_collision=dim_state,
                                 save_folder=savedir, tau=config.tau, config=config)
     """
-
     savedir = './generators/learning/architecture_search/learned_weights/'
     n_key_configs = 615
     dim_state = (n_key_configs, 6, 1)
@@ -234,9 +240,12 @@ def main():
     """
 
     print "Trying epoch number ", epoch_number
-    policy.load_weights(additional_name='_epoch_%d' % epoch_number)
-    #policy.load_weights()
-    import pdb;pdb.set_trace()
+    # admonpose_seed_0_epoch_422_batch_idx_1632_drop_in_mse_ - 359.88276.h5
+    #policy.load_weights(additional_name='_epoch_%d_batch_idx_1344_drop_in_mse_-12.44197' % epoch_number)
+    fname = 'admonpose_seed_0_epoch_300_batch_idx_800_drop_in_mse_-42.60719.h5'
+    policy.a_gen.load_weights(policy.save_folder + fname)
+
+    # policy.load_weights()
     visualize_samples(policy)
     """
     policy = AdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
