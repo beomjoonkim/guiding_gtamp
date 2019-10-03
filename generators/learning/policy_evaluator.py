@@ -245,6 +245,8 @@ def main():
     fname = 'admonpose_seed_1_epoch_214_batch_idx_2464_drop_in_mse_-10.42228.h5'
     policy.a_gen.load_weights(policy.save_folder + fname)
 
+
+
     # policy.load_weights()
     visualize_samples(policy)
     """

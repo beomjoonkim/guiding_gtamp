@@ -8,6 +8,7 @@ from genetic_algorithm.cmaes import genetic_algorithm
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from AdversarialPolicy import tau_loss, G_loss, INFEASIBLE_SCORE
 
+import os
 if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
     ROOTDIR = './'
 else:
@@ -45,6 +46,14 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
             voo = VOO(domain, 0.3, 'gaussian', 1)
             max_x, max_y = voo.optimize(objective, n_evals)
         return max_x, max_y
+
+    def save_weights(self, additional_name=''):
+        fdir = ROOTDIR + '/' + self.save_folder + '/'
+        fname = self.weight_file_name + additional_name + '.h5'
+        if not os.path.isdir(fdir):
+            os.makedirs(fdir)
+
+        self.disc.save_weights(fdir + fname)
 
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
         idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
