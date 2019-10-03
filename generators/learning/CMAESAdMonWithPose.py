@@ -67,7 +67,8 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
         for i in range(1, epochs):
             batch_idxs = range(0, actions.shape[0], batch_size)
             stime = time.time()
-            for batch_idx in batch_idxs:
+            for batch_idx, _ in enumerate(batch_idxs):
+                batch_stime = time.time()
                 print "Batch progress %d / %d" % (batch_idx, len(batch_idxs))
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
                                                                                  sum_rewards,
@@ -96,7 +97,8 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
                               batch_scores,
                               epochs=1,
                               verbose=False)
+                batch_time_taken = time.time() - batch_stime
+                print "Batch time", batch_time_taken
             time_taken = time.time() - stime
             print "Epoch time", time_taken
-            import pdb;
-            pdb.set_trace()
+
