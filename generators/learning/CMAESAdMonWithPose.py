@@ -1,9 +1,12 @@
 import socket
 import pickle
 import numpy as np
+import time
+from genetic_algorithm.voo import VOO
 
 from genetic_algorithm.cmaes import genetic_algorithm
 from PlaceAdMonWithPose import PlaceAdmonWithPose
+from AdversarialPolicy import tau_loss, G_loss, INFEASIBLE_SCORE
 
 if socket.gethostname() == 'lab' or socket.gethostname() == 'phaedra':
     ROOTDIR = './'
@@ -31,6 +34,18 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         PlaceAdmonWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
 
+    def get_max_x(self, state, pose):
+        domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
+        objective = lambda action: float(self.disc_mse_model.predict([action[None, :], state, pose])[0, 0])
+        is_cmaes = False
+        n_evals = 50
+        if is_cmaes:
+            max_x, max_y = genetic_algorithm(objective, n_evals)
+        else:
+            voo = VOO(domain, 0.3, 'gaussian', 1)
+            max_x, max_y = voo.optimize(objective, n_evals)
+        return max_x, max_y
+
     def train(self, states, poses, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
         idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
         train_idxs, test_idxs = idxs['train'], idxs['test']
@@ -46,18 +61,42 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
         n_data = len(train_data['actions'])
         batch_size = self.get_batch_size(n_data)
         # how to define the domain?
-        domain = np.array([[0, -20, -1, -1], [10, 0, 1, 1]])
 
         # get data batch
+        curr_tau = 1.0
         for i in range(1, epochs):
             batch_idxs = range(0, actions.shape[0], batch_size)
-            for _ in batch_idxs:
+            stime = time.time()
+            for batch_idx in batch_idxs:
+                print "Batch progress %d / %d" % (batch_idx, len(batch_idxs))
                 s_batch, pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses, actions,
                                                                                  sum_rewards,
                                                                                  batch_size)
                 # generate T sequence data from the cma-es
-                cmaes_objective = lambda x: self.disc_mse_model.predict([a_batch, s_batch, pose_batch])
+                fake_actions = []
+                max_ys = []
+                for s, p in zip(s_batch, pose_batch):
+                    max_x, max_y = self.get_max_x(s[None, :], p[None, :])
 
-                max_x, max_y = genetic_algorithm(cmaes_objective, domain)
-                # update discriminator
-                raise NotImplementedError
+                    fake_actions.append(max_x)
+                    max_ys.append(max_y)
+
+                fake_actions = np.array(fake_actions)
+
+                # make their scores
+                tau_values = np.tile(curr_tau, (batch_size * 2, 1))
+                fake_action_q = np.ones((batch_size, 1)) * INFEASIBLE_SCORE  # marks fake data
+                real_action_q = sum_rewards_batch.reshape((batch_size, 1))
+                batch_a = np.vstack([fake_actions, a_batch])
+                batch_s = np.vstack([s_batch, s_batch])
+                batch_rp = np.vstack([pose_batch, pose_batch])
+                batch_scores = np.vstack([fake_action_q, real_action_q])
+
+                self.disc.fit({'a': batch_a, 's': batch_s, 'pose': batch_rp, 'tau': tau_values},
+                              batch_scores,
+                              epochs=1,
+                              verbose=False)
+            time_taken = time.time() - stime
+            print "Epoch time", time_taken
+            import pdb;
+            pdb.set_trace()

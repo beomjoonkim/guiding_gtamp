@@ -231,16 +231,11 @@ def train_cmaes_place_admon_with_pose(config):
     # Update the discriminator
     #
 
-    import pdb;pdb.set_trace()
-    cmaes_objective = lambda action: admon.disc_mse_model.predict([action[None,:], states[0:1], poses[0:1]])
-    max_x, max_y = genetic_algorithm(cmaes_objective, domain)
-    import pdb;pdb.set_trace()
-
-
     actions = actions[:, 4:]
     is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
     if not is_mse_pretrained:
         admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
+    admon.disc_mse_model.load_weights(admon.save_folder + admon.pretraining_file_name)
 
     # But I have not loaded the weight?
     admon.train(states, poses, actions, sum_rewards, epochs=500)
