@@ -38,8 +38,8 @@ class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
     def get_max_x(self, state, pose):
         domain = np.array([[0, 0, -1, -1], [1, 1, 1, 1]])
         objective = lambda action: float(self.disc_mse_model.predict([action[None, :], state, pose])[0, 0])
-        is_cmaes = True
-        n_evals = 50
+        is_cmaes = False
+        n_evals = 100
         if is_cmaes:
             max_x, max_y = genetic_algorithm(objective, n_evals)
         else:
