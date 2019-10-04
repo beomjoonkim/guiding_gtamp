@@ -3,6 +3,7 @@ import numpy as np
 
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'pick_parameters_place_normalized_relative_to_region'
+action_data_mode = 'pick_parameters_place_relative_to_object'
 
 
 def get_processed_poses_from_state(state):

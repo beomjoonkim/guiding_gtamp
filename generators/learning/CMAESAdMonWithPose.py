@@ -34,6 +34,8 @@ def slice_object_pose_from_pose(x):
 class CMAESAdversarialMonteCarloWithPose(PlaceAdmonWithPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         PlaceAdmonWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
+        self.disc_output = self.construct_relevance_network()
+        import pdb;pdb.set_trace()
 
     def get_max_x(self, state, pose):
         domain = np.array([[0, 0, -1, -1], [1, 1, 1, 1]])

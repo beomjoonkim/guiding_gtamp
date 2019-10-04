@@ -20,13 +20,16 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        # return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
     all_actions = []
     all_sum_rewards = []
     all_poses = []
+    all_rel_konfs = []
+    key_configs = pickle.load(open('prm.pkl', 'r'))[0]
+    key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
 
     for traj_file in traj_files:
         if 'pidx' not in traj_file:
@@ -52,6 +55,13 @@ def load_data(traj_dir):
         poses = np.array([get_processed_poses_from_state(s) for s in traj.states])
         actions = np.array([get_processed_poses_from_action(s, a)
                             for s, a in zip(traj.states, traj.actions)])
+        for s in traj.states:
+            rel_konfs = []
+            for k in key_configs:
+                rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
+                rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+                rel_konfs.append(rel_konf)
+            all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 4, 1)))
 
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
@@ -61,12 +71,15 @@ def load_data(traj_dir):
         all_actions.append(actions)
         all_sum_rewards.append(sum_rewards)
 
+    all_rel_konfs = np.vstack(all_rel_konfs)
     all_states = np.vstack(all_states).squeeze(axis=1)
     all_actions = np.vstack(all_actions)
     all_sum_rewards = np.hstack(np.array(all_sum_rewards))[:, None]  # keras requires n_data x 1
     all_poses = np.vstack(all_poses).squeeze()
-    pickle.dump((all_states, all_poses, all_actions, all_sum_rewards), open(traj_dir + cache_file_name, 'wb'))
-    return all_states, all_poses, all_actions, all_sum_rewards[:, None]
+    all_rel_konfs = np.vstack(all_rel_konfs).squeeze()
+    pickle.dump((all_states, all_poses, all_rel_konfs, all_actions, all_sum_rewards),
+                open(traj_dir + cache_file_name, 'wb'))
+    return all_states, all_poses, all_rel_konfs, all_actions, all_sum_rewards[:, None]
 
 
 def get_data():
@@ -74,8 +87,9 @@ def get_data():
         root_dir = './'
     else:
         root_dir = '/data/public/rw/pass.port/guiding_gtamp/planning_experience/processed/'
-    states, poses, actions, sum_rewards = load_data(root_dir + '/planning_experience/processed/domain_two_arm_mover/'
-                                                               'n_objs_pack_1/irsc/sampler_trajectory_data/')
+    states, poses, rel_konfs, actions, sum_rewards = load_data(
+        root_dir + '/planning_experience/processed/domain_two_arm_mover/'
+                   'n_objs_pack_1/irsc/sampler_trajectory_data/')
 
     n_data = 5000
     states = states[:5000, :]
@@ -83,7 +97,7 @@ def get_data():
     actions = actions[:5000, :]
     sum_rewards = sum_rewards[:5000]
     print "Number of data", len(states)
-    return states, poses, actions, sum_rewards
+    return states, poses, rel_konfs, actions, sum_rewards
 
 
 def train_admon(config):
@@ -113,7 +127,7 @@ def train_admon_with_pose(config):
 
 
 def train_place_admon_with_pose(config):
-    states, poses, actions, sum_rewards = get_data()
+    states, poses, key_configs, actions, sum_rewards = get_data()
     import pdb;
     pdb.set_trace()
     actions = actions[:, 4:]
@@ -134,7 +148,7 @@ def train_place_admon_with_pose(config):
 
 
 def train_cmaes_place_admon_with_pose(config):
-    states, poses, actions, sum_rewards = get_data()
+    states, poses, rel_konfs, actions, sum_rewards = get_data()
     n_key_configs = 615
     dim_state = (n_key_configs, 6, 1)
     dim_action = 4
@@ -142,8 +156,6 @@ def train_cmaes_place_admon_with_pose(config):
         state_data_mode, action_data_mode)
     admon = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                save_folder=savedir, tau=config.tau, config=config)
-    import pdb;
-    pdb.set_trace()
 
     actions = actions[:, 4:]
     is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
@@ -152,7 +164,7 @@ def train_cmaes_place_admon_with_pose(config):
     admon.disc_mse_model.load_weights(admon.save_folder + admon.pretraining_file_name)
 
     # But I have not loaded the weight?
-    admon.train(states, poses, actions, sum_rewards, epochs=500)
+    admon.train(states, poses, rel_konfs, actions, sum_rewards, epochs=500)
 
 
 def parse_args():

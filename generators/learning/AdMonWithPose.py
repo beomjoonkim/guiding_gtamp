@@ -152,6 +152,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         abs_obj_pose = Reshape((self.n_key_confs, 4, 1))(abs_obj_pose)
         return abs_obj_pose
 
+
     def make_tiled_abs_obj_pose_and_pick_output(self, pick_output):
         dense_num = 64
         abs_obj_pose = Lambda(slice_object_pose_from_pose)(self.pose_input)
@@ -196,7 +197,7 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         a_gen = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=a_gen_output)
         return a_gen, a_gen_output
 
-    def create_conv_layers(self, input, n_dim):
+    def create_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
         n_filters = 64
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, n_dim),
@@ -207,9 +208,10 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
                        kernel_size=(1, 1),
                        strides=(1, 1),
                        activation='relu')(H)
-        H = MaxPooling2D(pool_size=(2, 1))(H)
-        H = Flatten()(H)
-
+        if use_pooling:
+            H = MaxPooling2D(pool_size=(2, 1))(H)
+        if use_flatten:
+            H = Flatten()(H)
         return H
 
     def get_disc_output_with_preprocessing_layers(self):
