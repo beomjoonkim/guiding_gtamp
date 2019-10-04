@@ -1,7 +1,5 @@
 from keras.optimizers import *
-from keras import initializers
 from keras.layers import *
-from keras.models import Model
 
 import os
 import sys
@@ -83,9 +81,32 @@ class AdversarialPolicy:
             batch_size = 1
         return batch_size
 
+    def get_tiled_input(self, inp):
+        inp_dim = inp.shape[1]._value
+        repeated = RepeatVector(self.n_key_confs)(inp)
+        repeated = Reshape((self.n_key_confs, inp_dim, 1))(repeated)
+        return repeated
+
     def set_learning_rates(self, d_lr, g_lr):
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
+
+    def create_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
+        n_filters = 64
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, n_dim),
+                   strides=(1, 1),
+                   activation='relu')(input)
+        for _ in range(4):
+            H = Conv2D(filters=n_filters,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='relu')(H)
+        if use_pooling:
+            H = MaxPooling2D(pool_size=(2, 1))(H)
+        if use_flatten:
+            H = Flatten()(H)
+        return H
 
     def create_callbacks_for_pretraining(self):
         callbacks = [
@@ -98,7 +119,3 @@ class AdversarialPolicy:
             # tf.keras.callbacks.TensorBoard()
         ]
         return callbacks
-
-
-
-

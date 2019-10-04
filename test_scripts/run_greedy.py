@@ -206,6 +206,7 @@ def get_pap_gnn_model(mover, config):
 
         with tf.variable_scope('pap'):
             pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
+        import pdb;pdb.set_trace()
         pap_model.load_weights()
     else:
         pap_model = None
