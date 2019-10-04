@@ -10,6 +10,7 @@ import numpy as np
 import random
 import sys
 
+
 def get_learned_smpler():
     n_key_configs = 620
     dim_state = (n_key_configs, 2, 1)
@@ -94,7 +95,7 @@ class SamplerTrajectory:
         state = None
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
-                associated_place = plan[action_idx+1]
+                associated_place = plan[action_idx + 1]
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
                 action.execute()
@@ -128,4 +129,4 @@ class SamplerTrajectory:
         self.add_state_prime()
         print "Done!"
         openrave_env.Destroy()
-        #openravepy.RaveDestroy()
+        # openravepy.RaveDestroy()
