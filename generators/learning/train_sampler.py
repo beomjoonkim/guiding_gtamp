@@ -114,8 +114,6 @@ def train_admon_with_pose(config):
 
 def train_place_admon_with_pose(config):
     states, poses, actions, sum_rewards = get_data()
-    import pdb;
-    pdb.set_trace()
     actions = actions[:, 4:]
     n_key_configs = states.shape[1]  # indicating whether it is a goal obj and goal region
     dim_state = (n_key_configs, 6, 1)
@@ -142,8 +140,6 @@ def train_cmaes_place_admon_with_pose(config):
         state_data_mode, action_data_mode)
     admon = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                save_folder=savedir, tau=config.tau, config=config)
-    import pdb;
-    pdb.set_trace()
 
     actions = actions[:, 4:]
     is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
