@@ -39,7 +39,7 @@ def get_num_nodes(test_dir, stat):
 
 
 def get_pidx(test_dir, filename):
-    if test_dir.find('hpn') != -1:
+    if test_dir.find('irsc') != -1:
         return int(filename.split('pidx_')[1].split('.pkl')[0])
     else:
         return int(filename.split('pidx_')[1].split('_planne')[0])
@@ -82,13 +82,13 @@ def get_plan_times(test_dir, test_files, t_limit):
         if pidx < 20000 or pidx > 20100:
             continue
 
-        #if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
+        # if 'train_seed_1' in filename: #or 'train_seed_0' not in filename:
         #    continue
 
-        #if 'train_seed_0' not in filename:
+        # if 'train_seed_0' not in filename:
         #    continue
 
-        #print filename
+        # print filename
 
         stat = pickle.load(open(test_dir + filename, 'r'))
         ftime_taken = get_time_taken(test_dir, stat)
@@ -98,11 +98,11 @@ def get_plan_times(test_dir, test_files, t_limit):
             time_taken.append(ftime_taken)
             successes.append(fsuccess)
         else:
-            #if not stat['success']:
+            # if not stat['success']:
             #    continue
             time_taken.append(t_limit)
             successes.append(False)
-            #print 'Failed',filename
+            # print 'Failed',filename
     CI95 = 1.96 * np.std(time_taken) / np.sqrt(len(time_taken))
     print "Number of data", len(time_taken)
     print "Time taken %.3f +- %.3f" % (np.mean(time_taken), CI95)
@@ -111,7 +111,7 @@ def get_plan_times(test_dir, test_files, t_limit):
 
 def main():
     n_objs = int(sys.argv[1])
-    t_limit = 300* n_objs
+    t_limit = 300 * n_objs
 
     domain = 'two_arm_mover'
     if domain == 'one_arm_mover':
@@ -120,16 +120,25 @@ def main():
     # Customize the below
 
 
-
     # Hcount
-    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/hcount/' % (domain, n_objs)
-
+    test_dir = './test_results/sahs_results/domain_%s/n_objs_pack_%d/state_hcount/' % (domain, n_objs)
 
 
     # qlearned_hcount_obj_already_in_goal_old_number_in_goal
     test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/' \
                'n_objs_pack_%d/qlearned_hcount_obj_already_in_goal_old_number_in_goal/shortest_irsc/' \
-               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_100.0/' % (domain, n_objs)
+               'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/mix_rate_1.0/' % (
+               domain, n_objs)
+
+
+
+
+    # qlearned_obj_old_number_in_goal - dql
+    test_dir = './test_results/sahs_results/using_weights_for_submission/domain_%s/' \
+               'n_objs_pack_%d/qlearned_old_number_in_goal/shortest_irsc/' \
+               'loss_dql/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (
+                   domain, n_objs)
+
 
 
     # qlearned_obj_old_number_in_goal
@@ -137,10 +146,7 @@ def main():
                'n_objs_pack_%d/qlearned_old_number_in_goal/shortest_irsc/' \
                'loss_largemargin/num_train_5000/mse_weight_1.0/use_region_agnostic_False/' % (
                    domain, n_objs)
-
-
-
-
+    test_dir  ='./test_results/sahs_results/irsc_mc/domain_%s/n_objs_pack_%d/' % (domain, n_objs)
     test_files = os.listdir(test_dir)
     get_plan_times(test_dir, test_files, t_limit)
     get_num_nodes(test_dir, test_files)
