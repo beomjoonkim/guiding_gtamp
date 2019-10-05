@@ -21,8 +21,10 @@ def compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env):
         a_raw_form = convert_action_to_predictable_form(a, entity_names)
         if np.all(a_raw_form == actions):
             continue
-        q_vals.append(
-            np.exp(pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])))
+        q_val = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])[0]
+        if q_val > 10:
+            bonus_val = np.exp(q_val / 100.0)
+        q_vals.append(bonus_val)
 
     q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
     q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals + np.exp(q_val_on_curr_a))
