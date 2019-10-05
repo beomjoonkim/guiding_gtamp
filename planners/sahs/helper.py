@@ -15,7 +15,7 @@ def get_actions(mover, goal, config):
 
 def compute_bonus_val(pap_model, nodes, edges, a_raw_form):
     q_val = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])[0]
-    if q_val > 10:
+    if abs(q_val) > 10:
         bonus_val = np.exp(q_val / 100.0)
     else:
         bonus_val = np.exp(q_val)
