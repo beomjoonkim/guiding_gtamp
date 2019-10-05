@@ -13,6 +13,15 @@ def get_actions(mover, goal, config):
     return permuted_actions
 
 
+def compute_bonus_val(pap_model, nodes, edges, a_raw_form):
+    q_val = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])[0]
+    if q_val > 10:
+        bonus_val = np.exp(q_val / 100.0)
+    else:
+        bonus_val = np.exp(q_val)
+    return bonus_val
+
+
 def compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env):
     all_actions = get_actions(problem_env, None, None)
     entity_names = list(state.nodes.keys())[::-1]
@@ -21,13 +30,11 @@ def compute_q_bonus(state, nodes, edges, actions, pap_model, problem_env):
         a_raw_form = convert_action_to_predictable_form(a, entity_names)
         if np.all(a_raw_form == actions):
             continue
-        q_val = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], a_raw_form[None, ...])[0]
-        if q_val > 10:
-            bonus_val = np.exp(q_val / 100.0)
+        bonus_val = compute_bonus_val(pap_model, nodes, edges, a_raw_form)
         q_vals.append(bonus_val)
 
-    q_val_on_curr_a = pap_model.predict_with_raw_input_format(nodes[None, ...], edges[None, ...], actions[None, ...])
-    q_bonus = np.exp(q_val_on_curr_a) / np.sum(q_vals + np.exp(q_val_on_curr_a))
+    bonus_val_on_curr_a = compute_bonus_val(pap_model, nodes, edges, actions)
+    q_bonus = bonus_val_on_curr_a / (np.sum(q_vals) + bonus_val_on_curr_a)
     return q_bonus
 
 
@@ -186,7 +193,7 @@ def compute_heuristic(state, action, pap_model, problem_env, config):
                                                                   actions[None, ...])
         obj_already_in_goal = state.binary_edges[(target_o, goal_region)][0]
         hval = -number_in_goal + obj_already_in_goal - q_val_on_curr_a
-        #hval = -number_in_goal - q_val_on_curr_a
+        # hval = -number_in_goal - q_val_on_curr_a
 
         o_reachable = state.is_entity_reachable(target_o)
         o_r_manip_free = state.binary_edges[(target_o, target_r)][-1]
