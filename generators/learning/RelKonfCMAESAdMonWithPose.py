@@ -4,6 +4,7 @@ from AdversarialPolicy import INFEASIBLE_SCORE
 from generators.learning.AdversarialPolicy import AdversarialPolicy
 from genetic_algorithm.voo import VOO
 from genetic_algorithm.cmaes import genetic_algorithm
+from keras.models import Model
 
 import pickle
 import time
@@ -12,21 +13,36 @@ import time
 class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
-        self.key_config_input = Input(shape=(615, 4, 1), name='konf', dtype='float32')
-        self.goal_flag_input = Input(shape=(4,), name='goal_flag', dtype='float32')
 
         self.dim_poses = 8
         self.dim_collision = dim_collision
+
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
+        self.key_config_input = Input(shape=(615, 4, 1), name='konf', dtype='float32')
+        self.goal_flag_input = Input(shape=(4,), name='goal_flag', dtype='float32')
+
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
-        self.disc_output = self.construct_relevance_network()
+        disc_output = self.construct_relevance_network()
+        self.disc_mse_model = self.construct_mse_model(disc_output)
+        #self.disc_model = self.construct_disc_model(disc_output)
+
         # todo
         #   1. create a model from disc output
-        #   2.
+        #   2. create a disc model
+
+    def construct_mse_model(self, output):
+        mse_model = Model(inputs=[self.action_input, self.collision_input, self.pose_input, self.key_config_input],
+                          outputs=output,
+                          name='disc_output')
+        mse_model.compile(loss='mse', optimizer=self.opt_D)
+        return mse_model
+
+    def construct_disc_model(self, output):
+        raise NotImplementedError
 
     def construct_relevance_network(self):
         tiled_action = self.get_tiled_input(self.action_input)
@@ -78,7 +94,7 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
 
     def get_max_x(self, state, pose, rel_konfs):
         domain = np.array([[0, 0, -1, -1], [1, 1, 1, 1]])
-        objective = lambda action: float(self.disc_mse_model.predict([action[None, :], state, pose])[0, 0])
+        objective = lambda action: float(self.disc_model.predict([action[None, :], state, pose, rel_konfs])[0, 0])
         is_cmaes = False
         n_evals = 50
         if is_cmaes:
@@ -88,12 +104,12 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
             max_x, max_y = voo.optimize(objective, n_evals)
         return max_x, max_y
 
-    def train(self, states, poses, rel_konf, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
+    def train(self, states, poses, rel_konfs, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
         idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
         train_idxs, test_idxs = idxs['train'], idxs['test']
-        train_data, test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
+        train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, actions, sum_rewards,
                                                              train_idxs, test_idxs)
-        self.disc_mse_model.load_weights(self.save_folder + self.pretraining_file_name)
+        self.disc_model.load_weights(self.save_folder + self.pretraining_file_name)
 
         states = train_data['states']
         poses = train_data['poses']

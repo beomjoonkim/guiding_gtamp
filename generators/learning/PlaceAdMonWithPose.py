@@ -48,7 +48,6 @@ class PlaceAdmonWithPose(AdversarialMonteCarloWithPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         AdversarialMonteCarloWithPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
 
-
     def create_a_gen_output(self):
         dense_num = 64
 
