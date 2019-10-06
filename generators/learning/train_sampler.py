@@ -90,7 +90,6 @@ def get_data():
     states, poses, rel_konfs, actions, sum_rewards = load_data(
         root_dir + '/planning_experience/processed/domain_two_arm_mover/'
                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
-
     is_goal_flag = states[:, :, 2:, :]
     states = states[:, :, :2, :]  # collision vector
 
@@ -100,6 +99,8 @@ def get_data():
     actions = actions[:5000, :]
     sum_rewards = sum_rewards[:5000]
     is_goal_flags = is_goal_flag[:5000, :]
+
+    sum_rewards[sum_rewards.squeeze()==0, :] = 10
     print "Number of data", len(states)
     return states, poses, rel_konfs, is_goal_flags, actions, sum_rewards
 
@@ -178,6 +179,7 @@ def train_rel_konf_place_mse(config):
     admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
                            save_folder=savedir, tau=config.tau, config=config)
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
+    import pdb;pdb.set_trace()
 
     actions = actions[:, 4:]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)

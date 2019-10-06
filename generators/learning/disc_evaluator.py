@@ -1,16 +1,15 @@
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
-from RelKonfCMAESAdMonWithPose import RelKonfCMAESAdversarialMonteCarloWithPose
+from RelKonfAdMonWithPose import RelKonfMSEPose
 from policy_evaluator import get_pidxs_to_evaluate_policy, load_pose_file, get_smpler_state
 from data_processing.utils import state_data_mode, action_data_mode, convert_pose_rel_to_region_to_abs_pose, \
     unnormalize_pose_wrt_region
 
 from gtamp_utils import utils
+from gtamp_utils.utils import *
 from test_scripts.run_greedy import get_problem_env
 
-import sys
-import numpy as np
 import collections
-import time
+import pickle
 
 
 def get_augmented_state_vec_and_poses(obj, state_vec, smpler_state):
@@ -27,15 +26,11 @@ def get_augmented_state_vec_and_poses(obj, state_vec, smpler_state):
     return state_vec, poses
 
 
-import copy
-from gtamp_utils.utils import *
-
-
 def make_body(height, i, x, y):
     env = openravepy.RaveGetEnvironments()[0]
     new_body = box_body(env, 0.1, 0.1, height,
                         name='value_obj%s' % i,
-                        color=(0, 1, 0))
+                        color=(0, 0.5, 0))
     env.AddKinBody(new_body)
     trans = np.eye(4)
     trans[2, -1] = 1.0
@@ -51,32 +46,56 @@ def get_placements(state, poses, admon, smpler_state):
     max_val = -np.inf
     placement = np.array([0., 0., 1., 1.])
     exp_val = {}
-    for x in np.linspace(0., 1, 10):
-        for y in np.linspace(0, 1, 10):
+
+    cols = state[:, :, 0:2, :]
+    goal_flags = state[:, :, 2:, :]
+
+    key_configs = pickle.load(open('prm.pkl', 'r'))[0]
+    key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
+    rel_konfs = []
+    for k in key_configs:
+        rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, smpler_state.obj_pose)
+        rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+        rel_konfs.append(rel_konf)
+    rel_konfs = np.array(rel_konfs).reshape((1, 615, 4, 1))
+
+    x_range = np.linspace(0, 3.5, 10)
+    y_range = np.linspace(-8, -5, 10)
+    placement = np.array([0, 0, 0])
+    for x in x_range:
+        for y in y_range:
             placement[0] = x
             placement[1] = y
-            val = admon.disc_mse_model.predict([placement[None, :], state, poses])
+
+            # I need it relative to the object
+            rel_placement = utils.get_relative_robot_pose_wrt_body_pose(placement, smpler_state.obj_pose)
+            rel_placement = utils.encode_pose_with_sin_and_cos_angle(rel_placement)
+            val = admon.q_mse_model.predict([rel_placement[None, :], goal_flags, rel_konfs, cols])
             if val > max_val:
                 max_x = copy.deepcopy(placement)
                 max_val = val
             exp_val[(x, y)] = np.exp(val)
-            print x, y, val
+            print x, y, val, exp_val[(x, y)]
 
     total = np.sum(exp_val.values())
+    total = 1
     i = 0
     utils.viewer()
-    for x in np.linspace(0, 1, 10):
-        for y in np.linspace(0, 1, 10):
+    for x in x_range:
+        for y in y_range:
             height = exp_val[(x, y)] / total + 1
             print x, y, height
             placement[0] = x
             placement[1] = y
-            absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
-            make_body(height, i, absx, absy)
+            # absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
+            # make_body(height, i, absx, absy)
+            make_body(height, i, x, y)
             i += 1
     placement = max_x
-    print placement, max_val
+    print placement, max_val, np.exp(max_val)
     print 'maximizing x time', time.time() - stime
+    import pdb;
+    pdb.set_trace()
 
     placement = utils.decode_pose_with_sin_and_cos_angle(placement)
     if 'place_relative_to_obj' in action_data_mode:
@@ -117,7 +136,7 @@ def visualize_samples(q_fcn):
 
 def main():
     n_key_configs = 615  # indicating whether it is a goal obj and goal region
-    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/cmaes_place_admon/' % (
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_mse/' % (
         state_data_mode, action_data_mode)
 
     mconfig_type = collections.namedtuple('mconfig_type',
@@ -131,17 +150,17 @@ def main():
 
     use_rel_konf = True
     dim_action = 4
+    fname = 'pretrained_0.h5'
     if use_rel_konf:
         dim_state = (n_key_configs, 2, 1)
-        policy = RelKonfCMAESAdversarialMonteCarloWithPose(dim_action, dim_state, savedir, 1.0, config)
+        policy = RelKonfMSEPose(dim_action, dim_state, savedir, 1.0, config)
+        policy.q_mse_model.load_weights(policy.save_folder + fname)
     else:
         dim_state = (n_key_configs, 6, 1)
         policy = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                     save_folder=savedir, tau=1.0, config=config)
+        policy.disc.load_weights(policy.save_folder + fname)
     print "Trying epoch number ", epoch_number
-    fname = 'admonpose_seed_3_epoch_57_drop_in_mse_-0.29760.h5'
-    fname = 'admonpose_seed_0_epoch_57_drop_in_mse_-0.44833.h5'
-    policy.disc.load_weights(policy.save_folder + fname)
     visualize_samples(policy)
 
 
