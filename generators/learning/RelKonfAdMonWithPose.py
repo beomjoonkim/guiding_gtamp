@@ -21,46 +21,38 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
-        disc_output = self.construct_relevance_network()
-        self.disc_mse_model = self.construct_mse_model(disc_output)
+        self.q_output = self.construct_relevance_network()
+        self.q_mse_model = self.construct_mse_model(self.q_output)
 
     def construct_mse_model(self, output):
-        mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
+        mse_model = Model(inputs=[self.action_input, self.goal_flag_input,
                                   self.key_config_input, self.collision_input],
                           outputs=output,
-                          name='disc_output')
+                          name='q_output')
         mse_model.compile(loss='mse', optimizer=self.opt_D)
         return mse_model
 
-    def construct_q_model(self, output):
-        raise NotImplementedError
-
-    def construct_policy_model(self, output):
-        raise NotImplementedError
-
     def construct_relevance_network(self):
         tiled_action = self.get_tiled_input(self.action_input)
-        H_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_action, self.goal_flag_input])
-        dim_combined = H_konf_action_goal_flag.shape[2]._value
-        H_relevance = self.create_conv_layers(H_konf_action_goal_flag, dim_combined, use_pooling=False,
-                                              use_flatten=False)
-        H_relevance = Conv2D(filters=1,
-                             kernel_size=(1, 1),
-                             strides=(1, 1),
-                             activation='relu')(H_relevance)
-        self.relevance_output = H_relevance
-
-        H_col_relevance = Concatenate(axis=2)([self.collision_input, H_relevance])
-        H_col_relevance = self.create_conv_layers(H_col_relevance, n_dim=4)
+        hidden_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_action, self.goal_flag_input])
+        dim_combined = hidden_konf_action_goal_flag.shape[2]._value
+        hidden_relevance = self.create_conv_layers(hidden_konf_action_goal_flag, dim_combined, use_pooling=False,
+                                                   use_flatten=False)
+        hidden_relevance = Conv2D(filters=1,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='relu')(hidden_relevance)
+        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=3)
 
         dense_num = 64
-        H_place = Dense(dense_num, activation='relu')(H_col_relevance)
-        H_place = Dense(dense_num, activation='relu')(H_place)
+        hidden_place = Dense(dense_num, activation='relu')(hidden_col_relevance)
+        hidden_place = Dense(dense_num, activation='relu')(hidden_place)
         place_value = Dense(1, activation='linear',
                             kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(H_place)
-        disc_output = place_value
-        return disc_output
+                            bias_initializer=self.initializer)(hidden_place)
+        q_output = place_value
+        return q_output
 
     def get_train_and_test_data(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, train_indices,
                                 test_indices):
@@ -90,8 +82,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         return s_batch, pose_batch, konf_batch, a_batch, sum_reward_batch
 
     def compute_pure_mse(self, data):
-        pred = self.disc_mse_model.predict([data['actions'], data['goal_flags'], data['poses'], data['rel_konfs'],
-                                            data['states']])
+        pred = self.q_mse_model.predict([data['actions'], data['goal_flags'], data['rel_konfs'], data['states']])
         return np.mean(np.power(pred - data['sum_rewards'], 2))
 
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards):
@@ -101,13 +92,62 @@ class RelKonfMSEPose(AdversarialPolicy):
                                                                        train_idxs, test_idxs)
         callbacks = self.create_callbacks_for_pretraining()
         pre_mse = self.compute_pure_mse(self.test_data)
-        self.disc_mse_model.fit([self.train_data['actions'], self.train_data['goal_flags'], self.train_data['poses'],
-                                 self.train_data['rel_konfs'], self.train_data['states']],
-                                self.train_data['sum_rewards'], batch_size=32,
-                                epochs=500,
-                                verbose=2,
-                                callbacks=callbacks,
-                                validation_split=0.1)
+        self.q_mse_model.fit([self.train_data['actions'], self.train_data['goal_flags'],
+                              self.train_data['rel_konfs'], self.train_data['states']],
+                             self.train_data['sum_rewards'], batch_size=32,
+                             epochs=500,
+                             verbose=2,
+                             callbacks=callbacks,
+                             validation_split=0.1)
         post_mse = self.compute_pure_mse(self.test_data)
 
         print "Pre-and-post test errors", pre_mse, post_mse
+
+
+class RelKonfIMLEPose(RelKonfMSEPose):
+    def __init__(self, dim_action, dim_collision, save_folder, tau, config):
+        RelKonfMSEPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
+        self.policy_output = self.construct_policy_output()
+        self.policy_model = self.construct_policy_model()
+
+    def construct_policy_output(self):
+        tiled_obj_pose = self.get_tiled_input(self.pose_input)  # get the object pose
+        hidden_konf_action_goal_flag = Concatenate(axis=2)(
+            [self.key_config_input, tiled_obj_pose, self.goal_flag_input])
+        dim_combined = hidden_konf_action_goal_flag.shape[2]._value
+        hidden_relevance = self.create_conv_layers(hidden_konf_action_goal_flag, dim_combined, use_pooling=False,
+                                                   use_flatten=False)
+        hidden_relevance = Conv2D(filters=1,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='relu')(hidden_relevance)
+
+        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=4)
+
+        dense_num = 64
+        hidden_place = Dense(dense_num, activation='relu')(hidden_col_relevance)
+        hidden_place = Dense(dense_num, activation='relu')(hidden_place)
+        action_output = Dense(self.dim_action,
+                              activation='linear',
+                              kernel_initializer=self.initializer,
+                              bias_initializer=self.initializer)(hidden_place)
+        return action_output
+
+    def construct_policy_model(self):
+        mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.key_config_input, self.collision_input],
+                          outputs=self.policy_output,
+                          name='q_output')
+        mse_model.compile(loss='mse', optimizer=self.opt_D)
+        return mse_model
+
+    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards):
+        train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
+        train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags, actions, sum_rewards,
+                                                             train_idxs, test_idxs)
+
+        # generate x_1,...,x_m from the generator
+        # pick random batch of size m from the real dataset Y
+        # compute the nearest neighbor for each x_i
+
+        raise NotImplementedError
