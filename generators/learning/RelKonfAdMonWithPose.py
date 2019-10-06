@@ -14,7 +14,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # pose
-        self.key_config_input = Input(shape=(615, 4, 1), name='konf', dtype='float32')  # relative key config
+        self.key_config_input = Input(shape=(615, 3, 1), name='konf', dtype='float32')  # relative key config
         self.goal_flag_input = Input(shape=(615, 4, 1), name='goal_flag',
                                      dtype='float32')  # goal flag (is_goal_r, is_goal_obj)
 

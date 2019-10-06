@@ -175,7 +175,7 @@ def train_cmaes_place_admon_with_pose(config):
 def train_rel_konf_place_mse(config):
     n_key_configs = 615
     dim_state = (n_key_configs, 2, 1)
-    dim_action = 4
+    dim_action = 3
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_mse/' % (
         state_data_mode, action_data_mode)
     admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
