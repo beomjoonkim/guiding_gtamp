@@ -9,7 +9,7 @@ import socket
 from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
-from RelKonfCMAESAdMonWithPose import RelKonfCMAESAdversarialMonteCarloWithPose
+from RelKonfAdMonWithPose import RelKonfMSEPose
 from data_processing.utils import get_processed_poses_from_state, get_processed_poses_from_action, \
     state_data_mode, action_data_mode
 
@@ -92,7 +92,7 @@ def get_data():
                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
 
     is_goal_flag = states[:, :, 2:, :]
-    states = states[:, :, :2, :] # collision vector
+    states = states[:, :, :2, :]  # collision vector
 
     n_data = 5000
     states = states[:5000, :]
@@ -169,27 +169,18 @@ def train_cmaes_place_admon_with_pose(config):
     admon.train(states, poses, actions, sum_rewards, epochs=500)
 
 
-def train_rel_konf_cmaes_place_admon_with_pose(config):
+def train_rel_konf_place_mse(config):
     n_key_configs = 615
-    dim_state = (n_key_configs, 6, 1)
+    dim_state = (n_key_configs, 2, 1)
     dim_action = 4
-    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/cmaes_place_admon/' % (
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_mse/' % (
         state_data_mode, action_data_mode)
-    admon = RelKonfCMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                                      save_folder=savedir, tau=config.tau, config=config)
+    admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
+                           save_folder=savedir, tau=config.tau, config=config)
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
-    import pdb;pdb.set_trace()
 
     actions = actions[:, 4:]
-    """
-    is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
-    if not is_mse_pretrained:
-        admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
-    admon.disc_mse_model.load_weights(admon.save_folder + admon.pretraining_file_name)
-    """
-
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
-    import pdb;pdb.set_trace()
 
 
 def parse_args():
@@ -203,7 +194,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='cmaes_relkonf_placeadmonpose')
+    parser.add_argument('-algo', type=str, default='rel_konf_place_mse')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
@@ -228,8 +219,8 @@ def main():
         train_place_admon_with_pose(configs)
     elif configs.algo == 'cmaes_placeadmonpose':
         train_cmaes_place_admon_with_pose(configs)
-    elif configs.algo == 'cmaes_relkonf_placeadmonpose':
-        train_rel_konf_cmaes_place_admon_with_pose(configs)
+    elif configs.algo == 'rel_konf_place_mse':
+        train_rel_konf_place_mse(configs)
     else:
         raise NotImplementedError
 

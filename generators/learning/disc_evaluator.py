@@ -1,4 +1,5 @@
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
+from RelKonfCMAESAdMonWithPose import RelKonfCMAESAdversarialMonteCarloWithPose
 from policy_evaluator import get_pidxs_to_evaluate_policy, load_pose_file, get_smpler_state
 from data_processing.utils import state_data_mode, action_data_mode, convert_pose_rel_to_region_to_abs_pose, \
     unnormalize_pose_wrt_region
@@ -67,7 +68,7 @@ def get_placements(state, poses, admon, smpler_state):
     for x in np.linspace(0, 1, 10):
         for y in np.linspace(0, 1, 10):
             height = exp_val[(x, y)] / total + 1
-            print x,y, height
+            print x, y, height
             placement[0] = x
             placement[1] = y
             absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
@@ -127,10 +128,16 @@ def main():
         seed=int(sys.argv[1])
     )
     epoch_number = int(sys.argv[2])
-    dim_state = (n_key_configs, 6, 1)
+
+    use_rel_konf = True
     dim_action = 4
-    policy = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
-                                                save_folder=savedir, tau=1.0, config=config)
+    if use_rel_konf:
+        dim_state = (n_key_configs, 2, 1)
+        policy = RelKonfCMAESAdversarialMonteCarloWithPose(dim_action, dim_state, savedir, 1.0, config)
+    else:
+        dim_state = (n_key_configs, 6, 1)
+        policy = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
+                                                    save_folder=savedir, tau=1.0, config=config)
     print "Trying epoch number ", epoch_number
     fname = 'admonpose_seed_3_epoch_57_drop_in_mse_-0.29760.h5'
     fname = 'admonpose_seed_0_epoch_57_drop_in_mse_-0.44833.h5'
