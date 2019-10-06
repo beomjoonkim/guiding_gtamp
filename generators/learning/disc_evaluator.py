@@ -75,7 +75,8 @@ def get_placements(state, poses, admon, smpler_state):
                 max_x = copy.deepcopy(placement)
                 max_val = val
             exp_val[(x, y)] = np.exp(val)
-            print x, y, val, exp_val[(x, y)]
+            print rel_placement, x, y, val, exp_val[(x, y)]
+            import pdb;pdb.set_trace()
 
     total = np.sum(exp_val.values())
     total = 1
@@ -84,7 +85,7 @@ def get_placements(state, poses, admon, smpler_state):
     for x in x_range:
         for y in y_range:
             height = exp_val[(x, y)] / total + 1
-            print x, y, height
+            #print x, y, height
             placement[0] = x
             placement[1] = y
             # absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
