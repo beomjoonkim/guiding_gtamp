@@ -77,7 +77,6 @@ def load_data(traj_dir):
     all_actions = np.vstack(all_actions)
     all_sum_rewards = np.hstack(np.array(all_sum_rewards))[:, None]  # keras requires n_data x 1
     all_poses = np.vstack(all_poses).squeeze()
-    all_rel_konfs = np.vstack(all_rel_konfs).squeeze()
     pickle.dump((all_states, all_poses, all_rel_konfs, all_actions, all_sum_rewards),
                 open(traj_dir + cache_file_name, 'wb'))
     return all_states, all_poses, all_rel_konfs, all_actions, all_sum_rewards[:, None]
