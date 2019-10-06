@@ -21,7 +21,7 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        # return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
@@ -92,13 +92,17 @@ def get_data():
         root_dir + '/planning_experience/processed/domain_two_arm_mover/'
                    'n_objs_pack_1/irsc/sampler_trajectory_data/')
 
+    is_goal_flag = states[:, :, 2:, :]
+    states = states[:, :, :2, :] # collision vector
+
     n_data = 5000
     states = states[:5000, :]
     poses = poses[:n_data, :]
     actions = actions[:5000, :]
     sum_rewards = sum_rewards[:5000]
+    is_goal_flags = is_goal_flag[:5000, :]
     print "Number of data", len(states)
-    return states, poses, rel_konfs, actions, sum_rewards
+    return states, poses, rel_konfs, is_goal_flags, actions, sum_rewards
 
 
 def train_admon(config):
@@ -174,16 +178,19 @@ def train_rel_konf_cmaes_place_admon_with_pose(config):
         state_data_mode, action_data_mode)
     admon = RelKonfCMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                       save_folder=savedir, tau=config.tau, config=config)
-    states, poses, rel_konfs, actions, sum_rewards = get_data()
+    states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
+    import pdb;pdb.set_trace()
 
     actions = actions[:, 4:]
+    """
     is_mse_pretrained = os.path.isfile(admon.save_folder + admon.pretraining_file_name)
     if not is_mse_pretrained:
         admon.pretrain_discriminator_with_mse(states, poses, actions, sum_rewards)
     admon.disc_mse_model.load_weights(admon.save_folder + admon.pretraining_file_name)
+    """
 
-    # But I have not loaded the weight?
-    admon.train(states, poses, rel_konfs, actions, sum_rewards, epochs=500)
+    admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
+    import pdb;pdb.set_trace()
 
 
 def parse_args():

@@ -21,21 +21,18 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # collision vector
         self.key_config_input = Input(shape=(615, 4, 1), name='konf', dtype='float32')
-        self.goal_flag_input = Input(shape=(4,), name='goal_flag', dtype='float32')
+        self.goal_flag_input = Input(shape=(615, 4, 1), name='goal_flag', dtype='float32')
 
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
         disc_output = self.construct_relevance_network()
         self.disc_mse_model = self.construct_mse_model(disc_output)
-        #self.disc_model = self.construct_disc_model(disc_output)
-
-        # todo
-        #   1. create a model from disc output
-        #   2. create a disc model
+        # self.disc_model = self.construct_disc_model(disc_output)
 
     def construct_mse_model(self, output):
-        mse_model = Model(inputs=[self.action_input, self.collision_input, self.pose_input, self.key_config_input],
+        mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
+                                  self.key_config_input, self.collision_input],
                           outputs=output,
                           name='disc_output')
         mse_model.compile(loss='mse', optimizer=self.opt_D)
@@ -45,9 +42,12 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
         raise NotImplementedError
 
     def construct_relevance_network(self):
+        # The relevance output is the output which detects how relevant
+        # each key config is when using a particular action (relative pose wrt object),
+        # given the information about whether the object and region are goal or not.
+        # The goal information might be irrelevant? But without it, it will always predict the pose in the kitchen.
         tiled_action = self.get_tiled_input(self.action_input)
-        tiled_goal_flag = self.get_tiled_input(self.goal_flag_input)
-        H_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_action, tiled_goal_flag])
+        H_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_action, self.goal_flag_input])
         dim_combined = H_konf_action_goal_flag.shape[2]._value
         H_relevance = self.create_conv_layers(H_konf_action_goal_flag, dim_combined, use_pooling=False,
                                               use_flatten=False)
@@ -69,18 +69,23 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
         disc_output = place_value
         return disc_output
 
-    def get_train_and_test_data(self, states, poses, rel_konfs, actions, sum_rewards, train_indices, test_indices):
+    def get_train_and_test_data(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, train_indices,
+                                test_indices):
         train = {'states': states[train_indices, :],
                  'poses': poses[train_indices, :],
                  'actions': actions[train_indices, :],
                  'rel_konfs': rel_konfs[train_indices, :],
-                 'sum_rewards': sum_rewards[train_indices, :]}
+                 'sum_rewards': sum_rewards[train_indices, :],
+                 'goal_flags': goal_flags[train_indices, :]
+                 }
         test = {'states': states[test_indices, :],
                 'poses': poses[test_indices, :],
+                'goal_flags': goal_flags[test_indices, :],
                 'actions': actions[test_indices, :],
                 'rel_konfs': rel_konfs[test_indices, :],
-                'sum_rewards': sum_rewards[test_indices, :]}
-
+                'sum_rewards': sum_rewards[test_indices, :]
+                }
+        import pdb;pdb.set_trace()
         return train, test
 
     def get_batch(self, states, poses, rel_konfs, actions, sum_rewards, batch_size):
@@ -92,76 +97,26 @@ class RelKonfCMAESAdversarialMonteCarloWithPose(AdversarialPolicy):
         sum_reward_batch = np.array(sum_rewards[indices, :])
         return s_batch, pose_batch, konf_batch, a_batch, sum_reward_batch
 
-    def get_max_x(self, state, pose, rel_konfs):
-        domain = np.array([[0, 0, -1, -1], [1, 1, 1, 1]])
-        objective = lambda action: float(self.disc_model.predict([action[None, :], state, pose, rel_konfs])[0, 0])
-        is_cmaes = False
-        n_evals = 50
-        if is_cmaes:
-            max_x, max_y = genetic_algorithm(objective, n_evals)
-        else:
-            voo = VOO(domain, 0.3, 'gaussian', 1)
-            max_x, max_y = voo.optimize(objective, n_evals)
-        return max_x, max_y
+    def compute_pure_mse(self, data):
+        pred = self.disc_mse_model.predict([data['actions'], data['goal_flags'], data['poses'], data['rel_konfs'],
+                                            data['states']])
+        return np.mean(np.power(pred - data['sum_rewards'], 2))
 
-    def train(self, states, poses, rel_konfs, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
-        idxs = pickle.load(open('data_idxs_seed_%s' % self.seed, 'r'))
-        train_idxs, test_idxs = idxs['train'], idxs['test']
-        train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, actions, sum_rewards,
-                                                             train_idxs, test_idxs)
-        self.disc_model.load_weights(self.save_folder + self.pretraining_file_name)
+    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards):
+        train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
+        self.train_data, self.test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags,
+                                                                       actions, sum_rewards,
+                                                                       train_idxs, test_idxs)
+        callbacks = self.create_callbacks_for_pretraining()
 
-        states = train_data['states']
-        poses = train_data['poses']
-        actions = train_data['actions']
-        sum_rewards = train_data['sum_rewards']
-        rel_konfs = train_data['rel_konfs']
+        pre_mse = self.compute_pure_mse(self.test_data)
+        self.disc_mse_model.fit([self.train_data['actions'], self.train_data['goal_flags'], self.train_data['poses'],
+                                 self.train_data['rel_konfs'], self.train_data['states']],
+                                self.train_data['sum_rewards'], batch_size=32,
+                                epochs=500,
+                                verbose=2,
+                                callbacks=callbacks,
+                                validation_split=0.1)
+        post_mse = self.compute_pure_mse(self.test_data)
 
-        n_data = len(train_data['actions'])
-        batch_size = self.get_batch_size(n_data)
-        pretrain_mse = self.compute_pure_mse(test_data)
-
-        # get data batch
-        curr_tau = 1.0
-        for i in range(1, epochs):
-            batch_idxs = range(0, actions.shape[0], batch_size)
-            stime = time.time()
-            for batch_idx, _ in enumerate(batch_idxs):
-                batch_stime = time.time()
-                print "Batch progress %d / %d" % (batch_idx, len(batch_idxs))
-                s_batch, pose_batch, rel_pose_batch, a_batch, sum_rewards_batch = self.get_batch(states, poses,
-                                                                                                 rel_konfs, actions,
-                                                                                                 sum_rewards,
-                                                                                                 batch_size)
-                # generate T sequence data from the cma-es
-                fake_actions = []
-                max_ys = []
-                for s, p in zip(s_batch, pose_batch):
-                    max_x, max_y = self.get_max_x(s[None, :], p[None, :], rel_pose_batch)
-
-                    fake_actions.append(max_x)
-                    max_ys.append(max_y)
-
-                fake_actions = np.array(fake_actions)
-
-                # make their scores
-                tau_values = np.tile(curr_tau, (batch_size * 2, 1))
-                fake_action_q = np.ones((batch_size, 1)) * INFEASIBLE_SCORE  # marks fake data
-                real_action_q = sum_rewards_batch.reshape((batch_size, 1))
-                batch_a = np.vstack([fake_actions, a_batch])
-                batch_s = np.vstack([s_batch, s_batch])
-                batch_rp = np.vstack([pose_batch, pose_batch])
-                batch_scores = np.vstack([fake_action_q, real_action_q])
-
-                self.disc.fit({'a': batch_a, 's': batch_s, 'pose': batch_rp, 'tau': tau_values},
-                              batch_scores,
-                              epochs=1,
-                              verbose=False)
-                batch_time_taken = time.time() - batch_stime
-                print "Batch time", batch_time_taken
-
-            posttrain_mse = self.compute_pure_mse(test_data)
-            drop_in_mse = pretrain_mse - posttrain_mse
-            self.save_weights(additional_name='_epoch_%d_drop_in_mse_%.5f' % (i, drop_in_mse))
-            time_taken = time.time() - stime
-            print "Epoch time", time_taken
+        print "Pre-and-post test errors", pre_mse, post_mse

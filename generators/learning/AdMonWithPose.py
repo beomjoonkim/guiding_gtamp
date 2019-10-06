@@ -70,17 +70,6 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
 
         return train, test
 
-    def compute_pure_mse(self, data):
-        return np.mean(np.power(self.disc_mse_model.predict([data['actions'], data['states'], data['poses']])
-                                - data['sum_rewards'], 2))
-
-    def get_train_and_test_indices(self, n_data):
-        test_idxs = np.random.randint(0, n_data, size=int(0.2 * n_data))
-        train_idxs = list(set(range(n_data)).difference(set(test_idxs)))
-        pickle.dump({'train': train_idxs, 'test': test_idxs},
-                    open('data_idxs_seed_%s' % self.seed, 'wb'))
-        return train_idxs, test_idxs
-
     def pretrain_discriminator_with_mse(self, states, poses, actions, sum_rewards):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         self.train_data, self.test_data = self.get_train_and_test_data(states, poses, actions, sum_rewards,
@@ -248,13 +237,9 @@ class AdversarialMonteCarloWithPose(AdversarialPolicy):
         if state.shape[0] == 1 and n_samples > 1:
             a_z = noise(n_samples, self.dim_action)
             state = np.tile(state, (n_samples, 1))
-            # state = state.reshape((n_samples, self.n_key_confs, self.dim_collision[1]))
-            # g = self.action_scaler.inverse_transform(self.a_gen.predict([a_z, state]))
             g = self.a_gen.predict([a_z, state])
         elif state.shape[0] == 1 and n_samples == 1:
             a_z = noise(state.shape[0], self.dim_action)
-            # state = state.reshape((1, self.n_key_confs, self.dim_collision[1]))
-            # g = self.action_scaler.inverse_transform(self.a_gen.predict([a_z, state]))
             g = self.a_gen.predict([a_z, state, poses])
         else:
             raise NotImplementedError

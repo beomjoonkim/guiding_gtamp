@@ -4,6 +4,7 @@ from keras.layers import *
 import os
 import sys
 import numpy as np
+import pickle
 
 INFEASIBLE_SCORE = -sys.float_info.max
 
@@ -64,15 +65,16 @@ class AdversarialPolicy:
         self.n_key_confs = dim_state[0]
 
         self.tau = tau
-
         self.noise_input = Input(shape=(self.dim_noise,), name='z', dtype='float32')
         self.tau_input = Input(shape=(1,), name='tau', dtype='float32')  # collision vector
-
         self.save_folder = save_folder
 
         self.test_data = None
         self.desired_test_err = None
         self.disc = None
+        self.disc_mse_model = None
+        self.pretraining_file_name = None
+        self.seed = None
 
     @staticmethod
     def get_batch_size(n_data):
@@ -90,6 +92,17 @@ class AdversarialPolicy:
     def set_learning_rates(self, d_lr, g_lr):
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
+
+    def compute_pure_mse(self, data):
+        return np.mean(np.power(self.disc_mse_model.predict([data['actions'], data['states'], data['poses']])
+                                - data['sum_rewards'], 2))
+
+    def get_train_and_test_indices(self, n_data):
+        test_idxs = np.random.randint(0, n_data, size=int(0.2 * n_data))
+        train_idxs = list(set(range(n_data)).difference(set(test_idxs)))
+        pickle.dump({'train': train_idxs, 'test': test_idxs},
+                    open('data_idxs_seed_%s' % self.seed, 'wb'))
+        return train_idxs, test_idxs
 
     def create_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
         n_filters = 64
@@ -116,6 +129,5 @@ class AdversarialPolicy:
                                                verbose=False,
                                                save_best_only=True,
                                                save_weights_only=True),
-            # tf.keras.callbacks.TensorBoard()
         ]
         return callbacks
