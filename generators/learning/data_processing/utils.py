@@ -1,6 +1,7 @@
 from gtamp_utils import utils
 import numpy as np
 
+
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'pick_parameters_place_normalized_relative_to_region'
 action_data_mode = 'pick_parameters_place_relative_to_object'
@@ -136,8 +137,10 @@ def get_processed_poses_from_action(state, action):
 
         place_pose = action['place_abs_base_pose']
         #place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, state.obj_pose)
-        place_pose = place_pose - state.obj_pose
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
+        place_pose = utils.clean_pose_data(place_pose)
+        obj_pose = utils.clean_pose_data(state.obj_pose)
+        place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
+        #place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
 
     action = np.hstack([pick_pose, place_pose])
 

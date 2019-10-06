@@ -489,7 +489,8 @@ def two_arm_pick_object(obj, pick_action):
     try:
         base_pose = pick_action['q_goal']
     except KeyError:
-        import pdb;pdb.set_trace()
+        import pdb;
+        pdb.set_trace()
         base_pose = pick_action['base_pose']
     set_robot_config(base_pose, robot)
 
@@ -573,6 +574,18 @@ def get_relative_transform_T1_wrt_T2(T1, T2):
 
 def get_relative_transform_body1_wrt_body2(body1, body2):
     return get_relative_transform_T1_wrt_T2(body1.GetTransform(), body2.GetTransform())
+
+
+def subtract_pose2_from_pose1(pose1, pose2):
+    pose1 = np.array(pose1).squeeze()
+    pose2 = np.array(pose2).squeeze()
+    diff = pose1 - pose2
+    need_correction = abs(diff[-1]) > np.pi
+    if need_correction and diff[-1] < 0:
+        diff[-1] = 2 * np.pi + diff[-1]
+    elif need_correction and diff[-1] > 0:
+        diff[-1] = 2 * np.pi - diff[-1]
+    return diff
 
 
 def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_ARM_LENGTH):

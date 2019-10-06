@@ -21,7 +21,7 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        #return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
@@ -60,10 +60,12 @@ def load_data(traj_dir):
             rel_konfs = []
             for k in key_configs:
                 #rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
-                rel_konf = k - s.obj_pose
-                rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+                konf = utils.clean_pose_data(k)
+                obj_pose = utils.clean_pose_data(s.obj_pose)
+                #rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+                rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
                 rel_konfs.append(rel_konf)
-            all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 4, 1)))
+            all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 3, 1)))
 
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
