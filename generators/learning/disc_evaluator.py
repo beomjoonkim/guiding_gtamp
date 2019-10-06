@@ -68,7 +68,8 @@ def get_placements(state, poses, admon, smpler_state):
             placement[1] = y
 
             # I need it relative to the object
-            rel_placement = utils.get_relative_robot_pose_wrt_body_pose(placement, smpler_state.obj_pose)
+            #rel_placement = utils.get_relative_robot_pose_wrt_body_pose(placement, smpler_state.obj_pose)
+            rel_placement = placement - smpler_state.obj_pose
             rel_placement = utils.encode_pose_with_sin_and_cos_angle(rel_placement)
             val = admon.q_mse_model.predict([rel_placement[None, :], goal_flags, rel_konfs, cols])
             if val > max_val:

@@ -21,7 +21,7 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        #return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        return pickle.load(open(traj_dir + cache_file_name, 'r'))
         pass
     print 'caching file...'
     all_states = []
@@ -100,7 +100,6 @@ def get_data():
     sum_rewards = sum_rewards[:5000]
     is_goal_flags = is_goal_flag[:5000, :]
 
-    sum_rewards[sum_rewards.squeeze()==0, :] = 10
     print "Number of data", len(states)
     return states, poses, rel_konfs, is_goal_flags, actions, sum_rewards
 
