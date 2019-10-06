@@ -59,7 +59,8 @@ def load_data(traj_dir):
         for s in traj.states:
             rel_konfs = []
             for k in key_configs:
-                rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
+                #rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
+                rel_konf = k - s.obj_pose
                 rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
                 rel_konfs.append(rel_konf)
             all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 4, 1)))

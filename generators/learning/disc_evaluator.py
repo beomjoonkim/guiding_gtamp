@@ -54,7 +54,8 @@ def get_placements(state, poses, admon, smpler_state):
     key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
     rel_konfs = []
     for k in key_configs:
-        rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, smpler_state.obj_pose)
+        #rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, smpler_state.obj_pose)
+        rel_konf = (k - smpler_state.obj_pose).squeeze()
         rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
         rel_konfs.append(rel_konf)
     rel_konfs = np.array(rel_konfs).reshape((1, 615, 4, 1))
