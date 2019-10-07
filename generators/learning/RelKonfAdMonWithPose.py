@@ -46,6 +46,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer
                                   )(hidden_relevance)
+        hidden_relevance = Reshape((615, 64, 1))(hidden_relevance)
         self.relevance_model = Model(inputs=[self.action_input, self.goal_flag_input,
                                              self.key_config_input, self.collision_input],
                                      outputs=hidden_relevance,
