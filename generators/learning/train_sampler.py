@@ -183,6 +183,7 @@ def train_rel_konf_place_mse(config):
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
+    poses = poses[:, :4]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
@@ -198,7 +199,9 @@ def train_rel_konf_place_admon(config):
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
+    poses = poses[:, :4]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process configurations')

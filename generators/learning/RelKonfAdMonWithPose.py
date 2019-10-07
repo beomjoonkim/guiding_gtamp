@@ -35,7 +35,8 @@ class RelKonfMSEPose(AdversarialPolicy):
 
     def construct_relevance_network(self):
         tiled_action = self.get_tiled_input(self.action_input)
-        hidden_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_action, self.goal_flag_input])
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        hidden_konf_action_goal_flag = Concatenate(axis=2)([self.key_config_input, tiled_pose, tiled_action, self.goal_flag_input])
         dim_combined = hidden_konf_action_goal_flag.shape[2]._value
         hidden_relevance = self.create_conv_layers(hidden_konf_action_goal_flag, dim_combined, use_pooling=False,
                                                    use_flatten=False)
@@ -134,7 +135,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         action_output = Dense(self.dim_action,
                               activation='linear',
                               kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(dim_combined)
+                              bias_initializer=self.bias_initializer)(hidden_konf_action_goal_flag)
         return action_output
 
     def construct_policy_model(self):
