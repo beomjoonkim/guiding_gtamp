@@ -114,12 +114,9 @@ def visualize_samples(q_fcn):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = 'rectangular_packing_box2'
+    obj = 'square_packing_box2'
     state_vec, poses = get_augmented_state_vec_and_poses(obj, state_vec, smpler_state)
-
     get_placements(state_vec, poses, q_fcn, smpler_state)
-    import pdb;
-    pdb.set_trace()
 
 
 def main():
@@ -148,6 +145,7 @@ def main():
                                                     save_folder=savedir, tau=1.0, config=config)
         policy.disc.load_weights(policy.save_folder + fname)
     visualize_samples(policy)
+    import pdb;pdb.set_trace()
 
 
 if __name__ == '__main__':
