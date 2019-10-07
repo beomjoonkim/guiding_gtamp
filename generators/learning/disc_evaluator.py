@@ -77,11 +77,11 @@ def get_placements(state, poses, admon, smpler_state):
                 max_val = val
             exp_val[(x, y)] = np.exp(val) * 100
             print rel_placement, x, y, val, exp_val[(x, y)]
-
     total = np.sum(exp_val.values())
     total = 1
     i = 0
     utils.viewer()
+
     for x in x_range:
         for y in y_range:
             height = exp_val[(x, y)]  # / total + 1
