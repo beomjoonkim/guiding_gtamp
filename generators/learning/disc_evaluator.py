@@ -71,6 +71,8 @@ def get_placements(state, poses, admon, smpler_state):
             obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
             rel_placement = utils.subtract_pose2_from_pose1(placement, obj_pose)
             val = admon.q_mse_model.predict([rel_placement[None, :], goal_flags, rel_konfs, cols])
+            print np.mean(admon.relevance_model.predict([rel_placement[None, :], goal_flags, rel_konfs, cols]).squeeze())
+            import pdb;pdb.set_trace()
             if val > max_val:
                 max_x = copy.deepcopy(placement)
                 max_val = val
