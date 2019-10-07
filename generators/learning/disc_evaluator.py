@@ -26,11 +26,11 @@ def get_augmented_state_vec_and_poses(obj, state_vec, smpler_state):
     return state_vec, poses
 
 
-def make_body(height, i, x, y):
+def make_body(height, i, x, y, color=[0,0.5,0]):
     env = openravepy.RaveGetEnvironments()[0]
     new_body = box_body(env, 0.1, 0.1, height,
                         name='value_obj%s' % i,
-                        color=(0, 0.5, 0))
+                        color=color)
     env.AddKinBody(new_body)
     trans = np.eye(4)
     trans[2, -1] = 1.0
@@ -83,33 +83,22 @@ def get_placements(state, poses, admon, smpler_state):
     utils.viewer()
     for x in x_range:
         for y in y_range:
-            height = exp_val[(x, y)] #/ total + 1
-            #print x, y, height
+            height = exp_val[(x, y)]  # / total + 1
+            # print x, y, height
             placement = placement.squeeze()
             placement[0] = x
             placement[1] = y
             # absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
             # make_body(height, i, absx, absy)
-            make_body(height, i, x, y)
+
+            if height == np.exp(max_val) * 100:
+                make_body(height, i, x, y, color=[1, 0, 0])
+            else:
+                make_body(height, i, x, y)
             i += 1
     placement = max_x
     print placement, max_val, np.exp(max_val)
     print 'maximizing x time', time.time() - stime
-    import pdb;
-    pdb.set_trace()
-
-    placement = utils.decode_pose_with_sin_and_cos_angle(placement)
-    if 'place_relative_to_obj' in action_data_mode:
-        obj = smpler_state.obj
-        placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
-    elif 'place_relative_to_region' in action_data_mode:
-        region = smpler_state.region
-        placement = convert_pose_rel_to_region_to_abs_pose(placement, region)
-    elif 'place_normalized_relative_to_region' in action_data_mode:
-        region = smpler_state.region
-        placement = unnormalize_pose_wrt_region(placement, region)
-
-    return [placement]
 
 
 def visualize_samples(q_fcn):
@@ -128,9 +117,7 @@ def visualize_samples(q_fcn):
     obj = 'rectangular_packing_box2'
     state_vec, poses = get_augmented_state_vec_and_poses(obj, state_vec, smpler_state)
 
-    places = get_placements(state_vec, poses, q_fcn, smpler_state)
-    utils.viewer()
-    utils.visualize_path(places)
+    get_placements(state_vec, poses, q_fcn, smpler_state)
     import pdb;
     pdb.set_trace()
 
@@ -151,7 +138,7 @@ def main():
 
     use_rel_konf = True
     dim_action = 3
-    fname = 'pretrained_1.h5'
+    fname = 'pretrained_3.h5'
     if use_rel_konf:
         dim_state = (n_key_configs, 2, 1)
         policy = RelKonfMSEPose(dim_action, dim_state, savedir, 1.0, config)

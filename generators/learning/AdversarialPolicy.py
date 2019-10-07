@@ -113,7 +113,7 @@ class AdversarialPolicy:
                    activation='relu',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer)(input)
-        for _ in range(2):
+        for _ in range(4):
             H = Conv2D(filters=n_filters,
                        kernel_size=(1, 1),
                        strides=(1, 1),

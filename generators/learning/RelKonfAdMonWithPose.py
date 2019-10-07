@@ -50,13 +50,15 @@ class RelKonfMSEPose(AdversarialPolicy):
         hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=3, use_pooling=False)
 
         dense_num = 64
+        """
         hidden_place = Dense(dense_num, activation='relu',
                              kernel_initializer=self.kernel_initializer,
                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
+        """
         hidden_place = Dense(dense_num, activation='relu',
                              kernel_initializer=self.kernel_initializer,
                              bias_initializer=self.bias_initializer
-                             )(hidden_place)
+                             )(hidden_col_relevance)
         place_value = Dense(1, activation='linear',
                             kernel_initializer=self.kernel_initializer,
                             bias_initializer=self.bias_initializer)(hidden_place)
