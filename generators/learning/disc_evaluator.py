@@ -37,6 +37,7 @@ def make_body(height, i, x, y, color=[0,0.5,0]):
     trans[0, -1] = x
     trans[1, -1] = y
     new_body.SetTransform(trans)
+    utils.set_body_transparency(new_body, 0.5)
 
 
 def get_placements(state, poses, admon, smpler_state):
@@ -105,7 +106,7 @@ def get_placements(state, poses, admon, smpler_state):
 def visualize_samples(q_fcn):
     n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-    pidx = pidxs[1]
+    pidx = pidxs[2]
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
@@ -115,7 +116,7 @@ def visualize_samples(q_fcn):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = 'square_packing_box2'
+    obj = 'square_packing_box3'
     state_vec, poses = get_augmented_state_vec_and_poses(obj, state_vec, smpler_state)
     get_placements(state_vec, poses, q_fcn, smpler_state)
 

@@ -64,12 +64,6 @@ class RelKonfMSEPose(AdversarialPolicy):
                              kernel_initializer=self.kernel_initializer,
                              bias_initializer=self.bias_initializer
                              )(hidden_place)
-        """
-        hidden_place = Dense(dense_num, activation='relu',
-                             kernel_initializer=self.kernel_initializer,
-                             bias_initializer=self.bias_initializer
-                             )(hidden_place)
-        """
         place_value = Dense(1, activation='linear',
                             kernel_initializer=self.kernel_initializer,
                             bias_initializer=self.bias_initializer)(hidden_place)
@@ -137,32 +131,10 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         hidden_konf_action_goal_flag = Concatenate(axis=2)(
             [self.key_config_input, tiled_obj_pose, self.goal_flag_input])
         dim_combined = hidden_konf_action_goal_flag.shape[2]._value
-        hidden_relevance = self.create_conv_layers(hidden_konf_action_goal_flag, dim_combined, use_pooling=False,
-                                                   use_flatten=False)
-        hidden_relevance = Conv2D(filters=1,
-                                  kernel_size=(1, 1),
-                                  strides=(1, 1),
-                                  activation='relu',
-                                  kernel_initializer=self.kernel_initializer,
-                                  bias_initializer=self.bias_initializer
-                                  )(hidden_relevance)
-
-        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=4)
-
-        dense_num = 64
-        hidden_place = Dense(dense_num, activation='relu',
-                             kernel_initializer=self.kernel_initializer,
-                             bias_initializer=self.bias_initializer
-                             )(hidden_col_relevance)
-        hidden_place = Dense(dense_num, activation='relu',
-                             kernel_initializer=self.kernel_initializer,
-                             bias_initializer=self.bias_initializer
-                             )(hidden_place)
         action_output = Dense(self.dim_action,
                               activation='linear',
                               kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.initializer)(hidden_place)
+                              bias_initializer=self.bias_initializer)(dim_combined)
         return action_output
 
     def construct_policy_model(self):

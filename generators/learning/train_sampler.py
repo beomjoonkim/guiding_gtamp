@@ -9,7 +9,7 @@ import socket
 from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
-from RelKonfAdMonWithPose import RelKonfMSEPose
+from RelKonfAdMonWithPose import RelKonfMSEPose, RelKonfIMLEPose
 from data_processing.utils import get_processed_poses_from_state, get_processed_poses_from_action, \
     state_data_mode, action_data_mode
 
@@ -59,10 +59,10 @@ def load_data(traj_dir):
         for s in traj.states:
             rel_konfs = []
             for k in key_configs:
-                #rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
+                # rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, s.obj_pose)
                 konf = utils.clean_pose_data(k)
                 obj_pose = utils.clean_pose_data(s.obj_pose)
-                #rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+                # rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
                 rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
                 rel_konfs.append(rel_konf)
             all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 3, 1)))
@@ -180,11 +180,25 @@ def train_rel_konf_place_mse(config):
         state_data_mode, action_data_mode)
     admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
                            save_folder=savedir, tau=config.tau, config=config)
-    states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
 
+    states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
+
+def train_rel_konf_place_admon(config):
+    n_key_configs = 615
+    dim_state = (n_key_configs, 2, 1)
+    dim_action = 3
+    savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_admon/' % (
+        state_data_mode, action_data_mode)
+
+    admon = RelKonfIMLEPose(dim_action=dim_action, dim_collision=dim_state,
+                            save_folder=savedir, tau=config.tau, config=config)
+
+    states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
+    actions = actions[:, 4:]
+    admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Process configurations')
@@ -197,7 +211,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='rel_konf_place_mse')
+    parser.add_argument('-algo', type=str, default='rel_konf_place_admon')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
@@ -212,8 +226,7 @@ def main():
     np.random.seed(configs.seed)
     random.seed(configs.seed)
     tf.set_random_seed(configs.seed)
-    os.environ['PYTHONHASHSEED']=str(configs.seed)
-
+    os.environ['PYTHONHASHSEED'] = str(configs.seed)
 
     if configs.algo == 'admon':
         train_admon(configs)
@@ -226,6 +239,8 @@ def main():
         train_cmaes_place_admon_with_pose(configs)
     elif configs.algo == 'rel_konf_place_mse':
         train_rel_konf_place_mse(configs)
+    elif configs.algo == 'rel_konf_place_admon':
+        train_rel_konf_place_admon(configs)
     else:
         raise NotImplementedError
 
