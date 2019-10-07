@@ -47,7 +47,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   bias_initializer=self.bias_initializer
                                   )(hidden_relevance)
         hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=3)
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=3, use_pooling=False)
 
         dense_num = 64
         hidden_place = Dense(dense_num, activation='relu',

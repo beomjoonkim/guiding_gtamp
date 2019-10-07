@@ -181,7 +181,6 @@ def train_rel_konf_place_mse(config):
     admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
                            save_folder=savedir, tau=config.tau, config=config)
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
-    import pdb;pdb.set_trace()
 
     actions = actions[:, 4:]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)

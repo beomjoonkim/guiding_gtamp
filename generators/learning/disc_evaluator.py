@@ -74,7 +74,7 @@ def get_placements(state, poses, admon, smpler_state):
             if val > max_val:
                 max_x = copy.deepcopy(placement)
                 max_val = val
-            exp_val[(x, y)] = np.exp(val)*100
+            exp_val[(x, y)] = np.exp(val) * 100
             print rel_placement, x, y, val, exp_val[(x, y)]
 
     total = np.sum(exp_val.values())
@@ -83,7 +83,7 @@ def get_placements(state, poses, admon, smpler_state):
     utils.viewer()
     for x in x_range:
         for y in y_range:
-            height = exp_val[(x, y)] / total + 1
+            height = exp_val[(x, y)] #/ total + 1
             #print x, y, height
             placement = placement.squeeze()
             placement[0] = x
@@ -115,7 +115,7 @@ def get_placements(state, poses, admon, smpler_state):
 def visualize_samples(q_fcn):
     n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-    pidx = pidxs[5]
+    pidx = pidxs[1]
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
