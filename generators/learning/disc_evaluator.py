@@ -138,7 +138,7 @@ def main():
 
     use_rel_konf = True
     dim_action = 3
-    fname = 'pretrained_3.h5'
+    fname = 'pretrained_0.h5'
     if use_rel_konf:
         dim_state = (n_key_configs, 2, 1)
         policy = RelKonfMSEPose(dim_action, dim_state, savedir, 1.0, config)
