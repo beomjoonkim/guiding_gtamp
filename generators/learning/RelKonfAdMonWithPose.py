@@ -9,7 +9,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         # todo try different weight initializations
         AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
 
-        self.dim_poses = 8
+        self.dim_poses = 4
         self.dim_collision = dim_collision
 
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
@@ -26,7 +26,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.q_mse_model = self.construct_mse_model(self.q_output)
 
     def construct_mse_model(self, output):
-        mse_model = Model(inputs=[self.action_input, self.goal_flag_input,
+        mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
                                   self.key_config_input, self.collision_input],
                           outputs=output,
                           name='q_output')
@@ -49,7 +49,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   bias_initializer=self.bias_initializer
                                   )(hidden_relevance)
         hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
-        self.relevance_model = Model(inputs=[self.action_input, self.goal_flag_input,
+        self.relevance_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
                                              self.key_config_input, self.collision_input],
                                      outputs=hidden_relevance,
                                      name='q_output')
@@ -99,7 +99,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         return s_batch, pose_batch, konf_batch, a_batch, sum_reward_batch
 
     def compute_pure_mse(self, data):
-        pred = self.q_mse_model.predict([data['actions'], data['goal_flags'], data['rel_konfs'], data['states']])
+        pred = self.q_mse_model.predict([data['actions'], data['goal_flags'], data['poses'], data['rel_konfs'], data['states']])
         return np.mean(np.power(pred - data['sum_rewards'], 2))
 
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards):
@@ -109,7 +109,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                                                                        train_idxs, test_idxs)
         callbacks = self.create_callbacks_for_pretraining()
         pre_mse = self.compute_pure_mse(self.test_data)
-        self.q_mse_model.fit([self.train_data['actions'], self.train_data['goal_flags'],
+        self.q_mse_model.fit([self.train_data['actions'], self.train_data['goal_flags'], self.train_data['poses'],
                               self.train_data['rel_konfs'], self.train_data['states']],
                              self.train_data['sum_rewards'], batch_size=32,
                              epochs=500,
