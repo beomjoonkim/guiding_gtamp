@@ -6,6 +6,7 @@ from keras.models import Model
 
 class RelKonfMSEPose(AdversarialPolicy):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
+        # todo try different weight initializations
         AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
 
         self.dim_poses = 8
@@ -41,16 +42,24 @@ class RelKonfMSEPose(AdversarialPolicy):
         hidden_relevance = Conv2D(filters=1,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
-                                  activation='relu')(hidden_relevance)
+                                  activation='relu',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(hidden_relevance)
         hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
         hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=3)
 
         dense_num = 64
-        hidden_place = Dense(dense_num, activation='relu')(hidden_col_relevance)
-        hidden_place = Dense(dense_num, activation='relu')(hidden_place)
+        hidden_place = Dense(dense_num, activation='relu',
+                             kernel_initializer=self.kernel_initializer,
+                             bias_initializer=self.bias_initializer)(hidden_col_relevance)
+        hidden_place = Dense(dense_num, activation='relu',
+                             kernel_initializer=self.kernel_initializer,
+                             bias_initializer=self.bias_initializer
+                             )(hidden_place)
         place_value = Dense(1, activation='linear',
-                            kernel_initializer=self.initializer,
-                            bias_initializer=self.initializer)(hidden_place)
+                            kernel_initializer=self.kernel_initializer,
+                            bias_initializer=self.bias_initializer)(hidden_place)
         q_output = place_value
         return q_output
 
@@ -120,17 +129,26 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         hidden_relevance = Conv2D(filters=1,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
-                                  activation='relu')(hidden_relevance)
+                                  activation='relu',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(hidden_relevance)
 
         hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
         hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=4)
 
         dense_num = 64
-        hidden_place = Dense(dense_num, activation='relu')(hidden_col_relevance)
-        hidden_place = Dense(dense_num, activation='relu')(hidden_place)
+        hidden_place = Dense(dense_num, activation='relu',
+                             kernel_initializer=self.kernel_initializer,
+                             bias_initializer=self.bias_initializer
+                             )(hidden_col_relevance)
+        hidden_place = Dense(dense_num, activation='relu',
+                             kernel_initializer=self.kernel_initializer,
+                             bias_initializer=self.bias_initializer
+                             )(hidden_place)
         action_output = Dense(self.dim_action,
                               activation='linear',
-                              kernel_initializer=self.initializer,
+                              kernel_initializer=self.kernel_initializer,
                               bias_initializer=self.initializer)(hidden_place)
         return action_output
 

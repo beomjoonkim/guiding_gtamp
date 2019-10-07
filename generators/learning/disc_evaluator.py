@@ -44,7 +44,6 @@ def get_placements(state, poses, admon, smpler_state):
     # placement, value = admon.get_max_x(state, poses)
     max_x = None
     max_val = -np.inf
-    placement = np.array([0., 0., 1., 1.])
     exp_val = {}
 
     cols = state[:, :, 0:2, :]
@@ -54,31 +53,29 @@ def get_placements(state, poses, admon, smpler_state):
     key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
     rel_konfs = []
     for k in key_configs:
-        #rel_konf = utils.get_relative_robot_pose_wrt_body_pose(k, smpler_state.obj_pose)
-        rel_konf = (k - smpler_state.obj_pose).squeeze()
-        rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
+        konf = utils.clean_pose_data(k)
+        obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
+        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
         rel_konfs.append(rel_konf)
-    rel_konfs = np.array(rel_konfs).reshape((1, 615, 4, 1))
+    rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
 
-    x_range = np.linspace(0, 3.5, 10)
-    y_range = np.linspace(-8, -5, 10)
-    placement = np.array([0, 0, 0])
+    x_range = np.linspace(0., 3.5, 10)
+    y_range = np.linspace(-8., -5., 10)
+    placement = np.array([0., 0., 0.])
     for x in x_range:
         for y in y_range:
+            placement = placement.squeeze()
             placement[0] = x
             placement[1] = y
-
-            # I need it relative to the object
-            #rel_placement = utils.get_relative_robot_pose_wrt_body_pose(placement, smpler_state.obj_pose)
-            rel_placement = placement - smpler_state.obj_pose
-            rel_placement = utils.encode_pose_with_sin_and_cos_angle(rel_placement)
+            placement = utils.clean_pose_data(placement)
+            obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
+            rel_placement = utils.subtract_pose2_from_pose1(placement, obj_pose)
             val = admon.q_mse_model.predict([rel_placement[None, :], goal_flags, rel_konfs, cols])
             if val > max_val:
                 max_x = copy.deepcopy(placement)
                 max_val = val
-            exp_val[(x, y)] = np.exp(val)
+            exp_val[(x, y)] = np.exp(val)*100
             print rel_placement, x, y, val, exp_val[(x, y)]
-            import pdb;pdb.set_trace()
 
     total = np.sum(exp_val.values())
     total = 1
@@ -88,6 +85,7 @@ def get_placements(state, poses, admon, smpler_state):
         for y in y_range:
             height = exp_val[(x, y)] / total + 1
             #print x, y, height
+            placement = placement.squeeze()
             placement[0] = x
             placement[1] = y
             # absx, absy = unnormalize_pose_wrt_region(placement, 'loading_region')[0:2]
@@ -152,8 +150,8 @@ def main():
     epoch_number = int(sys.argv[2])
 
     use_rel_konf = True
-    dim_action = 4
-    fname = 'pretrained_0.h5'
+    dim_action = 3
+    fname = 'pretrained_1.h5'
     if use_rel_konf:
         dim_state = (n_key_configs, 2, 1)
         policy = RelKonfMSEPose(dim_action, dim_state, savedir, 1.0, config)

@@ -50,7 +50,8 @@ class AdversarialPolicy:
         self.opt_D = Adam(lr=1e-3, beta_1=0.5)
 
         # initialize
-        self.initializer = initializers.glorot_uniform()
+        self.kernel_initializer = initializers.glorot_uniform()
+        self.bias_initializer = initializers.glorot_uniform()
 
         if dim_action < 10:
             dim_z = dim_action
@@ -109,12 +110,16 @@ class AdversarialPolicy:
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, n_dim),
                    strides=(1, 1),
-                   activation='relu')(input)
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(input)
         for _ in range(4):
             H = Conv2D(filters=n_filters,
                        kernel_size=(1, 1),
                        strides=(1, 1),
-                       activation='relu')(H)
+                       activation='relu',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer)(H)
         if use_pooling:
             H = MaxPooling2D(pool_size=(2, 1))(H)
         if use_flatten:
