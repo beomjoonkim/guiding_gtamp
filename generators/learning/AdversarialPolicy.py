@@ -106,14 +106,14 @@ class AdversarialPolicy:
         return train_idxs, test_idxs
 
     def create_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
-        n_filters = 256
+        n_filters = 16
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, n_dim),
                    strides=(1, 1),
                    activation='relu',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer)(input)
-        for _ in range(4):
+        for _ in range(2):
             H = Conv2D(filters=n_filters,
                        kernel_size=(1, 1),
                        strides=(1, 1),

@@ -212,6 +212,8 @@ def main():
     np.random.seed(configs.seed)
     random.seed(configs.seed)
     tf.set_random_seed(configs.seed)
+    os.environ['PYTHONHASHSEED']=str(configs.seed)
+
 
     if configs.algo == 'admon':
         train_admon(configs)

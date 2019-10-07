@@ -39,21 +39,22 @@ class RelKonfMSEPose(AdversarialPolicy):
         dim_combined = hidden_konf_action_goal_flag.shape[2]._value
         hidden_relevance = self.create_conv_layers(hidden_konf_action_goal_flag, dim_combined, use_pooling=False,
                                                    use_flatten=False)
-        hidden_relevance = Conv2D(filters=256,
+        n_conv_filters = 16
+        hidden_relevance = Conv2D(filters=n_conv_filters,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
                                   activation='relu',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer
                                   )(hidden_relevance)
-        hidden_relevance = Reshape((615, 256, 1))(hidden_relevance)
+        hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
         self.relevance_model = Model(inputs=[self.action_input, self.goal_flag_input,
                                              self.key_config_input, self.collision_input],
                                      outputs=hidden_relevance,
                                      name='q_output')
 
         hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2+256, use_pooling=False)
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2+n_conv_filters, use_pooling=False)
 
         dense_num = 256
         hidden_place = Dense(dense_num, activation='relu',
