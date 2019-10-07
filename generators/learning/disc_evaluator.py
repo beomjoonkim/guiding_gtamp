@@ -60,7 +60,7 @@ def get_placements(state, poses, admon, smpler_state):
     rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
 
     x_range = np.linspace(0., 3.5, 10)
-    y_range = np.linspace(-8., -5., 10)
+    y_range = np.linspace(-8., -6., 10)
     placement = np.array([0., 0., 0.])
     for x in x_range:
         for y in y_range:
@@ -134,11 +134,10 @@ def main():
         tau=1.0,
         seed=int(sys.argv[1])
     )
-    epoch_number = int(sys.argv[2])
 
     use_rel_konf = True
     dim_action = 3
-    fname = 'pretrained_0.h5'
+    fname = 'pretrained_%d.h5' % config.seed
     if use_rel_konf:
         dim_state = (n_key_configs, 2, 1)
         policy = RelKonfMSEPose(dim_action, dim_state, savedir, 1.0, config)
@@ -148,7 +147,6 @@ def main():
         policy = CMAESAdversarialMonteCarloWithPose(dim_action=dim_action, dim_collision=dim_state,
                                                     save_folder=savedir, tau=1.0, config=config)
         policy.disc.load_weights(policy.save_folder + fname)
-    print "Trying epoch number ", epoch_number
     visualize_samples(policy)
 
 

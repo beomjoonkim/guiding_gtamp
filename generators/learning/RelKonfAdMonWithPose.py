@@ -57,6 +57,10 @@ class RelKonfMSEPose(AdversarialPolicy):
                              kernel_initializer=self.kernel_initializer,
                              bias_initializer=self.bias_initializer
                              )(hidden_place)
+        hidden_place = Dense(dense_num, activation='relu',
+                             kernel_initializer=self.kernel_initializer,
+                             bias_initializer=self.bias_initializer
+                             )(hidden_place)
         place_value = Dense(1, activation='linear',
                             kernel_initializer=self.kernel_initializer,
                             bias_initializer=self.bias_initializer)(hidden_place)
