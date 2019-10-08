@@ -16,6 +16,12 @@ else:
     ROOTDIR = '/data/public/rw/pass.port/guiding_gtamp/'
 
 
+def G_loss(true_actions, pred):
+    # pred = Q(G(z))
+    # I don't have access to fake and real actions; what to do?
+    return -K.mean(pred, axis=-1)
+
+
 def noise(z_size):
     # todo use the uniform over the entire action space here
     return np.random.normal(size=z_size).astype('float32')
@@ -146,23 +152,28 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         RelKonfMSEPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
         self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
+        self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
+        self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
-    def create_models(self):
-        disc = self.create_discriminator()
-        mse_model = self.create_mse_model()
-        a_gen, a_gen_output = self.create_generator()
-
-        for l in disc.layers:
+    def create_q_on_policy_model(self):
+        for l in self.q_mse_model.layers:
             l.trainable = False
             # for some obscure reason, disc weights still get updated when self.disc.fit is called
             # I speculate that this has to do with the status of the layers at the time it was compiled
-        DG_output = disc([a_gen_output, self.collision_input, self.pose_input, self.collision_input])
-        DG = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=[DG_output])
-        DG.compile(loss={'disc_output': G_loss},
-                   optimizer=self.opt_G,
-                   metrics=[])
-        return a_gen, mse_model, disc, DG
+        q_on_policy_output = self.q_mse_model(
+            [self.policy_output, self.goal_flag_input, self.pose_input, self.key_config_input, self.collision_input])
+        q_on_policy_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
+                    self.noise_input],
+            outputs=[q_on_policy_output, self.policy_output])
+        q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
+                                  optimizer=self.opt_G,
+                                  loss_weights={'q_output': 1, 'policy_output': 1},
+                                  metrics=[])
+
+        # but when do I train the q_mse_model?
+        return q_on_policy_model
 
     def construct_policy_output(self):
         # todo make this architecture
@@ -198,12 +209,13 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         action_output = Dense(self.dim_action,
                               activation='linear',
                               kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(h_noise)
+                              bias_initializer=self.bias_initializer,
+                              name='policy_output')(h_noise)
         return action_output
 
     def construct_policy_model(self):
-        mse_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input,
-                                  self.pose_input, self.noise_input],
+        mse_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
+                                  self.noise_input],
                           outputs=self.policy_output,
                           name='q_output')
         mse_model.compile(loss='mse', optimizer=self.opt_D)
@@ -248,16 +260,17 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
         return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
 
-    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
+    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=100):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags, actions, sum_rewards,
                                                              train_idxs, test_idxs)
+
 
         # generate x_1,...,x_m from the generator
         # pick random batch of size m from the real dataset Y
         # compute the nearest neighbor for each x_i
         n_data = len(train_idxs)
-        data_resampling_step = 5
+        data_resampling_step = 1
         num_smpl_per_state = 10
 
         actions = train_data['actions']
@@ -265,7 +278,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         poses = train_data['poses']
         rel_konfs = train_data['rel_konfs']
         collisions = train_data['states']
-
         for epoch in range(epochs):
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
             if is_time_to_smpl_new_data:
@@ -282,16 +294,16 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                     noise_that_generates_closest_point_to_true_action = noise_smpls_for_action[closest_point_idx]
                     chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
 
-
                 print "Data generation time", time.time() - stime
 
             chosen_noise_smpls = np.array(chosen_noise_smpls)
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
-            self.policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
-                                  actions,
-                                  epochs=100)
+            # [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input]
+            self.q_on_policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
+                                       [actions, actions],
+                                       epochs=200)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm

@@ -6,6 +6,8 @@ from trajectory_representation.operator import Operator
 from generators.learning.train_sampler import get_processed_poses_from_state, state_data_mode, action_data_mode
 from generators.learning.RelKonfAdMonWithPose import RelKonfIMLEPose
 
+from keras.layers import *
+
 import numpy as np
 import collections
 import pickle
@@ -91,7 +93,7 @@ def get_pidxs_to_evaluate_policy(n_evals):
 def visualize_samples(policy):
     n_evals = 10
     pidxs = get_pidxs_to_evaluate_policy(n_evals)
-    pidx = pidxs[0]
+    pidx = pidxs[2]
     config_type = collections.namedtuple('config', 'n_objs_pack pidx domain ')
     config = config_type(pidx=pidx, n_objs_pack=1, domain='two_arm_mover')
     problem_env = get_problem_env(config)
@@ -101,14 +103,15 @@ def visualize_samples(policy):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = 'square_packing_box2'
+    obj = 'rectangular_packing_box2'
 
     print 'generating..'
     places = generate(obj, state_vec, smpler_state, policy)
 
     utils.viewer()
     utils.visualize_path(places)
-    import pdb;pdb.set_trace()
+    import pdb;
+    pdb.set_trace()
 
 
 def main():
