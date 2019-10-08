@@ -64,6 +64,7 @@ def generate(obj, state_vec, smpler_state, policy):
         poses = poses[:, :4]
         collisions = state_vec[:, :, :2, :]
         placement = policy.generate(goal_flags, rel_konfs, collisions, poses)
+        placement = utils.decode_pose_with_sin_and_cos_angle(placement)
         if 'place_relative_to_obj' in action_data_mode:
             placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
         if 'place_relative_to_region' in action_data_mode:
@@ -127,7 +128,7 @@ def main():
         seed=int(sys.argv[1])
     )
 
-    dim_action = 3
+    dim_action = 4
     fname = 'imle_pose_seed_%d.h5' % config.seed
     dim_state = (n_key_configs, 2, 1)
     policy = RelKonfIMLEPose(dim_action, dim_state, savedir, 1.0, config)

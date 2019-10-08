@@ -140,7 +140,7 @@ def get_processed_poses_from_action(state, action):
         place_pose = utils.clean_pose_data(place_pose)
         obj_pose = utils.clean_pose_data(state.obj_pose)
         place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
-        place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
+        #place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
 
     action = np.hstack([pick_pose, place_pose])
 
