@@ -194,7 +194,7 @@ def train_rel_konf_place_mse(config):
 def train_rel_konf_place_admon(config):
     n_key_configs = 615
     dim_state = (n_key_configs, 2, 1)
-    dim_action = 3
+    dim_action = 4
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_admon/' % (
         state_data_mode, action_data_mode)
     admon = RelKonfIMLEPose(dim_action=dim_action, dim_collision=dim_state,
@@ -204,8 +204,6 @@ def train_rel_konf_place_admon(config):
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     poses = poses[:, :4]
-    import pdb;
-    pdb.set_trace()
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
