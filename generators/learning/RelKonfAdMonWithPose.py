@@ -3,6 +3,8 @@ from keras.layers.merge import Concatenate
 from generators.learning.AdversarialPolicy import AdversarialPolicy
 from keras.models import Model
 
+from AdversarialPolicy import G_loss
+
 import tensorflow as tf
 import time
 import os
@@ -146,6 +148,22 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model = self.construct_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
 
+    def create_models(self):
+        disc = self.create_discriminator()
+        mse_model = self.create_mse_model()
+        a_gen, a_gen_output = self.create_generator()
+
+        for l in disc.layers:
+            l.trainable = False
+            # for some obscure reason, disc weights still get updated when self.disc.fit is called
+            # I speculate that this has to do with the status of the layers at the time it was compiled
+        DG_output = disc([a_gen_output, self.collision_input, self.pose_input, self.collision_input])
+        DG = Model(inputs=[self.noise_input, self.collision_input, self.pose_input], outputs=[DG_output])
+        DG.compile(loss={'disc_output': G_loss},
+                   optimizer=self.opt_G,
+                   metrics=[])
+        return a_gen, mse_model, disc, DG
+
     def construct_policy_output(self):
         # todo make this architecture
         tiled_pose = self.get_tiled_input(self.pose_input)
@@ -181,23 +199,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                               activation='linear',
                               kernel_initializer=self.kernel_initializer,
                               bias_initializer=self.bias_initializer)(h_noise)
-
-        """
-        tiled_obj_pose = self.get_tiled_input(self.pose_input)  # get the object pose
-        hidden_konf_action_goal_flag = Concatenate(axis=2)(
-            [self.key_config_input, tiled_obj_pose, self.goal_flag_input])
-        H = Flatten()(hidden_konf_action_goal_flag)
-        dim_combined = hidden_konf_action_goal_flag.shape[2]._value
-
-        H = Dense(64, activation='relu',
-                  kernel_initializer=self.kernel_initializer,
-                  bias_initializer=self.bias_initializer)(H)
-        H = Concatenate(axis=-1)([H, self.noise_input])
-        action_output = Dense(self.dim_action,
-                              activation='linear',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(H)
-        """
         return action_output
 
     def construct_policy_model(self):
@@ -219,12 +220,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             k_smpls.append(actions)
         new_k_smpls = np.array(k_smpls).swapaxes(0, 1)
 
-        """
-        for j in range(k):
-            actions = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls[:, j, :]])
-            in_the_data = new_k_smpls[:, j, :]
-            assert np.all(in_the_data == actions)
-        """
         return new_k_smpls
 
     def find_the_idx_of_closest_point_to_x1(self, x1, database):
@@ -287,23 +282,12 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                     noise_that_generates_closest_point_to_true_action = noise_smpls_for_action[closest_point_idx]
                     chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
 
-                    """
-                    closest_point_for_debug = self.policy_model.predict(
-                        [goal_flags[idx, :][None, :], rel_konfs[idx, :][None, :], collisions[idx, :][None, :],
-                         poses[idx, :][None, :], noise_that_generates_closest_point_to_true_action[None, :]]).squeeze()
-                    try:
-                        assert np.all(np.isclose(closest_point, closest_point_for_debug, atol=1e-05))
-                    except:
-                        # todo why does this fail?
-                        import pdb;
-                        pdb.set_trace()
 
-                    idx += 1
-                    """
                 print "Data generation time", time.time() - stime
 
             chosen_noise_smpls = np.array(chosen_noise_smpls)
 
+            # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
             self.policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
                                   actions,
