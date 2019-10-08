@@ -92,6 +92,7 @@ def get_processed_poses_from_action(state, action):
     if action_data_mode == 'absolute':
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
+        place_pose = action['place_abs_base_pose']
     elif action_data_mode == 'pick_relative':
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
