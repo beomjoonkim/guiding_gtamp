@@ -21,8 +21,8 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        #return pickle.load(open(traj_dir + cache_file_name, 'r'))
-        pass
+        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+
     print 'caching file...'
     all_states = []
     all_actions = []
@@ -72,7 +72,6 @@ def load_data(traj_dir):
         all_states.append(states)
         all_actions.append(actions)
         all_sum_rewards.append(sum_rewards)
-
 
     all_rel_konfs = np.vstack(all_rel_konfs)
     all_states = np.vstack(all_states).squeeze(axis=1)
@@ -199,6 +198,8 @@ def train_rel_konf_place_admon(config):
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     poses = poses[:, :4]
+    import pdb;
+    pdb.set_trace()
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 

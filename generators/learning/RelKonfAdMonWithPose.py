@@ -256,7 +256,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model.save_weights(fdir + fname)
 
     def generate(self, goal_flags, rel_konfs, collisions, poses):
-
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
         return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
 

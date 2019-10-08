@@ -36,14 +36,14 @@ def get_smpler_state(pidx):
     return state
 
 
-def generate(obj, state_vec, smpler_state, policy):
+def generate(obj, collision_vec, smpler_state, policy):
     n_key_configs = 615
     utils.set_color(obj, [1, 0, 0])
     is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in smpler_state.goal_entities]))
     is_goal_obj = np.tile(is_goal_obj, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
     is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([smpler_state.region in smpler_state.goal_entities]))
     is_goal_region = np.tile(is_goal_region, (n_key_configs, 1)).reshape((1, n_key_configs, 2, 1))
-    state_vec = np.concatenate([state_vec, is_goal_obj, is_goal_region], axis=2)
+    state_vec = np.concatenate([collision_vec, is_goal_obj, is_goal_region], axis=2)
 
     poses = np.hstack(
         [utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
@@ -51,9 +51,9 @@ def generate(obj, state_vec, smpler_state, policy):
     key_configs = pickle.load(open('prm.pkl', 'r'))[0]
     key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
     rel_konfs = []
+    obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
     for k in key_configs:
         konf = utils.clean_pose_data(k)
-        obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
         rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
         rel_konfs.append(rel_konf)
     rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
@@ -64,9 +64,10 @@ def generate(obj, state_vec, smpler_state, policy):
         poses = poses[:, :4]
         collisions = state_vec[:, :, :2, :]
         placement = policy.generate(goal_flags, rel_konfs, collisions, poses)
-        placement = utils.decode_pose_with_sin_and_cos_angle(placement)
+        # placement = utils.decode_pose_with_sin_and_cos_angle(placement)
         if 'place_relative_to_obj' in action_data_mode:
-            placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
+            #placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
+            placement += utils.get_body_xytheta(obj).squeeze()
         if 'place_relative_to_region' in action_data_mode:
             if smpler_state.region == 'home_region':
                 placement[0:2] += [-1.75, 5.25]
@@ -115,7 +116,7 @@ def visualize_samples(policy):
     pdb.set_trace()
 
 
-def main():
+def create_model(seed):
     n_key_configs = 615  # indicating whether it is a goal obj and goal region
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_admon/' % (
         state_data_mode, action_data_mode)
@@ -125,16 +126,20 @@ def main():
 
     config = mconfig_type(
         tau=1.0,
-        seed=int(sys.argv[1])
+        seed=seed
     )
 
-    dim_action = 4
+    dim_action = 3
     fname = 'imle_pose_seed_%d.h5' % config.seed
     dim_state = (n_key_configs, 2, 1)
     policy = RelKonfIMLEPose(dim_action, dim_state, savedir, 1.0, config)
     policy.policy_model.load_weights(policy.save_folder + fname)
+    return policy
+    # visualize_samples(policy)
 
-    visualize_samples(policy)
+
+def main():
+    pass
 
 
 if __name__ == '__main__':

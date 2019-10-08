@@ -1,11 +1,9 @@
 from gtamp_problem_environments.mover_env import Mover
 from gtamp_utils import utils
 from trajectory_representation.concrete_node_state import ConcreteNodeState
-from generators.learned_generator import LearnedGenerator
 from generators.learning.AdMon import AdversarialMonteCarlo
+from generators.learning.policy_evaluator import generate, create_model
 
-import copy
-import openravepy
 import numpy as np
 import random
 import sys
@@ -92,12 +90,28 @@ class SamplerTrajectory:
         problem_env, openrave_env = self.create_environment()
         self.problem_env = problem_env
 
+        admon = create_model(1)
+
         state = None
+        utils.viewer()
         for action_idx, action in enumerate(plan):
             if 'pick' in action.type:
                 associated_place = plan[action_idx + 1]
                 state = self.compute_state(action.discrete_parameters['object'],
                                            associated_place.discrete_parameters['region'])
+
+                ## Visualization purpose
+                obj = action.discrete_parameters['object']
+                region = associated_place.discrete_parameters['region']
+                collision_vec = np.delete(state.state_vec, [415, 586, 615, 618, 619], axis=1)
+                smpls = generate(obj, collision_vec, state, admon)
+                placements = []
+                for s in smpls:
+                    placements.append(s.squeeze() + utils.get_body_xytheta(obj).squeeze())
+                utils.visualize_path(placements)
+                import pdb; pdb.set_trace()
+                ##############################################################################
+
                 action.execute()
                 obj_pose = utils.get_body_xytheta(action.discrete_parameters['object'])
                 robot_pose = utils.get_body_xytheta(self.problem_env.robot)

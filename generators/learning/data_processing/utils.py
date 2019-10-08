@@ -5,6 +5,7 @@ import numpy as np
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'pick_parameters_place_normalized_relative_to_region'
 action_data_mode = 'pick_parameters_place_relative_to_object'
+action_data_mode = 'absolute'
 
 
 def get_processed_poses_from_state(state):
@@ -140,6 +141,7 @@ def get_processed_poses_from_action(state, action):
         place_pose = utils.clean_pose_data(place_pose)
         obj_pose = utils.clean_pose_data(state.obj_pose)
         place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
+        import pdb;pdb.set_trace()
         #place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
 
     action = np.hstack([pick_pose, place_pose])
