@@ -73,8 +73,6 @@ def load_data(traj_dir):
         all_actions.append(actions)
         all_sum_rewards.append(sum_rewards)
 
-        if len(all_poses) > 10:
-            break
 
     all_rel_konfs = np.vstack(all_rel_konfs)
     all_states = np.vstack(all_states).squeeze(axis=1)
