@@ -92,7 +92,9 @@ def normalize_place_pose_wrt_region(pose, region):
 def get_unprocessed_placement(placement, obj_abs_pose):
     placement = utils.decode_pose_with_sin_and_cos_angle(placement)
     if action_data_mode == 'pick_parameters_place_relative_to_object':
-        abs_place = placement.squeeze() + obj_abs_pose.squeeze()
+        #abs_place = placement.squeeze() + obj_abs_pose.squeeze()
+        abs_place = utils.get_absolute_pose_from_relative_pose(placement, obj_abs_pose)
+
     else:
         raise NotImplementedError
 
@@ -149,15 +151,17 @@ def get_processed_poses_from_action(state, action):
 
         place_pose = action['place_abs_base_pose']
         obj_pose = state.obj_pose
-        rel_place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
-        assert abs(rel_place_pose[-1]) < np.pi
+        rel_place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, obj_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(rel_place_pose)
 
-    unprocessed_place = get_unprocessed_placement(place_pose, obj_pose)
-    unprocessed_place = utils.clean_pose_data(unprocessed_place)
-    is_recovered = np.all(np.isclose(unprocessed_place, action['place_abs_base_pose'])) or \
-                    np.all(np.isclose(unprocessed_place, utils.clean_pose_data(action['place_abs_base_pose']).squeeze()))
-    assert is_recovered
+    unprocessed_place = utils.clean_pose_data(get_unprocessed_placement(place_pose, obj_pose))
+    target = utils.clean_pose_data(action['place_abs_base_pose'])
+
+    is_recovered = np.all(np.isclose(unprocessed_place, target))
+    try:
+        assert is_recovered
+    except:
+        import pdb;pdb.set_trace()
     action = np.hstack([pick_pose, place_pose])
 
     return action
