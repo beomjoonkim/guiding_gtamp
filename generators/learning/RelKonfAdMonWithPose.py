@@ -154,7 +154,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model = self.construct_policy_model()
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
-        self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
+        #self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
     def create_q_on_policy_model(self):
         for l in self.q_mse_model.layers:
@@ -169,7 +169,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             outputs=[q_on_policy_output, self.policy_output])
         q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
                                   optimizer=self.opt_G,
-                                  loss_weights={'q_output': 1, 'policy_output': 1},
+                                  loss_weights={'q_output': 0, 'policy_output': 1},
                                   metrics=[])
 
         # but when do I train the q_mse_model?
