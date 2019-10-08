@@ -75,6 +75,9 @@ def load_data(traj_dir):
         all_actions.append(actions)
         all_sum_rewards.append(sum_rewards)
 
+        if len(all_poses) > 10:
+            break
+
     all_rel_konfs = np.vstack(all_rel_konfs)
     all_states = np.vstack(all_states).squeeze(axis=1)
     all_actions = np.vstack(all_actions)
@@ -193,9 +196,9 @@ def train_rel_konf_place_admon(config):
     dim_action = 3
     savedir = 'generators/learning/learned_weights/state_data_mode_%s_action_data_mode_%s/rel_konf_place_admon/' % (
         state_data_mode, action_data_mode)
-
     admon = RelKonfIMLEPose(dim_action=dim_action, dim_collision=dim_state,
                             save_folder=savedir, tau=config.tau, config=config)
+    print "Created IMLE-admon"
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
@@ -214,7 +217,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='rel_konf_place_mse')
+    parser.add_argument('-algo', type=str, default='rel_konf_place_admon')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
