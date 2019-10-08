@@ -248,6 +248,11 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             os.makedirs(fdir)
         self.policy_model.save_weights(fdir + fname)
 
+    def generate(self, goal_flags, rel_konfs, collisions, poses):
+
+        noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+        return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
+
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags, actions, sum_rewards,
@@ -302,7 +307,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             before = self.policy_model.get_weights()
             self.policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
                                   actions,
-                                  epochs=1000)
+                                  epochs=100)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
