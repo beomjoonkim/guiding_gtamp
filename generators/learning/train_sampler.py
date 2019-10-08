@@ -16,12 +16,22 @@ from data_processing.utils import get_processed_poses_from_state, get_processed_
 from gtamp_utils import utils
 
 
+def make_konfs_relative_to_pose(obj_pose, key_configs):
+    rel_konfs = []
+    utils.clean_pose_data(obj_pose)
+    for k in key_configs:
+        konf = utils.clean_pose_data(k)
+        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
+        rel_konfs.append(rel_konf)
+    return np.array(rel_konfs)
+
+
 def load_data(traj_dir):
     traj_files = os.listdir(traj_dir)
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        # return pickle.load(open(traj_dir + cache_file_name, 'r'))
 
     print 'caching file...'
     all_states = []
@@ -29,6 +39,7 @@ def load_data(traj_dir):
     all_sum_rewards = []
     all_poses = []
     all_rel_konfs = []
+
     key_configs = pickle.load(open('prm.pkl', 'r'))[0]
     key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
 
@@ -57,12 +68,7 @@ def load_data(traj_dir):
         actions = np.array([get_processed_poses_from_action(s, a)
                             for s, a in zip(traj.states, traj.actions)])
         for s in traj.states:
-            rel_konfs = []
-            for k in key_configs:
-                konf = utils.clean_pose_data(k)
-                obj_pose = utils.clean_pose_data(s.obj_pose)
-                rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
-                rel_konfs.append(rel_konf)
+            rel_konfs = make_konfs_relative_to_pose(s.obj_pose, key_configs)
             all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 3, 1)))
 
         rewards = traj.rewards

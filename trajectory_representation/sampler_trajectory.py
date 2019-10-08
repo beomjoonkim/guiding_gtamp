@@ -107,7 +107,7 @@ class SamplerTrajectory:
                 smpls = generate(obj, collision_vec, state, admon)
                 placements = []
                 for s in smpls:
-                    placements.append(s.squeeze() + utils.get_body_xytheta(obj).squeeze())
+                    placements.append(s.squeeze())
                 utils.visualize_path(placements)
                 import pdb; pdb.set_trace()
                 ##############################################################################

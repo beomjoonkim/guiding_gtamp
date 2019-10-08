@@ -1,18 +1,14 @@
-from test_scripts.run_greedy import get_problem_env
-from generators.learned_generator import LearnedGenerator
-from gtamp_utils import utils
-from trajectory_representation.concrete_node_state import ConcreteNodeState
-from trajectory_representation.operator import Operator
-from generators.learning.train_sampler import get_processed_poses_from_state, state_data_mode, action_data_mode
+from generators.learning.train_sampler import state_data_mode, action_data_mode
 from generators.learning.RelKonfAdMonWithPose import RelKonfIMLEPose
-
-from keras.layers import *
+from generators.learning.train_sampler import make_konfs_relative_to_pose
+from generators.learning.data_processing import utils as data_processing_utils
+from test_scripts.run_greedy import get_problem_env
+from gtamp_utils import utils
 
 import numpy as np
 import collections
 import pickle
 import os
-import openravepy
 import sys
 
 smpler_processed_path = './planning_experience/processed/domain_two_arm_mover/n_objs_pack_1/irsc/' \
@@ -50,12 +46,8 @@ def generate(obj, collision_vec, smpler_state, policy):
 
     key_configs = pickle.load(open('prm.pkl', 'r'))[0]
     key_configs = np.delete(key_configs, [415, 586, 615, 618, 619], axis=0)
-    rel_konfs = []
     obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
-    for k in key_configs:
-        konf = utils.clean_pose_data(k)
-        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
-        rel_konfs.append(rel_konf)
+    rel_konfs = make_konfs_relative_to_pose(obj_pose, key_configs)
     rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
 
     places = []
@@ -63,17 +55,8 @@ def generate(obj, collision_vec, smpler_state, policy):
         goal_flags = state_vec[:, :, 2:, :]
         poses = poses[:, :4]
         collisions = state_vec[:, :, :2, :]
-        placement = policy.generate(goal_flags, rel_konfs, collisions, poses)
-        # placement = utils.decode_pose_with_sin_and_cos_angle(placement)
-        if 'place_relative_to_obj' in action_data_mode:
-            #placement = utils.get_absolute_pose_from_relative_pose(placement, utils.get_body_xytheta(obj).squeeze())
-            placement += utils.get_body_xytheta(obj).squeeze()
-        if 'place_relative_to_region' in action_data_mode:
-            if smpler_state.region == 'home_region':
-                placement[0:2] += [-1.75, 5.25]
-            elif smpler_state.region == 'loading_region':
-                placement[0:2] += [-0.7, 4.3]
-
+        placement = data_processing_utils.get_unprocessed_placement(
+            policy.generate(goal_flags, rel_konfs, collisions, poses).squeeze(), obj_pose)
         places.append(placement)
     return places
 
@@ -105,7 +88,7 @@ def visualize_samples(policy):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = 'rectangular_packing_box1'
+    obj = 'square_packing_box1'
 
     print 'generating..'
     places = generate(obj, state_vec, smpler_state, policy)
@@ -135,11 +118,12 @@ def create_model(seed):
     policy = RelKonfIMLEPose(dim_action, dim_state, savedir, 1.0, config)
     policy.policy_model.load_weights(policy.save_folder + fname)
     return policy
-    # visualize_samples(policy)
 
 
 def main():
-    pass
+    seed = int(sys.argv[1])
+    policy = create_model(seed)
+    visualize_samples(policy)
 
 
 if __name__ == '__main__':

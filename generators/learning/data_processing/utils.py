@@ -1,11 +1,12 @@
 from gtamp_utils import utils
 import numpy as np
 
-
 state_data_mode = 'robot_rel_to_obj'
 action_data_mode = 'pick_parameters_place_normalized_relative_to_region'
 action_data_mode = 'pick_parameters_place_relative_to_object'
-action_data_mode = 'absolute'
+
+
+# action_data_mode = 'absolute'
 
 
 def get_processed_poses_from_state(state):
@@ -88,11 +89,20 @@ def normalize_place_pose_wrt_region(pose, region):
     return place_pose
 
 
+def get_unprocessed_placement(placement, obj_abs_pose):
+    placement = utils.decode_pose_with_sin_and_cos_angle(placement)
+    if action_data_mode == 'pick_parameters_place_relative_to_object':
+        abs_place = placement.squeeze() + obj_abs_pose.squeeze()
+    else:
+        raise NotImplementedError
+
+    return abs_place
+
+
 def get_processed_poses_from_action(state, action):
     if action_data_mode == 'absolute':
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(action['pick_abs_base_pose'])
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
-        place_pose = action['place_abs_base_pose']
     elif action_data_mode == 'pick_relative':
         pick_pose = action['pick_abs_base_pose']
         pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
@@ -138,13 +148,16 @@ def get_processed_poses_from_action(state, action):
         pick_pose = pick_params
 
         place_pose = action['place_abs_base_pose']
-        #place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, state.obj_pose)
-        place_pose = utils.clean_pose_data(place_pose)
-        obj_pose = utils.clean_pose_data(state.obj_pose)
-        place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
-        import pdb;pdb.set_trace()
-        #place_pose = utils.encode_pose_with_sin_and_cos_angle(place_pose)
+        obj_pose = state.obj_pose
+        rel_place_pose = utils.subtract_pose2_from_pose1(place_pose, obj_pose)
+        assert abs(rel_place_pose[-1]) < np.pi
+        place_pose = utils.encode_pose_with_sin_and_cos_angle(rel_place_pose)
 
+    unprocessed_place = get_unprocessed_placement(place_pose, obj_pose)
+    unprocessed_place = utils.clean_pose_data(unprocessed_place)
+    is_recovered = np.all(np.isclose(unprocessed_place, action['place_abs_base_pose'])) or \
+                    np.all(np.isclose(unprocessed_place, utils.clean_pose_data(action['place_abs_base_pose']).squeeze()))
+    assert is_recovered
     action = np.hstack([pick_pose, place_pose])
 
     return action
