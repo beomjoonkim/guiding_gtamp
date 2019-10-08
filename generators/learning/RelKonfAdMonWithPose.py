@@ -302,7 +302,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             before = self.policy_model.get_weights()
             self.policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
                                   actions,
-                                  epochs=10000)
+                                  epochs=1000)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
