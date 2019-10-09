@@ -253,7 +253,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         fname = self.weight_file_name + '.h5'
         callbacks = [
             tf.keras.callbacks.TerminateOnNaN(),
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=10),
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20),
             tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
                                                verbose=False,
                                                save_best_only=True,
@@ -343,5 +343,4 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
-            if gen_w_norm < 1e-4:
-                break
+

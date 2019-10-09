@@ -88,7 +88,7 @@ def visualize_samples(policy):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = problem_env.object_names[1]
+    obj = problem_env.object_names[0]
 
     print 'generating..'
     places = generate(obj, state_vec, smpler_state, policy)
