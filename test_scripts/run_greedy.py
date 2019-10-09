@@ -67,7 +67,7 @@ def get_solution_file_name(config):
                    '_mse_weight_' + str(config.mse_weight) + \
                    '_use_region_agnostic_' + str(config.use_region_agnostic) + \
                    '_mix_rate_' + str(config.mixrate) + '/'
-        sampler_config = '/smpler_config_num_train_' + str(config.num_train)  + '/'
+        sampler_config = '/smpler_config_num_train_' + str(config.num_train) + '/'
         solution_file_dir = solution_file_dir + q_config + sampler_config
     elif config.qlearned_hcount:
         solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc' \
@@ -206,7 +206,6 @@ def get_pap_gnn_model(mover, config):
 
         with tf.variable_scope('pap'):
             pap_model = PaPGNN(num_entities, num_node_features, num_edge_features, pap_mconfig, entity_names, n_regions)
-        import pdb;pdb.set_trace()
         pap_model.load_weights()
     else:
         pap_model = None
@@ -269,12 +268,15 @@ def main():
             num_nodes = trajectory['num_nodes']
     else:
         t = time.time()
-        plan, num_nodes = search(problem_env, config, pap_model, smpler)
+        plan, num_nodes, nodes = search(problem_env, config, pap_model, smpler)
         tottime = time.time() - t
         success = plan is not None
         plan_length = len(plan) if success else 0
         if success and config.domain == 'one_arm_mover':
             make_pklable(plan)
+
+        for n in nodes:
+            n.state.make_pklable()
 
         data = {
             'n_objs_pack': config.n_objs_pack,
@@ -282,7 +284,8 @@ def main():
             'success': success,
             'plan_length': plan_length,
             'num_nodes': num_nodes,
-            'plan': plan
+            'plan': plan,
+            'nodes': nodes
         }
         with open(solution_file_name, 'wb') as f:
             pickle.dump(data, f)

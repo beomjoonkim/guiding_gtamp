@@ -12,7 +12,7 @@ def worker_p(config):
     for key, value in zip(config.keys(), config.values()):
         option = ' -' + str(key) + ' ' + str(value)
         command += option
-    command += ' -hcount'
+    command += ' -qlearned_hcount_old_number_in_goal'
     command += ' -gather_planning_exp'
 
     print command

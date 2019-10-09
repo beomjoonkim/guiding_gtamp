@@ -8,7 +8,6 @@ class Node(object):
         self.heuristic_vals = {}
         #for a in self.action:
         #    self.heuristic_vals[a] = None # used only for the root node
-        self.heuristic_vals = {}
 
         if parent is None:
             self.depth = 1

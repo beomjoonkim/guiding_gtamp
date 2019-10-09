@@ -99,6 +99,7 @@ def search(mover, config, pap_model, learned_smpler=None):
     initnode = Node(None, None, state)
     initial_state = state
     actions = get_actions(mover, goal, config)
+    nodes = [initnode]
     for a in actions:
         hval = compute_heuristic(state, a, pap_model, mover, config)
         discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
@@ -113,7 +114,8 @@ def search(mover, config, pap_model, learned_smpler=None):
         print "Time %.2f / %.2f " % (curr_time, config.timelimit)
         print "Iter %d / %d" % (iter, config.num_node_limit)
         if curr_time > config.timelimit or iter > config.num_node_limit:
-            return None, iter
+            import pdb;pdb.set_trace()
+            return None, iter, nodes
 
         if action_queue.empty():
             actions = get_actions(mover, goal, config)
@@ -134,8 +136,6 @@ def search(mover, config, pap_model, learned_smpler=None):
 
         if action.type == 'two_arm_pick_two_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
-            a_obj = action.discrete_parameters['two_arm_place_object']
-            a_region = action.discrete_parameters['two_arm_place_region']
             if learned_smpler is None:
                 smpler = PaPUniformGenerator(action, mover, None)
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
@@ -147,14 +147,6 @@ def search(mover, config, pap_model, learned_smpler=None):
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
-            """
-            smpler = UniformPaPGenerator(None, action, mover, None,
-                                         n_candidate_params_to_smpl=3,
-                                         total_number_of_feasibility_checks=200,
-                                         dont_check_motion_existence=False)
-            smpled_param = smpler.sample_next_point(cached_collisions=state.collides,
-                                                    cached_holding_collisions=None)
-            """
 
             if smpled_param['is_feasible']:
                 action.continuous_parameters = smpled_param
@@ -171,7 +163,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                 print("found successful plan: {}".format(n_objs_pack))
                 plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
                 plan = [nd.action for nd in plan[1:]] + [action]
-                return plan, iter
+                return plan, iter, nodes
             else:
                 newstate = statecls(mover, goal, node.state, action)
                 print "New state computed"
@@ -180,7 +172,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     action_queue.put((hval, float('nan'), newaction, newnode))
-                # import pdb;pdb.set_trace()
+                nodes.append(newnode)
 
         elif action.type == 'one_arm_pick_one_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
@@ -230,7 +222,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                     print("found successful plan: {}".format(n_objs_pack))
                     plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
                     plan = [nd.action for nd in plan[1:]] + [action]
-                    return plan, iter
+                    return plan, iter, nodes
                 else:
                     newstate = statecls(mover, goal, node.state, action)
                     print "New state computed"
