@@ -173,6 +173,11 @@ class RelKonfMSEPose(AdversarialPolicy):
             [data['actions'], data['goal_flags'], data['poses'], data['rel_konfs'], data['states']])
         return np.mean(np.power(pred - data['sum_rewards'], 2))
 
+    def compute_policy_mse(self, data):
+        pred = self.policy_model.predict(
+            [data['goal_flags'], data['poses'], data['rel_konfs'], data['states']])
+        return np.mean(np.power(pred - data['actions'], 2))
+
     def train_q_function(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         self.train_data, self.test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags,
@@ -197,26 +202,22 @@ class RelKonfMSEPose(AdversarialPolicy):
                                                              actions, sum_rewards,
                                                              train_idxs, test_idxs)
         callbacks = self.create_callbacks_for_pretraining()
-        t_actions = test_data['actions']
-        t_goal_flags = test_data['goal_flags']
-        t_poses = test_data['poses']
-        t_rel_konfs = test_data['rel_konfs']
-        t_collisions = test_data['states']
 
         actions = train_data['actions']
         goal_flags = train_data['goal_flags']
         poses = train_data['poses']
         rel_konfs = train_data['rel_konfs']
         collisions = train_data['states']
+        pre_mse = self.compute_policy_mse(test_data)
         self.policy_model.fit([goal_flags, rel_konfs, collisions, poses], actions,
                               batch_size=32,
                               epochs=epochs,
                               verbose=2,
                               callbacks=callbacks,
-                              validation_data=(
-                                  [t_goal_flags, t_rel_konfs, t_collisions, t_poses],
-                                  [t_actions]),
-                              )
+                              validation_split=0.1)
+        post_mse = self.compute_policy_mse(test_data)
+        print "Pre-and-post test errors", pre_mse, post_mse
+
 
 
 class RelKonfIMLEPose(RelKonfMSEPose):
