@@ -2,8 +2,7 @@ from gtamp_problem_environments.mover_env import Mover
 from gtamp_utils import utils
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from generators.learning.AdMon import AdversarialMonteCarlo
-from generators.learning.policy_evaluator import generate
-from generators.learning.model_creation_utils.create_model import create_imle_model
+from generators.learning.utils.model_creation_utils import create_imle_model
 
 import numpy as np
 import random
@@ -56,7 +55,6 @@ class SamplerTrajectory:
         self.rewards = []
         self.state_prime = []
         self.seed = None  # this defines the initial state
-        self.key_configs = key_configs
         self.problem_env = None
 
     def compute_state(self, obj, region):
@@ -65,7 +63,7 @@ class SamplerTrajectory:
             goal_entities = ['square_packing_box1', 'home_region']
         else:
             raise NotImplementedError
-        return ConcreteNodeState(self.problem_env, obj, region, goal_entities, self.key_configs)
+        return ConcreteNodeState(self.problem_env, obj, region, goal_entities)
 
     def add_state_prime(self):
         self.state_prime = self.states[1:]
@@ -102,13 +100,15 @@ class SamplerTrajectory:
                                            associated_place.discrete_parameters['region'])
 
                 ## Visualization purpose
+                """
                 obj = action.discrete_parameters['object']
                 region = associated_place.discrete_parameters['region']
                 collision_vec = np.delete(state.state_vec, [415, 586, 615, 618, 619], axis=1)
-                smpls = generate(obj, collision_vec, state, admon)
+                smpls = generate_smpls(obj, collision_vec, state, admon)
                 utils.visualize_path(smpls)
                 utils.visualize_path([associated_place.continuous_parameters['q_goal']])
                 import pdb; pdb.set_trace()
+                """
                 ##############################################################################
 
                 action.execute()

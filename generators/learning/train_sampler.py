@@ -59,7 +59,7 @@ def load_data(traj_dir):
                             for s, a in zip(traj.states, traj.actions)])
         for s in traj.states:
             rel_konfs = make_konfs_relative_to_pose(s.obj_pose, key_configs)
-            all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 3, 1)))
+            all_rel_konfs.append(np.array(rel_konfs).reshape((1, 615, 4, 1)))
 
         rewards = traj.rewards
         sum_rewards = np.array([np.sum(traj.rewards[t:]) for t in range(len(rewards))])
