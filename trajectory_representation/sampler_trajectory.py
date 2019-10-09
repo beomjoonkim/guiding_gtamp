@@ -105,10 +105,8 @@ class SamplerTrajectory:
                 region = associated_place.discrete_parameters['region']
                 collision_vec = np.delete(state.state_vec, [415, 586, 615, 618, 619], axis=1)
                 smpls = generate(obj, collision_vec, state, admon)
-                placements = []
-                for s in smpls:
-                    placements.append(s.squeeze())
-                utils.visualize_path(placements)
+                utils.visualize_path(smpls)
+                utils.visualize_path([associated_place.continuous_parameters['q_goal']])
                 import pdb; pdb.set_trace()
                 ##############################################################################
 

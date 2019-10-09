@@ -114,14 +114,15 @@ class RelKonfMSEPose(AdversarialPolicy):
                 }
         return train, test
 
-    def get_batch(self, states, poses, rel_konfs, actions, sum_rewards, batch_size):
+    def get_batch(self, cols, goal_flags, poses, rel_konfs, actions, sum_rewards, batch_size):
         indices = np.random.randint(0, actions.shape[0], size=batch_size)
-        s_batch = np.array(states[indices, :])  # collision vector
+        cols_batch = np.array(cols[indices, :])  # collision vector
+        goal_flag_batch = np.array(goal_flags[indices, :])  # collision vector
         a_batch = np.array(actions[indices, :])
         pose_batch = np.array(poses[indices, :])
         konf_batch = np.array(rel_konfs[indices, :])
         sum_reward_batch = np.array(sum_rewards[indices, :])
-        return s_batch, pose_batch, konf_batch, a_batch, sum_reward_batch
+        return cols_batch, goal_flag_batch, pose_batch, konf_batch, a_batch, sum_reward_batch
 
     def compute_pure_mse(self, data):
         pred = self.q_mse_model.predict(
@@ -154,7 +155,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model = self.construct_policy_model()
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
-        #self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
+        # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
     def create_q_on_policy_model(self):
         for l in self.q_mse_model.layers:
@@ -166,10 +167,17 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         q_on_policy_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
                     self.noise_input],
-            outputs=[q_on_policy_output, self.policy_output])
+            #outputs=[q_on_policy_output, self.policy_output])
+            outputs=[self.policy_output])
+        """
         q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
                                   optimizer=self.opt_G,
                                   loss_weights={'q_output': 0, 'policy_output': 1},
+                                  metrics=[])
+        """
+        q_on_policy_model.compile(loss={'policy_output': 'mse'},
+                                  optimizer=self.opt_G,
+                                  loss_weights={'policy_output': 1},
                                   metrics=[])
 
         # but when do I train the q_mse_model?
@@ -242,9 +250,14 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         pass
 
     def create_callbacks_for_pretraining(self):
+        fname = self.weight_file_name + '.h5'
         callbacks = [
             tf.keras.callbacks.TerminateOnNaN(),
-            tf.keras.callbacks.EarlyStopping(monitor='loss', min_delta=1e-2, patience=10),
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=10),
+            tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
+                                               verbose=False,
+                                               save_best_only=True,
+                                               save_weights_only=True),
         ]
         return callbacks
 
@@ -259,11 +272,25 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
         return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
 
+    def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
+        chosen_noise_smpls = []
+        for true_action, generated, noise_smpls_for_action in zip(actions, generated_actions, noise_smpls):
+            closest_point, closest_point_idx = self.find_the_idx_of_closest_point_to_x1(true_action, generated)
+            noise_that_generates_closest_point_to_true_action = noise_smpls_for_action[closest_point_idx]
+            chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
+        return np.array(chosen_noise_smpls)
+
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=100):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags, actions, sum_rewards,
                                                              train_idxs, test_idxs)
 
+        t_actions = test_data['actions']
+        t_goal_flags = test_data['goal_flags']
+        t_poses = test_data['poses']
+        t_rel_konfs = test_data['rel_konfs']
+        t_collisions = test_data['states']
+        n_test_data = len(t_collisions)
 
         # generate x_1,...,x_m from the generator
         # pick random batch of size m from the real dataset Y
@@ -279,30 +306,38 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         collisions = train_data['states']
         for epoch in range(epochs):
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
+            batch_size = 160
+            col_batch, goal_flag_batch, pose_batch, rel_konf_batch, a_batch, sum_reward_batch = \
+                self.get_batch(collisions, goal_flags, poses, rel_konfs, actions, sum_rewards, batch_size=batch_size)
             if is_time_to_smpl_new_data:
                 stime = time.time()
-                # generate m different actions in each state
-                world_states = (goal_flags, rel_konfs, collisions, poses)
-                noise_smpls = noise(z_size=(n_data, num_smpl_per_state, self.dim_action))  # n_data by k matrix
+                # train data
+                world_states = (goal_flag_batch, rel_konf_batch, col_batch, pose_batch)
+                noise_smpls = noise(z_size=(batch_size, num_smpl_per_state, self.dim_action))
                 generated_actions = self.generate_k_smples_for_multiple_states(world_states, noise_smpls)
-                chosen_noise_smpls = []
+                chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(actions, generated_actions, noise_smpls)
 
-                idx = 0
-                for true_action, generated, noise_smpls_for_action in zip(actions, generated_actions, noise_smpls):
-                    closest_point, closest_point_idx = self.find_the_idx_of_closest_point_to_x1(true_action, generated)
-                    noise_that_generates_closest_point_to_true_action = noise_smpls_for_action[closest_point_idx]
-                    chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
+                # validation data
+                t_world_states = (t_goal_flags, t_rel_konfs, t_collisions, t_poses)
+                t_noise_smpls = noise(z_size=(n_test_data, num_smpl_per_state, self.dim_action))
+                t_generated_actions = self.generate_k_smples_for_multiple_states(t_world_states, t_noise_smpls)
+                t_chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(t_actions, t_generated_actions, t_noise_smpls)
 
                 print "Data generation time", time.time() - stime
 
-            chosen_noise_smpls = np.array(chosen_noise_smpls)
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
             # [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input]
-            self.q_on_policy_model.fit([goal_flags, rel_konfs, collisions, poses, chosen_noise_smpls],
-                                       [actions, actions],
-                                       epochs=200)
+            self.q_on_policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
+                                       [a_batch],
+                                       epochs=1000,
+                                       validation_data=(
+                                       [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
+                                       [t_actions]))
+            # I think for this, you want to keep the validation batch, and stop if the validation error is high
+            fname = self.weight_file_name + '.h5'
+            self.q_on_policy_model.load_weights(self.save_folder + fname)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm

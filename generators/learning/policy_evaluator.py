@@ -88,7 +88,7 @@ def visualize_samples(policy):
     smpler_state = get_smpler_state(pidx)
     state_vec = np.delete(smpler_state.state_vec, [415, 586, 615, 618, 619], axis=1)
 
-    obj = 'square_packing_box1'
+    obj = problem_env.object_names[1]
 
     print 'generating..'
     places = generate(obj, state_vec, smpler_state, policy)
@@ -112,7 +112,7 @@ def create_model(seed):
         seed=seed
     )
 
-    dim_action = 3
+    dim_action = 4
     fname = 'imle_pose_seed_%d.h5' % config.seed
     dim_state = (n_key_configs, 2, 1)
     policy = RelKonfIMLEPose(dim_action, dim_state, savedir, 1.0, config)
