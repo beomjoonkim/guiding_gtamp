@@ -280,7 +280,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
         return np.array(chosen_noise_smpls)
 
-    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=100):
+    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=1000):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags, actions, sum_rewards,
                                                              train_idxs, test_idxs)
