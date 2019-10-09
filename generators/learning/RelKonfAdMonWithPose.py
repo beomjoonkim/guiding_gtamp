@@ -304,6 +304,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         poses = train_data['poses']
         rel_konfs = train_data['rel_konfs']
         collisions = train_data['states']
+        callbacks = self.create_callbacks_for_pretraining()
         for epoch in range(epochs):
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
             batch_size = 160
@@ -334,20 +335,13 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                        epochs=1000,
                                        validation_data=(
                                        [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
-                                       [t_actions]))
+                                       [t_actions]),
+                                       callbacks=callbacks)
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
             fname = self.weight_file_name + '.h5'
             self.q_on_policy_model.load_weights(self.save_folder + fname)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
-            self.save_weights()
             if gen_w_norm < 1e-4:
                 break
-
-            # I think the intuitive explanation of this problem is as follows. You want to
-            # select the z such that, we make sure z generates x. In this sense, you probably want
-            # to "overfit" z to x.
-
-            # But I do want a termination condition based on the norm of difference between before/after weights
-        self.save_weights()
