@@ -11,19 +11,11 @@ from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
 from RelKonfAdMonWithPose import RelKonfMSEPose, RelKonfIMLEPose
 from data_processing.utils import get_processed_poses_from_state, get_processed_poses_from_action, \
-    state_data_mode, action_data_mode
+    state_data_mode, action_data_mode, make_konfs_relative_to_pose
 
 from gtamp_utils import utils
 
 
-def make_konfs_relative_to_pose(obj_pose, key_configs):
-    rel_konfs = []
-    utils.clean_pose_data(obj_pose)
-    for k in key_configs:
-        konf = utils.clean_pose_data(k)
-        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
-        rel_konfs.append(rel_konf)
-    return np.array(rel_konfs)
 
 
 def load_data(traj_dir):

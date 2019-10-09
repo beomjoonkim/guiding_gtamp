@@ -2,7 +2,8 @@ from gtamp_problem_environments.mover_env import Mover
 from gtamp_utils import utils
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from generators.learning.AdMon import AdversarialMonteCarlo
-from generators.learning.policy_evaluator import generate, create_model
+from generators.learning.policy_evaluator import generate
+from generators.learning.model_creation_utils.create_model import create_imle_model
 
 import numpy as np
 import random
@@ -90,7 +91,7 @@ class SamplerTrajectory:
         problem_env, openrave_env = self.create_environment()
         self.problem_env = problem_env
 
-        admon = create_model(1)
+        admon = create_imle_model(1)
 
         state = None
         utils.viewer()

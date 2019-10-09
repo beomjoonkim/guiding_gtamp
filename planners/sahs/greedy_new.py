@@ -114,7 +114,6 @@ def search(mover, config, pap_model, learned_smpler=None):
         print "Time %.2f / %.2f " % (curr_time, config.timelimit)
         print "Iter %d / %d" % (iter, config.num_node_limit)
         if curr_time > config.timelimit or iter > config.num_node_limit:
-            import pdb;pdb.set_trace()
             return None, iter, nodes
 
         if action_queue.empty():
@@ -142,7 +141,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
             else:
-                smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
+                smpler = LearnedGenerator(action, mover, learned_smpler, state)
                 # How can I change the state.collides to the one_hot? How long would it take?
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,

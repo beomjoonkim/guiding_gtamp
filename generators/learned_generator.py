@@ -1,94 +1,48 @@
 from uniform import PaPUniformGenerator
-from generators.learning.train_sampler import get_processed_poses_from_state
-from gtamp_utils import utils
+from generators.learning.utils.data_processing_utils import action_data_mode
+from generators.learning.utils.sampler_utils import generate_smpls
+from trajectory_representation.concrete_node_state import ConcreteNodeState
 
-import numpy as np
 import pickle
 
 
 class LearnedGenerator(PaPUniformGenerator):
-    def __init__(self, operator_skeleton, problem_env, sampler, state, swept_volume_constraint=None):
+    def __init__(self, operator_skeleton, problem_env, sampler, abstract_state, swept_volume_constraint=None):
         PaPUniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
         self.feasible_pick_params = {}
         self.sampler = sampler
-        self.state = state
-        self.pose_scaler = pickle.load(open('scalers.pkl', 'r'))['pose']
-        self.action_scaler = pickle.load(open('scalers.pkl', 'r'))['action']
+        self.abstract_state = abstract_state
+        self.obj = operator_skeleton.discrete_parameters['object']
+        self.region = operator_skeleton.discrete_parameters['region']
 
-    def generate_base_poses(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_pick'):
-        if "Pose" in self.sampler.__module__:
-            poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
-            poses = self.pose_scaler.transform(poses)
-            pick_place_base_poses = self.sampler.generate(self.state.state_vec, poses)  # I need grasp parameters;
-            pick_place_base_poses = self.action_scaler.inverse_transform(pick_place_base_poses)
-        else:
-            pick_place_base_poses = self.sampler.generate(self.state.state_vec)  # I need grasp parameters;
-        pick_place_base_poses = pick_place_base_poses.squeeze()
+        # todo make the concrete state to be used to generate samples
+        goal_entities = self.abstract_state.goal_entities
+        key_configs = pickle.load(open('prm.pkl', 'r'))[0]
+        self.concrete_state = ConcreteNodeState(self.problem_env, self.obj, self.region,
+                                                goal_entities, key_configs,
+                                                collision_vector=abstract_state.key_config_obstacles)
+        import pdb;pdb.set_trace()
 
-        if action_data_mode == 'pick_relative_place_relative_to_region':
-            relative_pick_pose_wrt_obj = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[:4])
-            pick_pose = utils.get_global_pose_from_relative_pose_to_body(
-                operator_skeleton.discrete_parameters['object'],
-                relative_pick_pose_wrt_obj)
-            place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
-            if operator_skeleton.discrete_parameters['region'] == 'home_region':
-                place_pose[0:2] += [-1.75, 5.25]
-            elif operator_skeleton.discrete_parameters['region'] == 'loading_region':
-                place_pose[0:2] += [-0.7, 4.3]
-        elif action_data_mode == 'pick_parameters_place_relative_to_region':
-            pick_params = pick_place_base_poses[:4]
-            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
-            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
-            pick_pose = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
-                                                                             self.state.obj_pose)
-            place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
-            if operator_skeleton.discrete_parameters['region'] == 'home_region':
-                place_pose[0:2] += [-1.75, 5.25]
-            elif operator_skeleton.discrete_parameters['region'] == 'loading_region':
-                place_pose[0:2] += [-0.7, 4.3]
-        elif action_data_mode == 'pick_parameters_place_relative_to_pick':
-            pick_params = pick_place_base_poses[:4]
-            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
-            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
-            pick_pose = utils.get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
-                                                                             self.state.obj_pose)
-            place_pose = utils.decode_pose_with_sin_and_cos_angle(pick_place_base_poses[4:])
-            place_pose = utils.get_absolute_pose_from_relative_pose(place_pose, pick_pose)
+    def generate(self, operator_skeleton):
+        import pdb;pdb.set_trace()
+        if action_data_mode == 'pick_parameters_place_relative_to_object':
+            import pdb;pdb.set_trace()
+            place_smpls = generate_smpls(self.obj, smpler_state, self.sampler, 1, key_configs=None)
         else:
             raise NotImplementedError
 
-        return pick_pose, place_pose
-
-    def generate(self, operator_skeleton, action_data_mode='pick_parameters_place_relative_to_pick'):
-        if "Pose" in self.sampler.__module__:
-            poses = get_processed_poses_from_state(self.state, 'robot_rel_to_obj').reshape((1, 8))
-            smpl = self.sampler.generate(self.state.state_vec, poses).squeeze()  # I need grasp parameters;
-        else:
-            smpl = self.sampler.generate(self.state.state_vec).squeeze()  # I need grasp parameters;
-        if action_data_mode == 'pick_parameters_place_relative_to_region':
-            pick_params = smpl[:4]
-            portion, base_angle, facing_angle_offset = pick_params[0], pick_params[1:3], pick_params[3]
-            base_angle = utils.decode_sin_and_cos_to_angle(base_angle)
-            pick_params = np.array([portion, base_angle, facing_angle_offset])
-
-            place_pose = utils.decode_pose_with_sin_and_cos_angle(smpl[4:])
-            if operator_skeleton.discrete_parameters['two_arm_place_region'] == 'home_region':
-                place_pose[0:2] += [-1.75, 5.25]
-            elif operator_skeleton.discrete_parameters['two_arm_place_region'] == 'loading_region':
-                place_pose[0:2] += [-0.7, 4.3]
-        else:
-            raise NotImplementedError
-
-        return np.hstack([pick_params, place_pose])
 
     def sample_feasible_op_parameters(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning):
         assert n_iter > 0
         feasible_op_parameters = []
         for i in range(n_iter):
             # fix it to take in the pose
+            """
             smpl = self.generate(operator_skeleton)[None, :]
             grasp_parameters = self.sample_from_uniform()[0:3][None, :]
             op_parameters = np.hstack([grasp_parameters, smpl]).squeeze()
+            """
+            op_parameters = self.generate(operator_skeleton)
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,
                                                                                   self.swept_volume_constraint)
 

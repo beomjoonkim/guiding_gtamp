@@ -3,8 +3,6 @@ from keras.layers.merge import Concatenate
 from generators.learning.AdversarialPolicy import AdversarialPolicy
 from keras.models import Model
 
-from AdversarialPolicy import G_loss
-
 import tensorflow as tf
 import time
 import os
@@ -23,7 +21,6 @@ def G_loss(true_actions, pred):
 
 
 def noise(z_size):
-    # todo use the uniform over the entire action space here
     return np.random.normal(size=z_size).astype('float32')
 
 
@@ -167,7 +164,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         q_on_policy_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
                     self.noise_input],
-            #outputs=[q_on_policy_output, self.policy_output])
+            # outputs=[q_on_policy_output, self.policy_output])
             outputs=[self.policy_output])
         """
         q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
@@ -316,16 +313,17 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                 world_states = (goal_flag_batch, rel_konf_batch, col_batch, pose_batch)
                 noise_smpls = noise(z_size=(batch_size, num_smpl_per_state, self.dim_action))
                 generated_actions = self.generate_k_smples_for_multiple_states(world_states, noise_smpls)
-                chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(actions, generated_actions, noise_smpls)
+                chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(actions, generated_actions,
+                                                                                  noise_smpls)
 
                 # validation data
                 t_world_states = (t_goal_flags, t_rel_konfs, t_collisions, t_poses)
                 t_noise_smpls = noise(z_size=(n_test_data, num_smpl_per_state, self.dim_action))
                 t_generated_actions = self.generate_k_smples_for_multiple_states(t_world_states, t_noise_smpls)
-                t_chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(t_actions, t_generated_actions, t_noise_smpls)
+                t_chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(t_actions, t_generated_actions,
+                                                                                    t_noise_smpls)
 
                 print "Data generation time", time.time() - stime
-
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
@@ -334,8 +332,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                        [a_batch],
                                        epochs=1000,
                                        validation_data=(
-                                       [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
-                                       [t_actions]),
+                                           [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
+                                           [t_actions]),
                                        callbacks=callbacks)
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
             fname = self.weight_file_name + '.h5'
@@ -343,4 +341,3 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
-

@@ -6,17 +6,17 @@ import socket
 import random
 import os
 import tensorflow as tf
+import collections
 
+from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
-from manipulation.primitives.savers import DynamicEnvironmentStateSaver
-
-from generators.learning.AdMon import AdversarialMonteCarlo
 
 from planners.sahs.greedy_new import search
 from learn.pap_gnn import PaPGNN
-import collections
+
+from generators.learning.utils.model_creation_utils import create_imle_model
 
 
 def get_problem_env(config):
@@ -125,7 +125,7 @@ def parse_arguments():
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_node_limit', type=int, default=3000)
     parser.add_argument('-num_train', type=int, default=5000)
-    parser.add_argument('-epoch_number', type=int, default=19)
+    parser.add_argument('-sampler_seed', type=int, default=0)
     parser.add_argument('-timelimit', type=float, default=300)
     parser.add_argument('-mixrate', type=float, default=1.0)
     parser.add_argument('-mse_weight', type=float, default=1.0)
@@ -213,15 +213,8 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
-def get_learned_smpler(epoch_number):
-    n_key_configs = 620
-    dim_state = (n_key_configs, 2, 1)
-    dim_action = 8
-    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
-                                  save_folder='./generators/learning/learned_weights/',
-                                  tau=1.0,
-                                  explr_const=0.0)
-    admon.load_weights(agen_file='a_gen_epoch_%d.h5' % epoch_number)
+def get_learned_smpler(sampler_seed):
+    admon = create_imle_model(sampler_seed)
     return admon
 
 
@@ -251,12 +244,11 @@ def main():
     else:
         pap_model = None
     if config.integrated:
-        smpler = get_learned_smpler(config.epoch_number)
+        smpler = get_learned_smpler(config.sampler_seed)
     else:
         smpler = None
 
     solution_file_name = get_solution_file_name(config)
-
     is_problem_solved_before = os.path.isfile(solution_file_name)
     plan_length = 0
     num_nodes = 0

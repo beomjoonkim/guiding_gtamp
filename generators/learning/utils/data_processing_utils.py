@@ -7,6 +7,14 @@ action_data_mode = 'pick_parameters_place_relative_to_object'
 
 
 # action_data_mode = 'absolute'
+def make_konfs_relative_to_pose(obj_pose, key_configs):
+    rel_konfs = []
+    utils.clean_pose_data(obj_pose)
+    for k in key_configs:
+        konf = utils.clean_pose_data(k)
+        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
+        rel_konfs.append(rel_konf)
+    return np.array(rel_konfs)
 
 
 def get_processed_poses_from_state(state):
