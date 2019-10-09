@@ -31,7 +31,7 @@ def load_data(traj_dir):
     cache_file_name = 'cache_state_data_mode_%s_action_data_mode_%s.pkl' % (state_data_mode, action_data_mode)
     if os.path.isfile(traj_dir + cache_file_name):
         print "Loading the cache file", traj_dir + cache_file_name
-        # return pickle.load(open(traj_dir + cache_file_name, 'r'))
+        return pickle.load(open(traj_dir + cache_file_name, 'r'))
 
     print 'caching file...'
     all_states = []
