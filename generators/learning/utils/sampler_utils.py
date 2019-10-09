@@ -10,12 +10,12 @@ def generate_smpls(smpler_state, policy, n_data):
     poses = np.hstack(
         [utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
 
-    obj_pose = utils.clean_pose_data(smpler_state.obj_pose)
+    obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
     key_configs = smpler_state.key_configs
     rel_konfs = data_processing_utils.make_konfs_relative_to_pose(obj_pose, key_configs)
     rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
     goal_flags = smpler_state.goal_flags
-    collisions = smpler_state.collision_vec
+    collisions = smpler_state.collision_vector
 
     places = []
     for _ in range(n_data):
