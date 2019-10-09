@@ -74,9 +74,9 @@ def search(mover, config, pap_model, learned_smpler=None):
     state = statecls(mover, goal)
 
 
+    utils.viewer()
     """
     actions = get_actions(mover, goal, config)
-    utils.viewer()
     action = actions[0]
     utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
     state_vec = create_state_vec(state.key_config_obstacles, action, goal)
@@ -148,6 +148,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                                                         cached_holding_collisions=None)
 
             if smpled_param['is_feasible']:
+                import pdb;pdb.set_trace()
                 action.continuous_parameters = smpled_param
                 action.execute()
                 print "Action executed"

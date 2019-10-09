@@ -1,5 +1,5 @@
 from mover_library.samplers import *
-from mover_library.utils import set_robot_config, grab_obj, release_obj
+from mover_library.utils import set_robot_config, grab_obj, release_obj, get_body_xytheta
 
 
 class TwoArmPlaceFeasibilityChecker:
@@ -10,15 +10,72 @@ class TwoArmPlaceFeasibilityChecker:
         self.robot_region = self.problem_env.regions['entire_region']
         self.objects_to_check_collision = []
 
-    def check_feasibility(self, operator_skeleton, place_parameters, swept_volume_to_avoid=None):
+    def check_feasibility(self, operator_skeleton, place_parameters, swept_volume_to_avoid=None,
+                          parameter_mode='obj_pose'):
         # Note:
         #    this function checks if the target region contains the robot when we place object at place_parameters
         #    and whether the robot will be in collision
-        obj = self.robot.GetGrabbed()[0]
         obj_region = operator_skeleton.discrete_parameters['region']
+        if parameter_mode == 'obj_pose':
+            return self.check_place_at_obj_pose_feasible(obj_region, place_parameters, swept_volume_to_avoid)
+        elif parameter_mode == 'robot_base_pose':
+            return self.check_place_at_base_pose_feasible(obj_region, place_parameters, swept_volume_to_avoid)
+        else:
+            raise NotImplementedError
+
+    def is_collision_and_region_constraints_satisfied(self, target_robot_region1, target_robot_region2,
+                                                      target_obj_region):
+        target_region_contains = target_robot_region1.contains(self.robot.ComputeAABB()) or \
+                                 target_robot_region2.contains(self.robot.ComputeAABB())
+        is_base_pose_infeasible = self.env.CheckCollision(self.robot) or \
+                                  (not target_region_contains)
+        obj = self.robot.GetGrabbed()[0]
+        is_object_pose_infeasible = self.env.CheckCollision(obj) or \
+                                    (not target_obj_region.contains(obj.ComputeAABB()))
+
+        return not (is_base_pose_infeasible or is_object_pose_infeasible)
+
+    def check_place_at_base_pose_feasible(self, obj_region, place_base_pose, swept_volume_to_avoid):
         if type(obj_region) == str:
             obj_region = self.problem_env.regions[obj_region]
-        obj_pose = place_parameters
+        target_obj_region = obj_region  # for fetching, you want to move it around
+        target_robot_region1 = self.problem_env.regions['home_region']
+        target_robot_region2 = self.problem_env.regions['loading_region']
+        set_robot_config(place_base_pose, self.robot)
+        is_feasible = self.is_collision_and_region_constraints_satisfied(target_robot_region1, target_robot_region2,
+                                                                         target_obj_region)
+        obj = self.robot.GetGrabbed()[0]
+        original_trans = self.robot.GetTransform()
+        original_obj_trans = obj.GetTransform()
+        if not is_feasible:
+            action = {'operator_name': 'two_arm_place', 'q_goal': None, 'object_pose': None,
+                      'action_parameters': place_base_pose}
+            self.robot.SetTransform(original_trans)
+            obj.SetTransform(original_obj_trans)
+            return action, 'NoSolution'
+        else:
+            release_obj()
+            obj_pose = get_body_xytheta(obj)
+            if swept_volume_to_avoid is not None:
+                # release the object
+                if not swept_volume_to_avoid.is_swept_volume_cleared(obj):
+                    self.robot.SetTransform(original_trans)
+                    obj.SetTransform(original_obj_trans)
+                    grab_obj(obj)
+                    action = {'operator_name': 'two_arm_place', 'q_goal': None, 'object_pose': None,
+                              'action_parameters': place_base_pose}
+                    return action, 'NoSolution'
+            self.robot.SetTransform(original_trans)
+            obj.SetTransform(original_obj_trans)
+            grab_obj(obj)
+            action = {'operator_name': 'two_arm_place', 'q_goal': place_base_pose, 'object_pose': obj_pose,
+                      'action_parameters': place_base_pose}
+            return action, 'HasSolution'
+
+    def check_place_at_obj_pose_feasible(self, obj_region, obj_pose, swept_volume_to_avoid):
+        obj = self.robot.GetGrabbed()[0]
+        if type(obj_region) == str:
+            obj_region = self.problem_env.regions[obj_region]
 
         T_r_wrt_o = np.dot(np.linalg.inv(obj.GetTransform()), self.robot.GetTransform())
         original_trans = self.robot.GetTransform()
@@ -31,17 +88,11 @@ class TwoArmPlaceFeasibilityChecker:
         robot_xytheta = self.compute_robot_base_pose_given_object_pose(obj, self.robot, obj_pose, T_r_wrt_o)
         set_robot_config(robot_xytheta, self.robot)
 
-        # why do I disable objects in region? Most likely this is for minimum constraint computation
-        target_region_contains = target_robot_region1.contains(self.robot.ComputeAABB()) or \
-                                 target_robot_region2.contains(self.robot.ComputeAABB())
-        is_base_pose_infeasible = self.env.CheckCollision(self.robot) or \
-                                  (not target_region_contains)
-        is_object_pose_infeasible = self.env.CheckCollision(obj) or \
-                                    (not target_obj_region.contains(obj.ComputeAABB()))
-
-        if is_base_pose_infeasible or is_object_pose_infeasible:
+        is_feasible = self.is_collision_and_region_constraints_satisfied(target_robot_region1, target_robot_region2,
+                                                                         target_obj_region)
+        if not is_feasible:
             action = {'operator_name': 'two_arm_place', 'q_goal': None, 'object_pose': None,
-                      'action_parameters': place_parameters}
+                      'action_parameters': obj_pose}
             self.robot.SetTransform(original_trans)
             obj.SetTransform(original_obj_trans)
             return action, 'NoSolution'
@@ -54,13 +105,13 @@ class TwoArmPlaceFeasibilityChecker:
                     obj.SetTransform(original_obj_trans)
                     grab_obj(obj)
                     action = {'operator_name': 'two_arm_place', 'q_goal': None, 'object_pose': None,
-                              'action_parameters': place_parameters}
+                              'action_parameters': obj_pose}
                     return action, 'NoSolution'
             self.robot.SetTransform(original_trans)
             obj.SetTransform(original_obj_trans)
             grab_obj(obj)
             action = {'operator_name': 'two_arm_place', 'q_goal': robot_xytheta, 'object_pose': obj_pose,
-                      'action_parameters': place_parameters}
+                      'action_parameters': obj_pose}
             return action, 'HasSolution'
 
     @staticmethod
@@ -96,4 +147,3 @@ class TwoArmPlaceFeasibilityChecker:
             set_robot_config(robot_xytheta, self.robot)
             grab_obj(obj)
         return obj_pose, robot_xytheta
-

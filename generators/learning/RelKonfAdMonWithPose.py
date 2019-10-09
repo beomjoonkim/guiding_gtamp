@@ -35,17 +35,20 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.collision_input = Input(shape=dim_collision, name='s', dtype='float32')  # collision vector
         self.pose_input = Input(shape=(self.dim_poses,), name='pose', dtype='float32')  # pose
-        self.key_config_input = Input(shape=(615, 3, 1), name='konf', dtype='float32')  # relative key config
+        self.key_config_input = Input(shape=(615, 4, 1), name='konf', dtype='float32')  # relative key config
         self.goal_flag_input = Input(shape=(615, 4, 1), name='goal_flag',
                                      dtype='float32')  # goal flag (is_goal_r, is_goal_obj)
 
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
-        self.q_output = self.construct_relevance_network()
-        self.q_mse_model = self.construct_mse_model(self.q_output)
+        self.q_output = self.construct_q_function()
+        self.q_mse_model = self.construct_q_mse_model(self.q_output)
 
-    def construct_mse_model(self, output):
+        self.policy_output = self.construct_policy_output()
+        self.policy_model = self.construct_policy_model()
+
+    def construct_q_mse_model(self, output):
         mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
                                   self.key_config_input, self.collision_input],
                           outputs=output,
@@ -53,7 +56,51 @@ class RelKonfMSEPose(AdversarialPolicy):
         mse_model.compile(loss='mse', optimizer=self.opt_D)
         return mse_model
 
-    def construct_relevance_network(self):
+    def construct_policy_output(self):
+        # todo make this architecture
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        konf_goal_flag = Concatenate(axis=2)(
+            [self.key_config_input, tiled_pose, self.goal_flag_input])
+        dim_combined = konf_goal_flag.shape[2]._value
+        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
+                                                   use_flatten=False)
+        n_conv_filters = 16
+        hidden_relevance = Conv2D(filters=n_conv_filters,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='relu',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(hidden_relevance)
+        hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
+        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
+                                                       use_pooling=False)
+
+        dense_num = 256
+        hidden_action = Dense(dense_num, activation='relu',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
+        hidden_action = Dense(dense_num, activation='relu',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer
+                              )(hidden_action)
+
+        action_output = Dense(self.dim_action,
+                              activation='linear',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer,
+                              name='policy_output')(hidden_action)
+        return action_output
+
+    def construct_policy_model(self):
+        mse_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+                          outputs=self.policy_output,
+                          name='q_output')
+        mse_model.compile(loss='mse', optimizer=self.opt_D)
+        return mse_model
+
+    def construct_q_function(self):
         tiled_action = self.get_tiled_input(self.action_input)
         tiled_pose = self.get_tiled_input(self.pose_input)
         hidden_konf_action_goal_flag = Concatenate(axis=2)(
@@ -126,7 +173,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             [data['actions'], data['goal_flags'], data['poses'], data['rel_konfs'], data['states']])
         return np.mean(np.power(pred - data['sum_rewards'], 2))
 
-    def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
+    def train_q_function(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
         self.train_data, self.test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags,
                                                                        actions, sum_rewards,
@@ -144,6 +191,33 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         print "Pre-and-post test errors", pre_mse, post_mse
 
+    def train_policy(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=500):
+        train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
+        train_data, test_data = self.get_train_and_test_data(states, poses, rel_konfs, goal_flags,
+                                                             actions, sum_rewards,
+                                                             train_idxs, test_idxs)
+        callbacks = self.create_callbacks_for_pretraining()
+        t_actions = test_data['actions']
+        t_goal_flags = test_data['goal_flags']
+        t_poses = test_data['poses']
+        t_rel_konfs = test_data['rel_konfs']
+        t_collisions = test_data['states']
+
+        actions = train_data['actions']
+        goal_flags = train_data['goal_flags']
+        poses = train_data['poses']
+        rel_konfs = train_data['rel_konfs']
+        collisions = train_data['states']
+        self.policy_model.fit([goal_flags, rel_konfs, collisions, poses], actions,
+                              batch_size=32,
+                              epochs=epochs,
+                              verbose=2,
+                              callbacks=callbacks,
+                              validation_data=(
+                                  [t_goal_flags, t_rel_konfs, t_collisions, t_poses],
+                                  [t_actions]),
+                              )
+
 
 class RelKonfIMLEPose(RelKonfMSEPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
@@ -152,6 +226,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model = self.construct_policy_model()
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
+        self.z_vals_tried = []
         # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
     def create_q_on_policy_model(self):
@@ -179,52 +254,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
         # but when do I train the q_mse_model?
         return q_on_policy_model
-
-    def construct_policy_output(self):
-        # todo make this architecture
-        tiled_pose = self.get_tiled_input(self.pose_input)
-        konf_goal_flag = Concatenate(axis=2)(
-            [self.key_config_input, tiled_pose, self.goal_flag_input])
-        dim_combined = konf_goal_flag.shape[2]._value
-        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
-                                                   use_flatten=False)
-        n_conv_filters = 16
-        hidden_relevance = Conv2D(filters=n_conv_filters,
-                                  kernel_size=(1, 1),
-                                  strides=(1, 1),
-                                  activation='relu',
-                                  kernel_initializer=self.kernel_initializer,
-                                  bias_initializer=self.bias_initializer
-                                  )(hidden_relevance)
-        hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
-        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
-                                                       use_pooling=False)
-
-        dense_num = 256
-        hidden_action = Dense(dense_num, activation='relu',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
-        hidden_action = Dense(dense_num, activation='relu',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer
-                              )(hidden_action)
-
-        h_noise = Concatenate(axis=-1)([hidden_action, self.noise_input])
-        action_output = Dense(self.dim_action,
-                              activation='linear',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer,
-                              name='policy_output')(h_noise)
-        return action_output
-
-    def construct_policy_model(self):
-        mse_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
-                                  self.noise_input],
-                          outputs=self.policy_output,
-                          name='q_output')
-        mse_model.compile(loss='mse', optimizer=self.opt_D)
-        return mse_model
 
     def generate_k_smples_for_multiple_states(self, states, noise_smpls):
         goal_flags, rel_konfs, collisions, poses = states
@@ -266,7 +295,17 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model.save_weights(fdir + fname)
 
     def generate(self, goal_flags, rel_konfs, collisions, poses):
-        noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+        if len(self.z_vals_tried) == 0:
+            noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+            self.z_vals_tried.append(noise_smpls.squeeze())
+        else:
+            noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
+            z_vals_tried = np.array(self.z_vals_tried)
+            min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
+            while min_dist < 10.:
+                noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
+                min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
+            self.z_vals_tried.append(noise_smpls.squeeze())
         return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
@@ -276,6 +315,52 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             noise_that_generates_closest_point_to_true_action = noise_smpls_for_action[closest_point_idx]
             chosen_noise_smpls.append(noise_that_generates_closest_point_to_true_action)
         return np.array(chosen_noise_smpls)
+
+    def construct_policy_model(self):
+        model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
+                              self.noise_input],
+                      outputs=self.policy_output,
+                      name='policy_model')
+        model.compile(loss='mse', optimizer=self.opt_D)
+        return model
+
+    def construct_policy_output(self):
+        # todo make this architecture
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        konf_goal_flag = Concatenate(axis=2)(
+            [self.key_config_input, tiled_pose, self.goal_flag_input])
+        dim_combined = konf_goal_flag.shape[2]._value
+        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
+                                                   use_flatten=False)
+        n_conv_filters = 16
+        hidden_relevance = Conv2D(filters=n_conv_filters,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='relu',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(hidden_relevance)
+        hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
+        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
+        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
+                                                       use_pooling=False)
+
+        dense_num = 256
+        hidden_action = Dense(dense_num, activation='relu',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
+        hidden_action = Dense(dense_num, activation='relu',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer
+                              )(hidden_action)
+
+        h_noise = Concatenate(axis=-1)([hidden_action, self.noise_input])
+        action_output = Dense(self.dim_action,
+                              activation='linear',
+                              kernel_initializer=self.kernel_initializer,
+                              bias_initializer=self.bias_initializer,
+                              name='policy_output')(h_noise)
+        return action_output
 
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=1000):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))

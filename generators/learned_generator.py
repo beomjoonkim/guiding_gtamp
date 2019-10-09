@@ -3,7 +3,7 @@ from generators.learning.utils.data_processing_utils import action_data_mode
 from generators.learning.utils.sampler_utils import generate_smpls
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 
-import pickle
+from gtamp_utils import utils
 
 
 class LearnedGenerator(PaPUniformGenerator):
@@ -17,34 +17,31 @@ class LearnedGenerator(PaPUniformGenerator):
 
         # todo make the concrete state to be used to generate samples
         goal_entities = self.abstract_state.goal_entities
-        key_configs = pickle.load(open('prm.pkl', 'r'))[0]
-        self.concrete_state = ConcreteNodeState(self.problem_env, self.obj, self.region,
-                                                goal_entities, key_configs,
-                                                collision_vector=abstract_state.key_config_obstacles)
-        import pdb;pdb.set_trace()
+        self.smpler_state = ConcreteNodeState(self.problem_env, self.obj, self.region,
+                                              goal_entities,
+                                              collision_vector=abstract_state.key_config_obstacles)
 
-    def generate(self, operator_skeleton):
-        import pdb;pdb.set_trace()
+    def generate(self):
         if action_data_mode == 'pick_parameters_place_relative_to_object':
-            import pdb;pdb.set_trace()
-            place_smpls = generate_smpls(self.obj, smpler_state, self.sampler, 1, key_configs=None)
+            place_smpls = generate_smpls(self.smpler_state, self.sampler, 1)[0].squeeze()
         else:
             raise NotImplementedError
-
+        if self.smpler_state.obj == 'square_packing_box2':
+            import pdb;pdb.set_trace()
+        parameters = self.sample_from_uniform()
+        parameters[6:] = place_smpls
+        # todo I am supposed to predict the object pose...
+        return parameters
 
     def sample_feasible_op_parameters(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning):
         assert n_iter > 0
         feasible_op_parameters = []
         for i in range(n_iter):
             # fix it to take in the pose
-            """
-            smpl = self.generate(operator_skeleton)[None, :]
-            grasp_parameters = self.sample_from_uniform()[0:3][None, :]
-            op_parameters = np.hstack([grasp_parameters, smpl]).squeeze()
-            """
-            op_parameters = self.generate(operator_skeleton)
+            op_parameters = self.generate()
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton, op_parameters,
-                                                                                  self.swept_volume_constraint)
+                                                                                  self.swept_volume_constraint,
+                                                                                  parameter_mode='robot_base_pose')
 
             if status == 'HasSolution':
                 feasible_op_parameters.append(op_parameters)

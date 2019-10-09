@@ -12,7 +12,8 @@ def make_konfs_relative_to_pose(obj_pose, key_configs):
     utils.clean_pose_data(obj_pose)
     for k in key_configs:
         konf = utils.clean_pose_data(k)
-        rel_konf = utils.subtract_pose2_from_pose1(konf, obj_pose)
+        rel_konf = utils.get_relative_robot_pose_wrt_body_pose(konf, obj_pose)
+        rel_konf = utils.encode_pose_with_sin_and_cos_angle(rel_konf)
         rel_konfs.append(rel_konf)
     return np.array(rel_konfs)
 

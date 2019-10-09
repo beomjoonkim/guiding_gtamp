@@ -50,16 +50,17 @@ def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
 
-    obj = problem_env.object_names[3]
+    obj = problem_env.object_names[2]
     smpler_state = get_smpler_state(pidx, obj, problem_env)
 
-    places = generate_smpls(smpler_state, policy, n_data=5)
+    places = generate_smpls(smpler_state, policy, n_data=20)
     utils.visualize_path(places)
 
 
 def main():
     seed = int(sys.argv[1])
     pidx = int(sys.argv[2])
+    # python generators/learning/policy_evaluator.py 0 0 - can you generate different samples?
     policy = create_imle_model(seed)
     visualize_samples(policy, pidx)
 

@@ -10,12 +10,10 @@ from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
 from RelKonfAdMonWithPose import RelKonfMSEPose, RelKonfIMLEPose
-from data_processing.utils import get_processed_poses_from_state, get_processed_poses_from_action, \
+from utils.data_processing_utils import get_processed_poses_from_state, get_processed_poses_from_action, \
     state_data_mode, action_data_mode, make_konfs_relative_to_pose
 
 from gtamp_utils import utils
-
-
 
 
 def load_data(traj_dir):
@@ -180,7 +178,7 @@ def train_rel_konf_place_mse(config):
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     poses = poses[:, :4]
-    admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
+    admon.train_policy(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
 def train_rel_konf_place_admon(config):
@@ -210,7 +208,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='rel_konf_place_admon')
+    parser.add_argument('-algo', type=str, default='rel_konf_place_mse')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
