@@ -2,7 +2,7 @@ from keras.layers import *
 from keras.layers.merge import Concatenate
 from generators.learning.AdversarialPolicy import AdversarialPolicy
 from keras.models import Model
-
+from keras import backend as K
 import tensorflow as tf
 import time
 import os
@@ -63,10 +63,10 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.q_output = self.construct_q_function()
         self.q_mse_model = self.construct_q_mse_model(self.q_output)
 
-        #self.reachability_output = self.construct_reachability_output()
-        #self.reachability_model = self.construct_reachability_model()
+        # self.reachability_output = self.construct_reachability_output()
+        # self.reachability_model = self.construct_reachability_model()
 
-        self.policy_output = self.construct_policy_output()
+        self.policy_output = self.construt_self_attention_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -130,13 +130,55 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         pass
 
+    def construt_self_attention_policy_output(self):
+        # apply the transformation function to every key config
+        n_conv_filters = 16
+
+        input = Concatenate(axis=2)([self.key_config_input, self.goal_flag_input, self.collision_input])
+        dim_input = input.shape[2]._value
+
+        # This transforms the entire key configurations. We have 615 x n_feature, an embeeding matrix which we call E
+        # Computation of E:
+        query_embedding = Conv2D(filters=n_conv_filters,
+                                 kernel_size=(1, dim_input),
+                                 strides=(1, 1),
+                                 activation='relu',
+                                 kernel_initializer=self.kernel_initializer,
+                                 bias_initializer=self.bias_initializer
+                                 )(input)
+
+        # Now we want to compute the dot products with each other, to end up with 615 x 615
+        # This can be done by E * E.transpose(). Call this matrix W.
+        # Compute W:
+        def compute_W(x):
+            x = K.squeeze(x, axis=2)
+            return K.batch_dot(x, x, axes=(2, 2))
+
+        W = Lambda(compute_W)(query_embedding)
+
+        # Now we take W, and softmax each row. Call this Softmax(W). This must be 615 x 1
+        def sum_each_row(x):
+            sum_row = K.sum(x, axis=-1)
+            return sum_row
+
+        sum_W = Lambda(sum_each_row)(W)
+
+        value_embedding = Conv2D(filters=self.dim_action,
+                                 kernel_size=(1, dim_input),
+                                 strides=(1, 1),
+                                 activation='linear',
+                                 kernel_initializer=self.kernel_initializer,
+                                 bias_initializer=self.bias_initializer
+                                 )(input)
+        value_embedding = Lambda(lambda x: K.squeeze(x, axis=2))(value_embedding)
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([sum_W, value_embedding])
+        # output = Multiply()([sum_W, value_embedding])
+        return output
+
+        # Now we apply Softmax(W) to each embedding of configs to produce an output
+
     def construct_policy_output(self):
-        # todo make this architecture
-        #tiled_pose = self.get_tiled_input(self.pose_input)
-        #konf_goal_flag = Concatenate(axis=2)(
-        #    [self.key_config_input, tiled_pose, self.goal_flag_input])
-        konf_goal_flag = Concatenate(axis=2)(
-           [self.key_config_input, self.goal_flag_input])
+        konf_goal_flag = Concatenate(axis=2)([self.key_config_input, self.goal_flag_input])
         dim_combined = konf_goal_flag.shape[2]._value
         hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
                                                    use_flatten=False)
@@ -172,7 +214,7 @@ class RelKonfMSEPose(AdversarialPolicy):
     def construct_policy_model(self):
         mse_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
                           outputs=self.policy_output,
-                          name='q_output')
+                          name='policy_output')
         mse_model.compile(loss='mse', optimizer=self.opt_D)
         return mse_model
 
