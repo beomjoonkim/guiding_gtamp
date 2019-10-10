@@ -24,6 +24,18 @@ def noise(z_size):
     return np.random.normal(size=z_size).astype('float32')
 
 
+def slice_x(x):
+    return x[:, 0:1]
+
+
+def slice_y(x):
+    return x[:, 1:2]
+
+
+def slice_th(x):
+    return x[:, 2:]
+
+
 class RelKonfMSEPose(AdversarialPolicy):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         # todo try different weight initializations
@@ -39,14 +51,29 @@ class RelKonfMSEPose(AdversarialPolicy):
         self.goal_flag_input = Input(shape=(615, 4, 1), name='goal_flag',
                                      dtype='float32')  # goal flag (is_goal_r, is_goal_obj)
 
+        # related to detecting whether a key config is relevant
+        self.cg_input = Input(shape=(dim_action,), name='cg', dtype='float32')  # action
+        self.ck_input = Input(shape=(dim_action,), name='ck', dtype='float32')  # action
+        self.collision_input = Input(shape=(2,), name='ck', dtype='float32')  # action
+
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
         self.seed = config.seed
+
         self.q_output = self.construct_q_function()
         self.q_mse_model = self.construct_q_mse_model(self.q_output)
 
+        #self.reachability_output = self.construct_reachability_output()
+        #self.reachability_model = self.construct_reachability_model()
+
         self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
+
+    def construct_reachability_model(self):
+        model = Model(inputs=[self.cg_input, self.ck_input, self.collision_input],
+                      outputs=self.reachability_output,
+                      name='reachability')
+        return model
 
     def construct_q_mse_model(self, output):
         mse_model = Model(inputs=[self.action_input, self.goal_flag_input, self.pose_input,
@@ -56,11 +83,60 @@ class RelKonfMSEPose(AdversarialPolicy):
         mse_model.compile(loss='mse', optimizer=self.opt_D)
         return mse_model
 
+    def construct_reachability_output(self):
+        # It takes relative key configurations, and the target relative place config wrt to the object as an
+        # input, and collisions at each configs, and tells you whether the target relative place config
+        # is reachable. How is this related to transformers?
+
+        # In transformer, your output is a function of the current input, and its relevance to all the other
+        # inputs; specifically, it is y_i = \sum_{j} w(x_i, x_j) x_i
+        dense_num = 64
+        x_g = Lambda(slice_x)(self.cg_input)
+        y_g = Lambda(slice_y)(self.cg_input)
+        th_g = Lambda(slice_th)(self.cg_input)
+        x_k = Lambda(slice_x)(self.ck_input)
+        y_k = Lambda(slice_y)(self.ck_input)
+        th_k = Lambda(slice_th)(self.ck_input)
+
+        Xs = Concatenate(axis=-1)([x_g, x_k])
+        Ys = Concatenate(axis=-1)([y_g, y_k])
+        Ths = Concatenate(axis=-1)([th_g, th_k])
+
+        H_Xs = Dense(dense_num, activation='relu')(Xs)
+        H_Xs = Dense(8, activation='relu')(H_Xs)
+
+        H_Ys = Dense(dense_num, activation='relu')(Ys)
+        H_Ys = Dense(8, activation='relu')(H_Ys)
+
+        H_Ths = Dense(dense_num, activation='relu')(Ths)
+        H_Ths = Dense(8, activation='relu')(H_Ths)
+
+        H = Concatenate(axis=-1)([H_Xs, H_Ys, H_Ths, self.collision_input])
+        for i in range(2):
+            H = Dense(dense_num, activation='relu')(H)
+
+        H = Dense(1, activation='relu')(H)
+
+        return H
+
+    def construct_policy_output_using_reachability_model(self):
+        # input: 1 615 -> relevance
+        # I need 615 x 615 x 8 matrix, and the function self.reachability_model applied to each pair of poses
+        # The result is 615 x 615 x 1 matrix
+        # With this matrix, what do we do?
+        # I put an additional layer on each row, so we end up with 615x1 matrix. Call each weight \theta_i
+        # Now, I express my output =  \sum_{i=1}^{n} \theta_i * k_i
+        # Where does the object pose come into play here? Probably it does not, because it is always the origin
+
+        pass
+
     def construct_policy_output(self):
         # todo make this architecture
-        tiled_pose = self.get_tiled_input(self.pose_input)
+        #tiled_pose = self.get_tiled_input(self.pose_input)
+        #konf_goal_flag = Concatenate(axis=2)(
+        #    [self.key_config_input, tiled_pose, self.goal_flag_input])
         konf_goal_flag = Concatenate(axis=2)(
-            [self.key_config_input, tiled_pose, self.goal_flag_input])
+           [self.key_config_input, self.goal_flag_input])
         dim_combined = konf_goal_flag.shape[2]._value
         hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
                                                    use_flatten=False)
@@ -432,5 +508,3 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
             if np.all(np.array(gen_w_norms) == 0):
                 break
-
-

@@ -13,7 +13,7 @@ def generate_smpls(smpler_state, policy, n_data):
     obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
     key_configs = smpler_state.key_configs
     rel_konfs = data_processing_utils.make_konfs_relative_to_pose(obj_pose, key_configs)
-    rel_konfs = np.array(rel_konfs).reshape((1, 615, 3, 1))
+    rel_konfs = np.array(rel_konfs).reshape((1, 615, 4, 1))
     goal_flags = smpler_state.goal_flags
     collisions = smpler_state.collision_vector
 
