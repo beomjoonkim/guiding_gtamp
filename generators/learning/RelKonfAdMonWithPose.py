@@ -219,7 +219,6 @@ class RelKonfMSEPose(AdversarialPolicy):
         print "Pre-and-post test errors", pre_mse, post_mse
 
 
-
 class RelKonfIMLEPose(RelKonfMSEPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         RelKonfMSEPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
@@ -388,6 +387,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         rel_konfs = train_data['rel_konfs']
         collisions = train_data['states']
         callbacks = self.create_callbacks_for_pretraining()
+
+        gen_w_norm_patience = 10
+        gen_w_norms = [-1] * gen_w_norm_patience
         for epoch in range(epochs):
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
             batch_size = 160
@@ -427,3 +429,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
+            gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
+            if np.all(np.array(gen_w_norms) == 0):
+                break
+
+
