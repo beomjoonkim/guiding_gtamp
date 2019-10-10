@@ -27,13 +27,22 @@ class TwoArmPlaceFeasibilityChecker:
                                                       target_obj_region):
         target_region_contains = target_robot_region1.contains(self.robot.ComputeAABB()) or \
                                  target_robot_region2.contains(self.robot.ComputeAABB())
-        is_base_pose_infeasible = self.env.CheckCollision(self.robot) or \
-                                  (not target_region_contains)
-        obj = self.robot.GetGrabbed()[0]
-        is_object_pose_infeasible = self.env.CheckCollision(obj) or \
-                                    (not target_obj_region.contains(obj.ComputeAABB()))
+        if not target_region_contains:
+            return False
 
-        return not (is_base_pose_infeasible or is_object_pose_infeasible)
+        obj = self.robot.GetGrabbed()[0]
+        if not target_obj_region.contains(obj.ComputeAABB()):
+            return False
+
+        is_base_pose_infeasible = self.env.CheckCollision(self.robot)
+        if is_base_pose_infeasible:
+            return False
+
+        is_object_pose_infeasible = self.env.CheckCollision(obj)
+        if is_object_pose_infeasible:
+            return False
+
+        return True
 
     def check_place_at_base_pose_feasible(self, obj_region, place_base_pose, swept_volume_to_avoid):
         if type(obj_region) == str:

@@ -74,7 +74,7 @@ def search(mover, config, pap_model, learned_smpler=None):
     state = statecls(mover, goal)
 
 
-    utils.viewer()
+    #utils.viewer()
     """
     actions = get_actions(mover, goal, config)
     action = actions[0]
@@ -137,18 +137,23 @@ def search(mover, config, pap_model, learned_smpler=None):
             print("Sampling for {}".format(action.discrete_parameters.values()))
             if learned_smpler is None:
                 smpler = PaPUniformGenerator(action, mover, None)
+                stime = time.time()
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
+                print 'smpling time', time.time()-stime
             else:
                 smpler = LearnedGenerator(action, mover, learned_smpler, state)
                 # How can I change the state.collides to the one_hot? How long would it take?
+                stime = time.time()
                 smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
+                print 'smpling time', time.time()-stime
+
+            import pdb;pdb.set_trace()
 
             if smpled_param['is_feasible']:
-                import pdb;pdb.set_trace()
                 action.continuous_parameters = smpled_param
                 action.execute()
                 print "Action executed"

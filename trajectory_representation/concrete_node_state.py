@@ -18,6 +18,7 @@ class ConcreteNodeState:
         self.abs_robot_pose = utils.get_body_xytheta(problem_env.robot)
         self.abs_obj_pose = utils.get_body_xytheta(obj)
         self.goal_flags = self.get_goal_flags()
+        self.rel_konfs = None
 
     def get_goal_flags(self):
         n_key_configs = self.collision_vector.shape[1]

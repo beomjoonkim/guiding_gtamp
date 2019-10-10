@@ -66,7 +66,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         # self.reachability_output = self.construct_reachability_output()
         # self.reachability_model = self.construct_reachability_model()
 
-        self.policy_output = self.construt_self_attention_policy_output()
+        #self.policy_output = self.construt_self_attention_policy_output()
+        self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -412,19 +413,28 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             os.makedirs(fdir)
         self.policy_model.save_weights(fdir + fname)
 
-    def generate(self, goal_flags, rel_konfs, collisions, poses):
-        if len(self.z_vals_tried) == 0:
+    def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
+        stime=time.time()
+        if z_vals_tried is None or len(z_vals_tried) == 0:
             noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
-            self.z_vals_tried.append(noise_smpls.squeeze())
+            z_vals_tried.append(noise_smpls.squeeze())
         else:
             noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
-            z_vals_tried = np.array(self.z_vals_tried)
+            z_vals_tried = np.array(z_vals_tried)
             min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
+            i = len(z_vals_tried)
             while min_dist < 10.:
-                noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
+                noise_smpls = ((20 + i*10) * np.random.uniform(size=self.dim_action) - (10+i*10))[None, :]
                 min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
-            self.z_vals_tried.append(noise_smpls.squeeze())
-        return self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
+                i += 1
+                #print i
+            z_vals_tried = z_vals_tried.tolist()
+            z_vals_tried.append(noise_smpls.squeeze())
+        #print "Z sampling time", time.time()-stime
+        #stime=time.time()
+        pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
+        #print "Prediction time", time.time() - stime
+        return pred, z_vals_tried
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
         chosen_noise_smpls = []

@@ -50,7 +50,7 @@ def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
 
-    obj = problem_env.object_names[5]
+    obj = problem_env.object_names[2]
     smpler_state = get_smpler_state(pidx, obj, problem_env)
 
     places = generate_smpls(smpler_state, policy, n_data=20)

@@ -17,6 +17,14 @@ FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
 PR2_ARM_LENGTH = 0.9844
 
 
+def get_color_of(body):
+    env = openravepy.RaveGetEnvironments()[0]
+    if type(body) == unicode or type(body) == str:
+        obj = env.GetKinBody(body)
+
+    return get_color(obj)
+
+
 def convert_binary_vec_to_one_hot(collision_vector):
     n_konf = collision_vector.shape[0]
     one_hot_cvec = np.zeros((n_konf, 2))
