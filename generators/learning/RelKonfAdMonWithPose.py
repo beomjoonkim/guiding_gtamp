@@ -54,7 +54,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         # related to detecting whether a key config is relevant
         self.cg_input = Input(shape=(dim_action,), name='cg', dtype='float32')  # action
         self.ck_input = Input(shape=(dim_action,), name='ck', dtype='float32')  # action
-        self.collision_input = Input(shape=(2,), name='ck', dtype='float32')  # action
+        self.collision_at_each_ck = Input(shape=(2,), name='ck', dtype='float32')  # action
 
         self.weight_file_name = 'admonpose_seed_%d' % config.seed
         self.pretraining_file_name = 'pretrained_%d.h5' % config.seed
@@ -111,7 +111,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         H_Ths = Dense(dense_num, activation='relu')(Ths)
         H_Ths = Dense(8, activation='relu')(H_Ths)
 
-        H = Concatenate(axis=-1)([H_Xs, H_Ys, H_Ths, self.collision_input])
+        H = Concatenate(axis=-1)([H_Xs, H_Ys, H_Ths, self.collision_at_each_ck])
         for i in range(2):
             H = Dense(dense_num, activation='relu')(H)
 
