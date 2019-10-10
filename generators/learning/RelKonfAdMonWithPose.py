@@ -332,7 +332,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                               epochs=epochs,
                               verbose=2,
                               callbacks=callbacks,
-                              validation_split=0.1)
+                              validation_split=0.1, shuffle=False)
         post_mse = self.compute_policy_mse(test_data)
         print "Pre-and-post test errors", pre_mse, post_mse
 

@@ -39,7 +39,7 @@ def main():
 
         configs.append(config)
 
-    n_workers = multiprocessing.cpu_count()
+    n_workers = 10 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
 
