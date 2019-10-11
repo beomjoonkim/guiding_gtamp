@@ -38,7 +38,7 @@ class LearnedGenerator(PaPUniformGenerator):
         z_smpl_fname = 'z_smpls.pkl'
 
         if os.path.isfile(z_smpl_fname):
-            z_smpls = pickle.load(open(z_smpl_fname,'r'))
+            z_smpls = pickle.load(open(z_smpl_fname, 'r'))
         else:
             z_smpls = []
             i = 0
@@ -52,6 +52,7 @@ class LearnedGenerator(PaPUniformGenerator):
                 else:
                     new_z = np.random.normal(size=(1, 4)).astype('float32')
                 z_smpls.append(new_z)
+            pickle.dump(z_smpls, open(z_smpl_fname, 'wb'))
         self.policy_smpl_batch = generate_policy_smpl_batch(self.smpler_state, self.sampler, z_smpls)
         self.policy_smpl_idx = 0
 
