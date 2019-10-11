@@ -1,5 +1,6 @@
 from keras.optimizers import *
 from keras.layers import *
+from keras.callbacks import *
 
 import os
 import sys
@@ -128,9 +129,9 @@ class AdversarialPolicy:
 
     def create_callbacks_for_pretraining(self):
         callbacks = [
-            tf.keras.callbacks.TerminateOnNaN(),
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=10, ),
-            tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + self.pretraining_file_name,
+            TerminateOnNaN(),
+            EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=10, ),
+            ModelCheckpoint(filepath=self.save_folder + self.pretraining_file_name,
                                                verbose=False,
                                                save_best_only=True,
                                                save_weights_only=True),
