@@ -560,8 +560,10 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
             gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
-            if np.all(np.array(gen_w_norms) == 0):
-                break
-            
+
             pred = self.policy_model.predict([t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls])
             print "Val error", np.mean(np.linalg.norm(pred-t_actions,axis=-1))
+            #if np.all(np.array(gen_w_norms) == 0):
+            #    break
+            
+
