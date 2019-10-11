@@ -22,14 +22,21 @@ def get_processed_poses_from_state(state):
     if state_data_mode == 'absolute':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.abs_obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
+        goal_obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.abs_goal_obj_pose)
     elif state_data_mode == 'robot_rel_to_obj':
         obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.abs_obj_pose)
+
         robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.abs_robot_pose, state.abs_obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
+
+        goal_obj_pose = utils.get_relative_robot_pose_wrt_body_pose(state.abs_goal_obj_pose, state.abs_obj_pose)
+        recovered = utils.clean_pose_data(utils.get_absolute_pose_from_relative_pose(goal_obj_pose, state.abs_obj_pose.squeeze()))
+        assert np.all(np.isclose(recovered, state.abs_goal_obj_pose.squeeze()))
+        goal_obj_pose = utils.encode_pose_with_sin_and_cos_angle(goal_obj_pose)
     else:
         raise not NotImplementedError
 
-    pose = np.hstack([obj_pose, robot_pose])
+    pose = np.hstack([obj_pose, goal_obj_pose, robot_pose])
     return pose
 
 
