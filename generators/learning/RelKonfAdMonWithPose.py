@@ -164,6 +164,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             name='w_model')
 
         n_filters = 32
+        dim_input = self.key_config_input.shape[2]._value
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, dim_input),
                    strides=(1, 1),
@@ -185,6 +186,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         key_configs = H
 
         #key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(key_configs)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
 
