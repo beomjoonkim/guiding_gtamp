@@ -562,3 +562,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
             if np.all(np.array(gen_w_norms) == 0):
                 break
+            
+            pred = self.policy_model.predict([t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls])
+            print "Val error", np.mean(np.linalg.norm(pred-t_actions,axis=-1))
