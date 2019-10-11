@@ -132,8 +132,8 @@ class AdversarialPolicy:
             TerminateOnNaN(),
             EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=30, ),
             ModelCheckpoint(filepath=self.save_folder + self.pretraining_file_name,
-                                               verbose=False,
-                                               save_best_only=True,
-                                               save_weights_only=True),
+                            verbose=False,
+                            save_best_only=True,
+                            save_weights_only=True),
         ]
         return callbacks

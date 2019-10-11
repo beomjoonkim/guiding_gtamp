@@ -42,7 +42,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         # todo try different weight initializations
         AdversarialPolicy.__init__(self, dim_action, dim_collision, save_folder, tau)
 
-        self.dim_poses = 4
+        self.dim_poses = 8
         self.dim_collision = dim_collision
 
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
