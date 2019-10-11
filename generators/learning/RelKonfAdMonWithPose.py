@@ -554,8 +554,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                        callbacks=callbacks,
                                        verbose=False)
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
-            fname = self.weight_file_name + '.h5'
-            self.q_on_policy_model.load_weights(self.save_folder + fname)
+            #fname = self.weight_file_name + '.h5'
+            #self.q_on_policy_model.load_weights(self.save_folder + fname)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
