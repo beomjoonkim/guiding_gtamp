@@ -214,7 +214,9 @@ def get_pap_gnn_model(mover, config):
 
 
 def get_learned_smpler(sampler_seed):
+    print "Creating the learned sampler.."
     admon = create_imle_model(sampler_seed)
+    print "Created IMLE model with weight name", admon.weight_file_name
     return admon
 
 

@@ -170,6 +170,8 @@ class PaPUniformGenerator(UniformGenerator):
 
             if status == 'HasSolution':
                 # Don't break here, but try to get more parameters
+                break
+                """
                 if dont_check_motion_existence:
                     chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
                     return chosen_op_param
@@ -180,12 +182,12 @@ class PaPUniformGenerator(UniformGenerator):
                                                                                    cached_holding_collisions)
                     if chosen_op_param['is_feasible']:
                         return chosen_op_param
+                """
         print "Time taken", time.time() - stime, status
 
-        # if status == "NoSolution":
-        return {'is_feasible': False}
+        if status == "NoSolution":
+            return {'is_feasible': False}
 
-        """
         # We would have to move these to the loop in order to be fair
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
@@ -195,7 +197,6 @@ class PaPUniformGenerator(UniformGenerator):
                                                                            cached_collisions,
                                                                            cached_holding_collisions)
         return chosen_op_param
-        """
 
     def get_pap_param_with_feasible_motion_plan(self, operator_skeleton, feasible_op_parameters,
                                                 cached_collisions, cached_holding_collisions):
