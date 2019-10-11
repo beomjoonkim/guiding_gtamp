@@ -10,6 +10,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
         self.z_vals_tried = []
+        self.num_generated=1
         # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
     def create_q_on_policy_model(self):
@@ -82,8 +83,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
         stime = time.time()
         if z_vals_tried is None or len(z_vals_tried) == 0:
-            noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+            noise_smpls = self.num_generated/10.0*noise(z_size=(1, self.dim_action))  # n_data by k matrix
             z_vals_tried.append(noise_smpls.squeeze())
+            self.num_generated+=1
         else:
             noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
             z_vals_tried = np.array(z_vals_tried)
@@ -296,5 +298,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             if valid_err <= np.min(valid_errs):
                 self.save_weights()
             print "Val error", valid_err
+            print np.min(valid_errs)
             # if np.all(np.array(gen_w_norms) == 0):
             #    break

@@ -51,7 +51,7 @@ def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
 
-    obj = problem_env.object_names[6]
+    obj = problem_env.object_names[0]
     utils.set_color(obj, [1, 0, 0])
     smpler_state = get_smpler_state(pidx, obj, problem_env)
     smpler_state.abs_obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
@@ -59,13 +59,19 @@ def visualize_samples(policy, pidx):
     # Question:
     #   if I have the collision information, can I simply reject the generated smpls that are in collision?
     #   Answer: these are not prm vertices
+    """
     z_smpl_fname = 'z_smpls.pkl'
     noise_batch = pickle.load(open(z_smpl_fname, 'r'))
     policy_smpls = generate_policy_smpl_batch(smpler_state, policy, noise_batch)
-
     place_smpls = [data_processing_utils.get_unprocessed_placement(smpl, smpler_state.abs_obj_pose) for smpl in policy_smpls]
+    """
+
+    place_smpls = []
+    for _ in range(50):
+        policy_smpl = generate_smpls(smpler_state, policy, n_data=1)[0]
+        place_smpls.append(policy_smpl)
     import pdb;pdb.set_trace()
-    utils.visualize_path(place_smpls[0:10])
+    utils.visualize_path(place_smpls[0:50])
 
 
 def main():

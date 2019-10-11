@@ -20,11 +20,11 @@ def make_konfs_relative_to_pose(obj_pose, key_configs):
 
 def get_processed_poses_from_state(state):
     if state_data_mode == 'absolute':
-        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
+        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.abs_obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(state.robot_pose)
     elif state_data_mode == 'robot_rel_to_obj':
-        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.obj_pose)
-        robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.robot_pose, state.obj_pose)
+        obj_pose = utils.encode_pose_with_sin_and_cos_angle(state.abs_obj_pose)
+        robot_pose = utils.get_relative_robot_pose_wrt_body_pose(state.abs_robot_pose, state.abs_obj_pose)
         robot_pose = utils.encode_pose_with_sin_and_cos_angle(robot_pose)
     else:
         raise not NotImplementedError
@@ -116,18 +116,18 @@ def get_processed_poses_from_action(state, action):
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif action_data_mode == 'pick_relative':
         pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
+        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.abs_obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(action['place_abs_base_pose'])
     elif action_data_mode == 'pick_relative_place_relative_to_region':
         pick_pose = action['pick_abs_base_pose']
-        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.obj_pose)
+        pick_pose = utils.get_relative_robot_pose_wrt_body_pose(pick_pose, state.abs_obj_pose)
         pick_pose = utils.encode_pose_with_sin_and_cos_angle(pick_pose)
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
     elif action_data_mode == 'pick_parameters_place_relative_to_region':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.abs_obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = get_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
@@ -135,7 +135,7 @@ def get_processed_poses_from_action(state, action):
     elif action_data_mode == 'pick_parameters_place_normalized_relative_to_region':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.abs_obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_pose = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = normalize_place_pose_wrt_region(action['place_abs_base_pose'], action['region_name'])
@@ -143,7 +143,7 @@ def get_processed_poses_from_action(state, action):
     elif action_data_mode == 'pick_parameters_place_relative_to_pick':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.abs_obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_params = np.hstack([portion, base_angle, facing_angle_offset])
         place_pose = action['place_abs_base_pose']
@@ -153,13 +153,13 @@ def get_processed_poses_from_action(state, action):
     elif action_data_mode == 'pick_parameters_place_relative_to_object':
         pick_pose = action['pick_abs_base_pose']
         portion, base_angle, facing_angle_offset \
-            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.obj_pose)
+            = utils.get_ir_parameters_from_robot_obj_poses(pick_pose, state.abs_obj_pose)
         base_angle = utils.encode_angle_in_sin_and_cos(base_angle)
         pick_params = np.hstack([portion, base_angle, facing_angle_offset])
         pick_pose = pick_params
 
         place_pose = action['place_abs_base_pose']
-        obj_pose = state.obj_pose
+        obj_pose = state.abs_obj_pose
         rel_place_pose = utils.get_relative_robot_pose_wrt_body_pose(place_pose, obj_pose)
         place_pose = utils.encode_pose_with_sin_and_cos_angle(rel_place_pose)
 

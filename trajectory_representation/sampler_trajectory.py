@@ -89,7 +89,7 @@ class SamplerTrajectory:
         problem_env, openrave_env = self.create_environment()
         self.problem_env = problem_env
 
-        admon = create_imle_model(1)
+        #admon = create_imle_model(1)
 
         state = None
         utils.viewer()
@@ -111,7 +111,7 @@ class SamplerTrajectory:
                 """
                 ##############################################################################
 
-                abs_goal_obj_pose = utils.get_body_xytheta('square_packing_box1')
+
                 action.execute()
                 obj_pose = utils.get_body_xytheta(action.discrete_parameters['object'])
                 robot_pose = utils.get_body_xytheta(self.problem_env.robot)
@@ -137,7 +137,6 @@ class SamplerTrajectory:
                     'pick_base_ir_parameters': pick_parameters,
                     'place_abs_base_pose': place_base_pose,
                     'pick_abs_base_pose': pick_base_pose,
-                    'abs_goal_obj_pose': abs_goal_obj_pose
                 }
                 self.add_sar_tuples(state, action_info, reward)
 

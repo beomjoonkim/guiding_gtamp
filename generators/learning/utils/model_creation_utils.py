@@ -1,6 +1,6 @@
 from generators.learning.utils.data_processing_utils import state_data_mode, action_data_mode
 
-from generators.learning.RelKonfAdMonWithPose import RelKonfIMLEPose
+from generators.learning.RelKonfIMLE import RelKonfIMLEPose
 
 import collections
 

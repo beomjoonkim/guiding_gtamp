@@ -74,7 +74,8 @@ def load_data(traj_dir):
         # states = np.array([s.state_vec for s in traj.states])  # collision vectors
         states = []
         for s in traj.states:
-            state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
+            #state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
+            state_vec = s.collision_vector
             n_key_configs = state_vec.shape[1]
 
             is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([s.obj in s.goal_entities]))
