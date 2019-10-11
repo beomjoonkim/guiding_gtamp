@@ -1,4 +1,5 @@
 from RelKonfAdMonWithPose import *
+from keras.callbacks import *
 
 
 class RelKonfIMLEPose(RelKonfMSEPose):
@@ -116,6 +117,67 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                       name='policy_model')
         model.compile(loss='mse', optimizer=self.opt_D)
         return model
+
+    def construt_self_attention_policy_output(self):
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        concat_input = Concatenate(axis=2)(
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
+        dim_input = concat_input.shape[2]._value
+
+        # This transforms the entire key configurations. We have 615 x n_feature, an embeeding matrix which we call E
+        # Computation of E:
+        hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        hidden_relevance = Conv2D(filters=1,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='linear',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer)(hidden_relevance)
+
+        self.relevance_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+            outputs=hidden_relevance,
+            name='relevance_model')
+
+        def compute_W(x):
+            x = K.squeeze(x, axis=-1)
+            x = K.squeeze(x, axis=-1)
+            return K.softmax(x, axis=-1)
+
+        W = Lambda(compute_W)(hidden_relevance)
+        self.W_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+            outputs=W,
+            name='w_model')
+
+        # Where does the noise component come in?
+        # somewhere around here
+        concat_konf_noise = Concatenate(axis=-1)([self.key_config_input, self.noise_input])
+        dim_input = concat_konf_noise.shape[2]._value
+        n_filters = 64
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, dim_input),
+                   strides=(1, 1),
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(input)
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, 1),
+                   strides=(1, 1),
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(H)
+        H = Conv2D(filters=4,
+                   kernel_size=(1, 1),
+                   strides=(1, 1),
+                   activation='linear',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(H)
+
+
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+        return output
 
     def construct_policy_output(self):
         # todo make this architecture

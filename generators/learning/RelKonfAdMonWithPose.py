@@ -163,7 +163,28 @@ class RelKonfMSEPose(AdversarialPolicy):
             outputs=W,
             name='w_model')
 
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        n_filters = 32
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, dim_input),
+                   strides=(1, 1),
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(self.key_config_input)
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, 1),
+                   strides=(1, 1),
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(H)
+        H = Conv2D(filters=4,
+                   kernel_size=(1, 1),
+                   strides=(1, 1),
+                   activation='linear',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(H)
+        key_configs = H
+
+        #key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
 
@@ -326,6 +347,6 @@ class RelKonfMSEPose(AdversarialPolicy):
         post_mse = self.compute_policy_mse(test_data)
         print "Pre-and-post test errors", pre_mse, post_mse
         wvals = self.W_model.predict([goal_flags, rel_konfs, collisions, poses])[0]
-        collision_idxs = collisions[0].squeeze()[:, 0] ==True
-        import pdb;pdb.set_trace()
-
+        collision_idxs = collisions[0].squeeze()[:, 0] == True
+        import pdb;
+        pdb.set_trace()
