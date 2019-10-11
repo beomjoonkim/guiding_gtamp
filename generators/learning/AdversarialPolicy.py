@@ -130,7 +130,7 @@ class AdversarialPolicy:
     def create_callbacks_for_pretraining(self):
         callbacks = [
             TerminateOnNaN(),
-            EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=10, ),
+            EarlyStopping(monitor='val_loss', min_delta=1e-4, patience=30, ),
             ModelCheckpoint(filepath=self.save_folder + self.pretraining_file_name,
                                                verbose=False,
                                                save_best_only=True,
