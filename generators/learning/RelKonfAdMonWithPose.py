@@ -399,10 +399,12 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         callbacks = [
             tf.keras.callbacks.TerminateOnNaN(),
             tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20),
+            """
             tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
                                                verbose=False,
                                                save_best_only=True,
                                                save_weights_only=True),
+            """
         ]
         return callbacks
 
@@ -518,6 +520,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
         gen_w_norm_patience = 10
         gen_w_norms = [-1] * gen_w_norm_patience
+        valid_errs = []
         for epoch in range(epochs):
             print 'Epoch %d/%d' % (epoch, epochs)
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
@@ -562,7 +565,12 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
 
             pred = self.policy_model.predict([t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls])
-            print "Val error", np.mean(np.linalg.norm(pred-t_actions,axis=-1))
+            valid_err = np.mean(np.linalg.norm(pred-t_actions,axis=-1))
+            valid_errs.append(valid_err)
+
+            if valid_err < np.min(valid_errs):
+                self.save_weights()
+            print "Val error", valid_err
             #if np.all(np.array(gen_w_norms) == 0):
             #    break
             
