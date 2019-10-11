@@ -74,7 +74,7 @@ def load_data(traj_dir):
         # states = np.array([s.state_vec for s in traj.states])  # collision vectors
         states = []
         for s in traj.states:
-            #state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
+            # state_vec = np.delete(s.state_vec, [415, 586, 615, 618, 619], axis=1)
             state_vec = s.collision_vector
             n_key_configs = state_vec.shape[1]
 
@@ -209,7 +209,7 @@ def train_rel_konf_place_mse(config):
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
-    poses = poses[:, :4]
+    poses = poses[:, :8]  # now include relative goal pose
     admon.train_policy(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
