@@ -176,7 +176,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(H)
         #################################################################
 
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name='policy_output')([W, key_configs])
         return output
 
     def construct_policy_output(self):
