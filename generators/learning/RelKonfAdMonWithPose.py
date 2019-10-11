@@ -66,8 +66,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         # self.reachability_output = self.construct_reachability_output()
         # self.reachability_model = self.construct_reachability_model()
 
-        #self.policy_output = self.construt_self_attention_policy_output()
-        self.policy_output = self.construct_policy_output()
+        self.policy_output = self.construt_self_attention_policy_output()
+        # self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -128,55 +128,35 @@ class RelKonfMSEPose(AdversarialPolicy):
         # I put an additional layer on each row, so we end up with 615x1 matrix. Call each weight \theta_i
         # Now, I express my output =  \sum_{i=1}^{n} \theta_i * k_i
         # Where does the object pose come into play here? Probably it does not, because it is always the origin
-
         pass
 
     def construt_self_attention_policy_output(self):
-        # apply the transformation function to every key config
-        n_conv_filters = 16
-
-        input = Concatenate(axis=2)([self.key_config_input, self.goal_flag_input, self.collision_input])
-        dim_input = input.shape[2]._value
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        concat_input = Concatenate(axis=2)(
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
+        dim_input = concat_input.shape[2]._value
 
         # This transforms the entire key configurations. We have 615 x n_feature, an embeeding matrix which we call E
         # Computation of E:
-        query_embedding = Conv2D(filters=n_conv_filters,
-                                 kernel_size=(1, dim_input),
-                                 strides=(1, 1),
-                                 activation='relu',
-                                 kernel_initializer=self.kernel_initializer,
-                                 bias_initializer=self.bias_initializer
-                                 )(input)
+        hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        hidden_relevance = Conv2D(filters=1,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='relu',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(hidden_relevance)
 
-        # Now we want to compute the dot products with each other, to end up with 615 x 615
-        # This can be done by E * E.transpose(). Call this matrix W.
-        # Compute W:
         def compute_W(x):
-            x = K.squeeze(x, axis=2)
-            return K.batch_dot(x, x, axes=(2, 2))
+            x = K.squeeze(x, axis=-1)
+            x = K.squeeze(x, axis=-1)
+            return K.softmax(x, axis=-1)
 
-        W = Lambda(compute_W)(query_embedding)
+        W = Lambda(compute_W)(hidden_relevance)
 
-        # Now we take W, and softmax each row. Call this Softmax(W). This must be 615 x 1
-        def sum_each_row(x):
-            sum_row = K.sum(x, axis=-1)
-            return sum_row
-
-        sum_W = Lambda(sum_each_row)(W)
-
-        value_embedding = Conv2D(filters=self.dim_action,
-                                 kernel_size=(1, dim_input),
-                                 strides=(1, 1),
-                                 activation='linear',
-                                 kernel_initializer=self.kernel_initializer,
-                                 bias_initializer=self.bias_initializer
-                                 )(input)
-        value_embedding = Lambda(lambda x: K.squeeze(x, axis=2))(value_embedding)
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([sum_W, value_embedding])
-        # output = Multiply()([sum_W, value_embedding])
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
-
-        # Now we apply Softmax(W) to each embedding of configs to produce an output
 
     def construct_policy_output(self):
         konf_goal_flag = Concatenate(axis=2)([self.key_config_input, self.goal_flag_input])
@@ -416,7 +396,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model.save_weights(fdir + fname)
 
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
-        stime=time.time()
+        stime = time.time()
         if z_vals_tried is None or len(z_vals_tried) == 0:
             noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
             z_vals_tried.append(noise_smpls.squeeze())
@@ -426,16 +406,16 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
             i = len(z_vals_tried)
             while min_dist < 10.:
-                noise_smpls = ((20 + i*10) * np.random.uniform(size=self.dim_action) - (10+i*10))[None, :]
+                noise_smpls = ((20 + i * 10) * np.random.uniform(size=self.dim_action) - (10 + i * 10))[None, :]
                 min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
                 i += 1
-                #print i
+                # print i
             z_vals_tried = z_vals_tried.tolist()
             z_vals_tried.append(noise_smpls.squeeze())
-        #print "Z sampling time", time.time()-stime
-        #stime=time.time()
+        # print "Z sampling time", time.time()-stime
+        # stime=time.time()
         pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
-        #print "Prediction time", time.time() - stime
+        # print "Prediction time", time.time() - stime
         return pred, z_vals_tried
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
@@ -557,21 +537,19 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                        callbacks=callbacks,
                                        verbose=False)
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
-            #fname = self.weight_file_name + '.h5'
-            #self.q_on_policy_model.load_weights(self.save_folder + fname)
+            # fname = self.weight_file_name + '.h5'
+            # self.q_on_policy_model.load_weights(self.save_folder + fname)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
             gen_w_norms[epoch % gen_w_norm_patience] = gen_w_norm
 
             pred = self.policy_model.predict([t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls])
-            valid_err = np.mean(np.linalg.norm(pred-t_actions,axis=-1))
+            valid_err = np.mean(np.linalg.norm(pred - t_actions, axis=-1))
             valid_errs.append(valid_err)
 
             if valid_err <= np.min(valid_errs):
                 self.save_weights()
             print "Val error", valid_err
-            #if np.all(np.array(gen_w_norms) == 0):
+            # if np.all(np.array(gen_w_norms) == 0):
             #    break
-            
-
