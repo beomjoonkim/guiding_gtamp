@@ -119,8 +119,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         return model
 
     def construt_self_attention_policy_output(self):
-        pass
-        """
         tiled_pose = self.get_tiled_input(self.pose_input)
         concat_input = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
@@ -152,9 +150,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             outputs=W,
             name='w_model')
 
-        # Where does the noise component come in?
-        # somewhere around here
-        concat_konf_noise = Concatenate(axis=-1)([self.key_config_input, self.noise_input])
+        ###### Key config transformation
+        tiled_noise = self.get_tiled_input(self.noise_input)
+        concat_konf_noise = Concatenate(axis=-1)([self.key_config_input, tiled_noise])
         dim_input = concat_konf_noise.shape[2]._value
         n_filters = 64
         H = Conv2D(filters=n_filters,
@@ -162,7 +160,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                    strides=(1, 1),
                    activation='relu',
                    kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(input)
+                   bias_initializer=self.bias_initializer)(concat_konf_noise)
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, 1),
                    strides=(1, 1),
@@ -175,12 +173,11 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                    activation='linear',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer)(H)
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(H)
+        #################################################################
 
-
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
-        """
 
     def construct_policy_output(self):
         # todo make this architecture
