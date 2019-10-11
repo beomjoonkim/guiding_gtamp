@@ -3,6 +3,7 @@ from keras.layers.merge import Concatenate
 from generators.learning.AdversarialPolicy import AdversarialPolicy
 from keras.models import Model
 from keras import backend as K
+from keras.callbacks import *
 import tensorflow as tf
 import time
 import os
@@ -389,8 +390,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def create_callbacks_for_pretraining(self):
         fname = self.weight_file_name + '.h5'
         callbacks = [
-            tf.keras.callbacks.TerminateOnNaN(),
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20)
+            TerminateOnNaN(),
+            EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20)
         ]
         """
                 tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
