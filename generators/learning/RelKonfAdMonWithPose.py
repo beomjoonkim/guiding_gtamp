@@ -519,8 +519,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         gen_w_norm_patience = 10
         gen_w_norms = [-1] * gen_w_norm_patience
         for epoch in range(epochs):
+            print 'Epoch %d/%d' % (epoch, epochs)
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
-            batch_size = 160
+            batch_size = 400
             col_batch, goal_flag_batch, pose_batch, rel_konf_batch, a_batch, sum_reward_batch = \
                 self.get_batch(collisions, goal_flags, poses, rel_konfs, actions, sum_rewards, batch_size=batch_size)
             if is_time_to_smpl_new_data:
@@ -546,11 +547,12 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input]
             self.q_on_policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
                                        [a_batch],
-                                       epochs=1000,
+                                       epochs=100,
                                        validation_data=(
                                            [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
                                            [t_actions]),
-                                       callbacks=callbacks)
+                                       callbacks=callbacks,
+                                       verbose=False)
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
             fname = self.weight_file_name + '.h5'
             self.q_on_policy_model.load_weights(self.save_folder + fname)
