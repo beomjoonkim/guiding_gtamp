@@ -5,6 +5,7 @@ import numpy as np
 import random
 import socket
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Process configurations')
     parser.add_argument('-n_data', type=int, default=100)
@@ -25,12 +26,14 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 configs = parse_args()
 np.random.seed(configs.seed)
 random.seed(configs.seed)
 os.environ['PYTHONHASHSEED'] = str(configs.seed)
 
 import tensorflow as tf
+
 tf.set_random_seed(configs.seed)
 
 from AdMon import AdversarialMonteCarlo
@@ -224,10 +227,7 @@ def train_rel_konf_place_admon(config):
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
-
-
 def main():
-
     if configs.algo == 'admon':
         train_admon(configs)
     elif configs.algo == 'admonpose':

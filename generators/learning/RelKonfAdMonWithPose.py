@@ -474,20 +474,20 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                                        use_pooling=False)
 
         dense_num = 256
+        h_noise = Concatenate(axis=-1)([hidden_col_relevance, self.noise_input])
         hidden_action = Dense(dense_num, activation='relu',
                               kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
+                              bias_initializer=self.bias_initializer)(h_noise)
         hidden_action = Dense(dense_num, activation='relu',
                               kernel_initializer=self.kernel_initializer,
                               bias_initializer=self.bias_initializer
                               )(hidden_action)
 
-        h_noise = Concatenate(axis=-1)([hidden_action, self.noise_input])
         action_output = Dense(self.dim_action,
                               activation='linear',
                               kernel_initializer=self.kernel_initializer,
                               bias_initializer=self.bias_initializer,
-                              name='policy_output')(h_noise)
+                              name='policy_output')(hidden_action)
         return action_output
 
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=1000):
