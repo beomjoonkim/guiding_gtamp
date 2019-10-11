@@ -73,8 +73,7 @@ def search(mover, config, pap_model, learned_smpler=None):
 
     state = statecls(mover, goal)
 
-
-    #utils.viewer()
+    # utils.viewer()
     """
     actions = get_actions(mover, goal, config)
     action = actions[0]
@@ -136,22 +135,20 @@ def search(mover, config, pap_model, learned_smpler=None):
         if action.type == 'two_arm_pick_two_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
             if learned_smpler is None:
-                smpler = PaPUniformGenerator(action, mover, None)
+                smpler = PaPUniformGenerator(action, mover, max_n_iter=200)
                 stime = time.time()
-                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                smpled_param = smpler.sample_next_point(action, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
-                print 'smpling time', time.time()-stime
+                print 'smpling time', time.time() - stime
             else:
-                smpler = LearnedGenerator(action, mover, learned_smpler, state)
+                smpler = LearnedGenerator(action, mover, learned_smpler, state, max_n_iter=200)
                 # How can I change the state.collides to the one_hot? How long would it take?
                 stime = time.time()
-                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                smpled_param = smpler.sample_next_point(action, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
-                print 'smpling time', time.time()-stime
-
-            import pdb;pdb.set_trace()
+                print 'smpling time', time.time() - stime
 
             if smpled_param['is_feasible']:
                 action.continuous_parameters = smpled_param

@@ -15,8 +15,7 @@ import time
 
 
 class UniformGenerator:
-    # Only used in RSC
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
+    def __init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint=None):
         self.problem_env = problem_env
         self.env = problem_env.env
         self.evaled_actions = []
@@ -25,6 +24,7 @@ class UniformGenerator:
         self.objects_to_check_collision = None
         self.tried_smpls = []
         self.smpling_time = []
+        self.max_n_iter = max_n_iter
         operator_type = operator_skeleton.type
 
         target_region = None
@@ -150,11 +150,11 @@ class UniformGenerator:
 
 
 class PaPUniformGenerator(UniformGenerator):
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
-        UniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
+    def __init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint=None):
+        UniformGenerator.__init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint)
         self.feasible_pick_params = {}
 
-    def sample_next_point(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning=1,
+    def sample_next_point(self, operator_skeleton, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
         # Not yet motion-planning-feasible
         target_obj = operator_skeleton.discrete_parameters['object']
@@ -163,10 +163,11 @@ class PaPUniformGenerator(UniformGenerator):
 
         status = "NoSolution"
         stime = time.time()
-        for curr_n_iter in range(10, n_iter, 10):
+        for curr_n_iter in range(10, self.max_n_iter, 10):
             feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
                                                                                 curr_n_iter,
                                                                                 n_parameters_to_try_motion_planning)
+
             if status == 'HasSolution':
                 # Don't break here, but try to get more parameters
                 if dont_check_motion_existence:
@@ -180,7 +181,6 @@ class PaPUniformGenerator(UniformGenerator):
                     if chosen_op_param['is_feasible']:
                         return chosen_op_param
         print "Time taken", time.time() - stime, status
-        import pdb;pdb.set_trace()
 
         # if status == "NoSolution":
         return {'is_feasible': False}
