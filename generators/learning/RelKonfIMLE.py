@@ -119,6 +119,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         return model
 
     def construt_self_attention_policy_output(self):
+        pass
+        """
         tiled_pose = self.get_tiled_input(self.pose_input)
         concat_input = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
@@ -178,6 +180,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
+        """
 
     def construct_policy_output(self):
         # todo make this architecture
