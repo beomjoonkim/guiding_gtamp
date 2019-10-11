@@ -164,7 +164,15 @@ class RelKonfMSEPose(AdversarialPolicy):
             outputs=W,
             name='w_model')
 
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        transformed_konf = self.create_conv_layers(self.key_config_input, 4, use_pooling=False, use_flatten=False)
+        transformed_konf = Conv2D(filters=4,
+                                  kernel_size=(1, 1),
+                                  strides=(1, 1),
+                                  activation='linear',
+                                  kernel_initializer=self.kernel_initializer,
+                                  bias_initializer=self.bias_initializer
+                                  )(transformed_konf)
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(transformed_konf)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
 
