@@ -398,14 +398,14 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         fname = self.weight_file_name + '.h5'
         callbacks = [
             tf.keras.callbacks.TerminateOnNaN(),
-            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20),
-            """
-            tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
-                                               verbose=False,
-                                               save_best_only=True,
-                                               save_weights_only=True),
-            """
+            tf.keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20)
         ]
+        """
+                tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
+                                                   verbose=False,
+                                                   save_best_only=True,
+                                                   save_weights_only=True),
+        """
         return callbacks
 
     def save_weights(self, additional_name=''):
