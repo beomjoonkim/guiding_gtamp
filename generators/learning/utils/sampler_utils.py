@@ -9,7 +9,7 @@ def generate_smpls(smpler_state, policy, n_data, noise_smpls_tried=None):
     stime = time.time()
     obj = smpler_state.obj
 
-    # utils.set_color(obj, [1, 0, 0])
+    utils.set_color(obj, [1, 0, 0])
     poses = np.hstack(
         [utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
 
@@ -27,22 +27,10 @@ def generate_smpls(smpler_state, policy, n_data, noise_smpls_tried=None):
     collisions = smpler_state.collision_vector
 
     places = []
+    noises_used = []
     for _ in range(n_data):
         poses = poses[:, :4]
-        import pdb;
-        pdb.set_trace()
-        smpls, noises_used = policy.generate(goal_flags, rel_konfs, collisions, poses, noise_smpls_tried)
-
-        goal_flags = np.tile(goal_flags, (1000, 1, 1, 1))
-        rel_konfs = np.tile(rel_konfs, (1000, 1, 1, 1))
-        collisions = np.tile(collisions, (1000, 1, 1, 1))
-        poses = np.tile(poses, (1000, 1))
-        noise = np.random.normal(size=(1000, 4)).astype('float32')
-        stime = time.time();
-        policy.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise]);
-        time.time() - stime
-
-        # noise_smpls_tried = np.tile(noise_smpls_tried, (1000,1,1,1,1))
+        smpls, noises_used = policy.generate(goal_flags, rel_konfs, collisions, poses, noises_used)
         placement = data_processing_utils.get_unprocessed_placement(smpls.squeeze(), obj_pose)
         places.append(placement)
     # print "Time taken", time.time()-stime
