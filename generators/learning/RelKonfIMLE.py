@@ -4,7 +4,7 @@ from RelKonfAdMonWithPose import *
 class RelKonfIMLEPose(RelKonfMSEPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         RelKonfMSEPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
-        self.policy_output = self.construct_policy_output()
+        self.policy_output = self.construt_self_attention_policy_output()
         self.policy_model = self.construct_policy_model()
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
