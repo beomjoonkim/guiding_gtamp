@@ -165,7 +165,17 @@ class RelKonfMSEPose(AdversarialPolicy):
         def compute_W(x):
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x, axis=-1)
+            # return K.softmax(x, axis=-1)
+            # turn this into
+            # return tf.keras.backend.sign(x)
+            max_val = tf.reduce_max(x, axis=-1)
+            num_examples = tf.cast(tf.shape(max_val)[0], dtype=tf.int32)
+            max_val = tf.reshape(max_val, [num_examples, 1])
+            max_vals = tf.tile(max_val, [1, tf.shape(x)[1]])
+            #weights = tf.greater_equal(max_val, x)
+            weights = tf.keras.backend.equal(x, max_vals)
+            weights = tf.dtypes.cast(weights, tf.float32)
+            return weights
 
         W = Lambda(compute_W, name='softmax')(relevance)
         self.W_model = Model(
@@ -202,7 +212,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
 
-        # output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+        """
         def choose_max_relevance(x):
             relevance_val = x[0]
             transformed_key_configs = x[1]
@@ -214,6 +225,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             return tf.gather_nd(transformed_key_configs, tensor_idx)
 
         output = Lambda(choose_max_relevance)([W, key_configs])
+        """
         return output
 
     def construct_policy_output(self):
