@@ -147,6 +147,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                        bias_initializer=self.bias_initializer)(query)
 
         # The key matrix
+        """
         key = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
         key = Conv2D(filters=256,
                      kernel_size=(1, 1),
@@ -170,8 +171,17 @@ class RelKonfMSEPose(AdversarialPolicy):
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=W,
             name='w_model')
+        """
+
+        def compute_W(x):
+            x = K.squeeze(x, axis=-1)
+            x = K.squeeze(x, axis=-1)
+            return K.softmax(x, axis=-1)
+
+        W = Lambda(compute_W, name='softmax')(query)
 
         # The value matrix
+        """
         value = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
         value = Conv2D(filters=4,
                        kernel_size=(1, 1),
@@ -180,6 +190,8 @@ class RelKonfMSEPose(AdversarialPolicy):
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer,
                        )(value)
+        """
+        value = self.key_config_input
 
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
