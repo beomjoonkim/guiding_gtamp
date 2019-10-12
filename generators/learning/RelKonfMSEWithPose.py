@@ -139,15 +139,16 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         # The query matrix
         query = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        query = Conv2D(filters=64,
+        query = Conv2D(filters=256,
                        kernel_size=(1, 1),
                        strides=(1, 1),
                        activation='relu',
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer)(query)
 
+        # The key matrix
         key = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        key = Conv2D(filters=64,
+        key = Conv2D(filters=256,
                      kernel_size=(1, 1),
                      strides=(1, 1),
                      activation='relu',
@@ -158,7 +159,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             qvals = x[0]
             kvals = x[1]
             qvals = tf.transpose(qvals, perm=[0, 1, 3, 2])
-            dotted = tf.keras.backend.batch_dot(kvals, qvals)
+            dotted = tf.keras.backend.batch_dot(kvals, qvals) /tf.sqrt(tf.dtypes.cast(qvals.shape[2]._value,tf.float32))
             dotted = tf.squeeze(dotted, axis=-1)
             dotted = tf.squeeze(dotted, axis=-1)
             return K.softmax(dotted, axis=-1)
@@ -170,41 +171,23 @@ class RelKonfMSEPose(AdversarialPolicy):
             outputs=W,
             name='w_model')
 
-        # The computations of values
-        n_filters = 64
-        concat_input_value = Concatenate(axis=2)(
-            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
-        dim_input = concat_input_value.shape[2]._value
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, dim_input),
-                   strides=(1, 1),
-                   activation='relu',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(concat_input_value)
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, 1),
-                   strides=(1, 1),
-                   activation='relu',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(H)
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, 1),
-                   strides=(1, 1),
-                   activation='relu',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(H)
-        H = Conv2D(filters=4,
-                   kernel_size=(1, 1),
-                   strides=(1, 1),
-                   activation='linear',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer,
-                   )(H)
-        key_configs = H
+        # The value matrix
+        value = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        value = Conv2D(filters=4,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='linear',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer,
+                       )(value)
 
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+        value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
+        self.value_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+            outputs=value,
+            name='value_model')
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, value])
         return output
 
     def construct_policy_output(self):
