@@ -167,13 +167,13 @@ class RelKonfMSEPose(AdversarialPolicy):
         n_filters = 32
         concat_input_value = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
-        dim_input = concat_input_value._value
+        dim_input = concat_input_value.shape[2]._value
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, dim_input),
                    strides=(1, 1),
                    activation='relu',
                    kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(self.key_config_input)
+                   bias_initializer=self.bias_initializer)(concat_input_value)
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, 1),
                    strides=(1, 1),
