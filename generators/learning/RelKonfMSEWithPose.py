@@ -145,6 +145,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   activation='relu',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer)(hidden_relevance)
+        """
         flattened = Flatten()(hidden_relevance)
         hidden_relevance = Dense(32, activation='relu',
                                  kernel_initializer=self.kernel_initializer,
@@ -152,7 +153,9 @@ class RelKonfMSEPose(AdversarialPolicy):
         relevance = Dense(615, activation='linear',
                           kernel_initializer=self.kernel_initializer,
                           bias_initializer=self.bias_initializer)(
-            hidden_relevance)
+            flattened)
+        """
+        relevance = hidden_relevance
 
         self.relevance_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
