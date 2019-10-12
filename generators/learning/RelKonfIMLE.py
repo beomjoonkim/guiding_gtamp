@@ -163,7 +163,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input],
             outputs=value,
             name='value_model')
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, value])
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name='policy_output')([W, value])
         return output
 
     def construct_policy_output(self):
