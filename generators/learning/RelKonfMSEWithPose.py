@@ -139,10 +139,10 @@ class RelKonfMSEPose(AdversarialPolicy):
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input.shape[2]._value
         hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        hidden_relevance = Conv2D(filters=64,
+        hidden_relevance = Conv2D(filters=1,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
-                                  activation='relu',
+                                  activation='linear',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer)(hidden_relevance)
         """
@@ -163,8 +163,8 @@ class RelKonfMSEPose(AdversarialPolicy):
             name='relevance_model')
 
         def compute_W(x):
-            # x = K.squeeze(x, axis=-1)
-            # x = K.squeeze(x, axis=-1)
+            x = K.squeeze(x, axis=-1)
+            x = K.squeeze(x, axis=-1)
             return K.softmax(x, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(relevance)
@@ -203,7 +203,6 @@ class RelKonfMSEPose(AdversarialPolicy):
         key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
 
         # output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
-
         def choose_max_relevance(x):
             relevance_val = x[0]
             transformed_key_configs = x[1]
