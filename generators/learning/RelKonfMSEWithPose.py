@@ -201,10 +201,11 @@ class RelKonfMSEPose(AdversarialPolicy):
         return output
 
     def construct_policy_output(self):
-        konf_goal_flag = Concatenate(axis=2)([self.key_config_input, self.goal_flag_input])
+        konf_goal_flag = Concatenate(axis=2)([self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input])
         dim_combined = konf_goal_flag.shape[2]._value
-        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
-                                                   use_flatten=False)
+        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=True,
+                                                   use_flatten=True)
+        """
         n_conv_filters = 16
         hidden_relevance = Conv2D(filters=n_conv_filters,
                                   kernel_size=(1, 1),
@@ -214,9 +215,10 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   bias_initializer=self.bias_initializer
                                   )(hidden_relevance)
         hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
-        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
-                                                       use_pooling=False)
+        #hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
+        #hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
+        #                                               use_pooling=False)
+        """
 
         dense_num = 256
         hidden_action = Dense(dense_num, activation='relu',
@@ -358,7 +360,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                               validation_split=0.1, shuffle=False)
         post_mse = self.compute_policy_mse(test_data)
         print "Pre-and-post test errors", pre_mse, post_mse
-        wvals = self.W_model.predict([goal_flags, rel_konfs, collisions, poses])[0]
+        #wvals = self.W_model.predict([goal_flags, rel_konfs, collisions, poses])[0]
         collision_idxs = collisions[0].squeeze()[:, 0] == True
         import pdb;
         pdb.set_trace()
