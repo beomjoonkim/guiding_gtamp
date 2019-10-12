@@ -133,12 +133,11 @@ class RelKonfMSEPose(AdversarialPolicy):
 
     def construt_self_attention_policy_output(self):
         tiled_pose = self.get_tiled_input(self.pose_input)
+
+        # The query vector
         concat_input = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input.shape[2]._value
-
-        # This transforms the entire key configurations. We have 615 x n_feature, an embeeding matrix which we call E
-        # Computation of E:
         hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
         hidden_relevance = Conv2D(filters=1,
                                   kernel_size=(1, 1),
@@ -163,8 +162,12 @@ class RelKonfMSEPose(AdversarialPolicy):
             outputs=W,
             name='w_model')
 
+
+        # The computations of values
         n_filters = 32
-        dim_input = self.key_config_input.shape[2]._value
+        concat_input_value = Concatenate(axis=2)(
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
+        dim_input = concat_input_value._value
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, dim_input),
                    strides=(1, 1),
