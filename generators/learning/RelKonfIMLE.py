@@ -143,8 +143,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         W = Lambda(compute_W, name='softmax')(query)
 
         # The value matrix
+        tiled_noise = self.get_tiled_input(self.noise_input)
         concat_value_input = Concatenate(axis=2)(
-            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose, self.noise_input])
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose, tiled_noise])
         dim_value_input = concat_value_input.shape[2]._value
 
         value = self.create_conv_layers(concat_value_input, dim_value_input, use_pooling=False, use_flatten=False)
