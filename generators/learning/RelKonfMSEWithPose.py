@@ -223,7 +223,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         dense_num = 256
         hidden_action = Dense(dense_num, activation='relu',
                               kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(hidden_col_relevance)
+                              bias_initializer=self.bias_initializer)(hidden_relevance)
         hidden_action = Dense(dense_num, activation='relu',
                               kernel_initializer=self.kernel_initializer,
                               bias_initializer=self.bias_initializer
