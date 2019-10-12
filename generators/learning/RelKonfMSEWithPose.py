@@ -67,8 +67,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         # self.reachability_output = self.construct_reachability_output()
         # self.reachability_model = self.construct_reachability_model()
 
-        #self.policy_output = self.construt_self_attention_policy_output()
-        self.policy_output = self.construct_policy_output()
+        self.policy_output = self.construt_self_attention_policy_output()
+        #self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -133,31 +133,37 @@ class RelKonfMSEPose(AdversarialPolicy):
 
     def construt_self_attention_policy_output(self):
         tiled_pose = self.get_tiled_input(self.pose_input)
-
-        # The query vector
         concat_input = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input.shape[2]._value
-        hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        hidden_relevance = Conv2D(filters=1,
-                                  kernel_size=(1, 1),
-                                  strides=(1, 1),
-                                  activation='relu',
-                                  kernel_initializer=self.kernel_initializer,
-                                  bias_initializer=self.bias_initializer)(hidden_relevance)
-        relevance = hidden_relevance
 
-        self.relevance_model = Model(
-            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
-            outputs=relevance,
-            name='relevance_model')
+        # The query matrix
+        query = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        query = Conv2D(filters=64,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='relu',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer)(query)
+
+        key = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        key = Conv2D(filters=64,
+                     kernel_size=(1, 1),
+                     strides=(1, 1),
+                     activation='relu',
+                     kernel_initializer=self.kernel_initializer,
+                     bias_initializer=self.bias_initializer)(key)
 
         def compute_W(x):
-            x = K.squeeze(x, axis=-1)
-            x = K.squeeze(x, axis=-1)
-            return K.softmax(x, axis=-1)
+            qvals = x[0]
+            kvals = x[1]
+            qvals = tf.transpose(qvals, perm=[0, 1, -1, -2])
+            dotted = tf.keras.backend.batch_dot(kvals, qvals)
+            dotted = tf.squeeze(dotted, axis=-1)
+            dotted = tf.squeeze(dotted, axis=-1)
+            return K.softmax(dotted, axis=-1)
 
-        W = Lambda(compute_W, name='softmax')(relevance)
+        W = Lambda(compute_W, name='softmax')([query, key])
         self.W_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=W,
@@ -201,7 +207,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         return output
 
     def construct_policy_output(self):
-        konf_goal_flag = Concatenate(axis=2)([self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input])
+        konf_goal_flag = Concatenate(axis=2)(
+            [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input])
         dim_combined = konf_goal_flag.shape[2]._value
         hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=True,
                                                    use_flatten=True)
@@ -360,7 +367,7 @@ class RelKonfMSEPose(AdversarialPolicy):
                               validation_split=0.1, shuffle=False)
         post_mse = self.compute_policy_mse(test_data)
         print "Pre-and-post test errors", pre_mse, post_mse
-        #wvals = self.W_model.predict([goal_flags, rel_konfs, collisions, poses])[0]
+        # wvals = self.W_model.predict([goal_flags, rel_konfs, collisions, poses])[0]
         collision_idxs = collisions[0].squeeze()[:, 0] == True
         import pdb;
         pdb.set_trace()
