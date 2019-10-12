@@ -39,7 +39,7 @@ tf.set_random_seed(configs.seed)
 from AdMon import AdversarialMonteCarlo
 from PlaceAdMonWithPose import PlaceAdmonWithPose
 from CMAESAdMonWithPose import CMAESAdversarialMonteCarloWithPose
-from RelKonfAdMonWithPose import RelKonfMSEPose
+from RelKonfMSEWithPose import RelKonfMSEPose
 from RelKonfIMLE import RelKonfIMLEPose
 from utils.data_processing_utils import get_processed_poses_from_state, get_processed_poses_from_action, \
     state_data_mode, action_data_mode, make_konfs_relative_to_pose
