@@ -142,7 +142,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         hidden_relevance = Conv2D(filters=1,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
-                                  activation='linear',
+                                  activation='relu',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer)(hidden_relevance)
         """
@@ -165,15 +165,15 @@ class RelKonfMSEPose(AdversarialPolicy):
         def compute_W(x):
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            # return K.softmax(x, axis=-1)
+            return K.softmax(x, axis=-1)
             # turn this into
             # return tf.keras.backend.sign(x)
-            max_val = tf.reduce_max(x, axis=-1)
-            num_examples = tf.cast(tf.shape(max_val)[0], dtype=tf.int32)
-            max_val = tf.reshape(max_val, [num_examples, 1])
-            max_vals = tf.tile(max_val, [1, tf.shape(x)[1]])
+            max_vals = tf.zeros_like(x) #tf.reduce_sum(x, axis=-1)
+            #num_examples = tf.cast(tf.shape(max_val)[0], dtype=tf.int32)
+            #max_val = tf.reshape(max_val, [num_examples, 1])
+            #max_vals = tf.tile(max_val, [1, tf.shape(x)[1]])
             #weights = tf.greater_equal(max_val, x)
-            weights = tf.keras.backend.equal(x, max_vals)
+            weights = tf.keras.backend.greater_equal(x, max_vals)
             weights = tf.dtypes.cast(weights, tf.float32)
             return weights
 
