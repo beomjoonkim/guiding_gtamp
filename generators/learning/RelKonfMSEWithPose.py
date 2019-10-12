@@ -67,8 +67,8 @@ class RelKonfMSEPose(AdversarialPolicy):
         # self.reachability_output = self.construct_reachability_output()
         # self.reachability_model = self.construct_reachability_model()
 
-        self.policy_output = self.construt_self_attention_policy_output()
-        # self.policy_output = self.construct_policy_output()
+        #self.policy_output = self.construt_self_attention_policy_output()
+        self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -164,7 +164,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             name='w_model')
 
         # The computations of values
-        n_filters = 256
+        n_filters = 64
         concat_input_value = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input_value.shape[2]._value
