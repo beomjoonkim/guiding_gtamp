@@ -206,6 +206,7 @@ def train_rel_konf_place_mse(config):
         state_data_mode, action_data_mode)
     admon = RelKonfMSEPose(dim_action=dim_action, dim_collision=dim_state,
                            save_folder=savedir, tau=config.tau, config=config)
+    admon.policy_model.summary()
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]

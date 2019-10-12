@@ -139,29 +139,36 @@ class RelKonfMSEPose(AdversarialPolicy):
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input.shape[2]._value
         hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        hidden_relevance = Conv2D(filters=1,
+        hidden_relevance = Conv2D(filters=64,
                                   kernel_size=(1, 1),
                                   strides=(1, 1),
-                                  activation='linear',
+                                  activation='relu',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer)(hidden_relevance)
+        flattened = Flatten()(hidden_relevance)
+        hidden_relevance = Dense(32, activation='relu',
+                                 kernel_initializer=self.kernel_initializer,
+                                 bias_initializer=self.bias_initializer)(flattened)
+        relevance = Dense(615, activation='linear',
+                          kernel_initializer=self.kernel_initializer,
+                          bias_initializer=self.bias_initializer)(
+            hidden_relevance)
 
         self.relevance_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
-            outputs=hidden_relevance,
+            outputs=relevance,
             name='relevance_model')
 
         def compute_W(x):
-            x = K.squeeze(x, axis=-1)
-            x = K.squeeze(x, axis=-1)
+            # x = K.squeeze(x, axis=-1)
+            # x = K.squeeze(x, axis=-1)
             return K.softmax(x, axis=-1)
 
-        W = Lambda(compute_W)(hidden_relevance)
+        W = Lambda(compute_W, name='softmax')(relevance)
         self.W_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=W,
             name='w_model')
-
 
         # The computations of values
         n_filters = 32
@@ -185,11 +192,12 @@ class RelKonfMSEPose(AdversarialPolicy):
                    strides=(1, 1),
                    activation='linear',
                    kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(H)
+                   bias_initializer=self.bias_initializer,
+                   )(H)
         key_configs = H
 
-        #key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(key_configs)
+        # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
         return output
 
