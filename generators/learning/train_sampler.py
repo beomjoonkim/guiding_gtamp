@@ -226,7 +226,7 @@ def train_rel_konf_place_admon(config):
 
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
-    poses = poses[:, :4]
+    poses = poses[:, :8]
     admon.train(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
 
 
