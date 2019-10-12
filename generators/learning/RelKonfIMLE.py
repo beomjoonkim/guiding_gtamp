@@ -10,7 +10,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.q_on_policy_model = self.create_q_on_policy_model()
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
         self.z_vals_tried = []
-        self.num_generated=1
+        self.num_generated = 1
         # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
 
     def create_q_on_policy_model(self):
@@ -83,9 +83,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
         stime = time.time()
         if z_vals_tried is None or len(z_vals_tried) == 0:
-            noise_smpls = self.num_generated/10.0*noise(z_size=(1, self.dim_action))  # n_data by k matrix
+            noise_smpls = self.num_generated / 10.0 * noise(z_size=(1, self.dim_action))  # n_data by k matrix
             z_vals_tried.append(noise_smpls.squeeze())
-            self.num_generated+=1
+            self.num_generated += 1
         else:
             noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
             z_vals_tried = np.array(z_vals_tried)
@@ -126,59 +126,43 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input.shape[2]._value
 
-        # This transforms the entire key configurations. We have 615 x n_feature, an embeeding matrix which we call E
-        # Computation of E:
-        hidden_relevance = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        hidden_relevance = Conv2D(filters=1,
-                                  kernel_size=(1, 1),
-                                  strides=(1, 1),
-                                  activation='linear',
-                                  kernel_initializer=self.kernel_initializer,
-                                  bias_initializer=self.bias_initializer)(hidden_relevance)
-
-        self.relevance_model = Model(
-            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
-            outputs=hidden_relevance,
-            name='relevance_model')
+        # The query matrix
+        query = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+        query = Conv2D(filters=1,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='relu',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer)(query)
 
         def compute_W(x):
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
             return K.softmax(x, axis=-1)
 
-        W = Lambda(compute_W)(hidden_relevance)
-        self.W_model = Model(
-            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
-            outputs=W,
-            name='w_model')
+        W = Lambda(compute_W, name='softmax')(query)
 
-        ###### Key config transformation
-        tiled_noise = self.get_tiled_input(self.noise_input)
-        concat_konf_noise = Concatenate(axis=-1)([self.key_config_input, tiled_noise])
-        dim_input = concat_konf_noise.shape[2]._value
-        n_filters = 64
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, dim_input),
-                   strides=(1, 1),
-                   activation='relu',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(concat_konf_noise)
-        H = Conv2D(filters=n_filters,
-                   kernel_size=(1, 1),
-                   strides=(1, 1),
-                   activation='relu',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(H)
-        H = Conv2D(filters=4,
-                   kernel_size=(1, 1),
-                   strides=(1, 1),
-                   activation='linear',
-                   kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(H)
-        key_configs = Lambda(lambda x: K.squeeze(x, axis=2))(H)
-        #################################################################
+        # The value matrix
+        concat_value_input = Concatenate(axis=2)(
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose, self.noise_input])
+        dim_value_input = concat_value_input.shape[2]._value
 
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name='policy_output')([W, key_configs])
+        value = self.create_conv_layers(concat_value_input, dim_value_input, use_pooling=False, use_flatten=False)
+        value = Conv2D(filters=4,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='linear',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer,
+                       )(value)
+
+        # value = self.key_config_input
+        value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
+        self.value_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input],
+            outputs=value,
+            name='value_model')
+        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, value])
         return output
 
     def construct_policy_output(self):
