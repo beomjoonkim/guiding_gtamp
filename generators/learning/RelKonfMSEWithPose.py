@@ -145,16 +145,6 @@ class RelKonfMSEPose(AdversarialPolicy):
                                   activation='relu',
                                   kernel_initializer=self.kernel_initializer,
                                   bias_initializer=self.bias_initializer)(hidden_relevance)
-        """
-        flattened = Flatten()(hidden_relevance)
-        hidden_relevance = Dense(32, activation='relu',
-                                 kernel_initializer=self.kernel_initializer,
-                                 bias_initializer=self.bias_initializer)(flattened)
-        relevance = Dense(615, activation='linear',
-                          kernel_initializer=self.kernel_initializer,
-                          bias_initializer=self.bias_initializer)(
-            flattened)
-        """
         relevance = hidden_relevance
 
         self.relevance_model = Model(
@@ -166,16 +156,6 @@ class RelKonfMSEPose(AdversarialPolicy):
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
             return K.softmax(x, axis=-1)
-            # turn this into
-            # return tf.keras.backend.sign(x)
-            max_vals = tf.zeros_like(x) #tf.reduce_sum(x, axis=-1)
-            #num_examples = tf.cast(tf.shape(max_val)[0], dtype=tf.int32)
-            #max_val = tf.reshape(max_val, [num_examples, 1])
-            #max_vals = tf.tile(max_val, [1, tf.shape(x)[1]])
-            #weights = tf.greater_equal(max_val, x)
-            weights = tf.keras.backend.greater_equal(x, max_vals)
-            weights = tf.dtypes.cast(weights, tf.float32)
-            return weights
 
         W = Lambda(compute_W, name='softmax')(relevance)
         self.W_model = Model(
@@ -184,7 +164,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             name='w_model')
 
         # The computations of values
-        n_filters = 32
+        n_filters = 256
         concat_input_value = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
         dim_input = concat_input_value.shape[2]._value
@@ -194,6 +174,12 @@ class RelKonfMSEPose(AdversarialPolicy):
                    activation='relu',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer)(concat_input_value)
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, 1),
+                   strides=(1, 1),
+                   activation='relu',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(H)
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, 1),
                    strides=(1, 1),
@@ -211,21 +197,7 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
-
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
-        """
-        def choose_max_relevance(x):
-            relevance_val = x[0]
-            transformed_key_configs = x[1]
-            idx = tf.keras.backend.argmax(relevance_val, axis=-1)
-            # all the trouble below, just to get transformed_key_configs[:, idx, :]
-            idx = tf.dtypes.cast(idx, tf.int32)
-            num_examples = tf.cast(tf.shape(transformed_key_configs)[0], dtype=idx.dtype)
-            tensor_idx = tf.stack([tf.range(num_examples), idx], axis=-1) # not sure what this creates
-            return tf.gather_nd(transformed_key_configs, tensor_idx)
-
-        output = Lambda(choose_max_relevance)([W, key_configs])
-        """
         return output
 
     def construct_policy_output(self):
