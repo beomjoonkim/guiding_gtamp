@@ -139,7 +139,7 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         # The query matrix
         query = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
-        query = Conv2D(filters=256,
+        query = Conv2D(filters=1,
                        kernel_size=(1, 1),
                        strides=(1, 1),
                        activation='relu',
