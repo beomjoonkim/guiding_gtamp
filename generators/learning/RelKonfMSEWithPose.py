@@ -68,7 +68,7 @@ class RelKonfMSEPose(AdversarialPolicy):
         # self.reachability_model = self.construct_reachability_model()
 
         self.policy_output = self.construt_self_attention_policy_output()
-        #self.policy_output = self.construct_policy_output()
+        # self.policy_output = self.construct_policy_output()
         self.policy_model = self.construct_policy_model()
 
     def construct_reachability_model(self):
@@ -157,13 +157,14 @@ class RelKonfMSEPose(AdversarialPolicy):
         def compute_W(x):
             qvals = x[0]
             kvals = x[1]
-            qvals = tf.transpose(qvals, perm=[0, 1, -1, -2])
+            qvals = tf.transpose(qvals, perm=[0, 1, 3, 2])
             dotted = tf.keras.backend.batch_dot(kvals, qvals)
             dotted = tf.squeeze(dotted, axis=-1)
             dotted = tf.squeeze(dotted, axis=-1)
             return K.softmax(dotted, axis=-1)
 
         W = Lambda(compute_W, name='softmax')([query, key])
+
         self.W_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=W,
