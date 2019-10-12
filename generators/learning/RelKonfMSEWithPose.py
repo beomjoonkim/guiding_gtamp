@@ -181,7 +181,6 @@ class RelKonfMSEPose(AdversarialPolicy):
         W = Lambda(compute_W, name='softmax')(query)
 
         # The value matrix
-        """
         value = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
         value = Conv2D(filters=4,
                        kernel_size=(1, 1),
@@ -190,12 +189,11 @@ class RelKonfMSEPose(AdversarialPolicy):
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer,
                        )(value)
-        """
-        value = self.key_config_input
 
+        # value = self.key_config_input
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
-        #value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
-        value = Lambda(lambda x: K.squeeze(x, axis=-1), name='key_config_transformation')(value)
+        value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
+        #value = Lambda(lambda x: K.squeeze(x, axis=-1), name='key_config_transformation')(value)
         self.value_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=value,
