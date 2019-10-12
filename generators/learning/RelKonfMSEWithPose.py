@@ -198,7 +198,20 @@ class RelKonfMSEPose(AdversarialPolicy):
 
         # key_configs = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
         key_configs = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(key_configs)
-        output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+
+        # output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, key_configs])
+
+        def choose_max_relevance(x):
+            relevance_val = x[0]
+            transformed_key_configs = x[1]
+            idx = tf.keras.backend.argmax(relevance_val, axis=-1)
+            # all the trouble below, just to get transformed_key_configs[:, idx, :]
+            idx = tf.dtypes.cast(idx, tf.int32)
+            num_examples = tf.cast(tf.shape(transformed_key_configs)[0], dtype=idx.dtype)
+            tensor_idx = tf.stack([tf.range(num_examples), idx], axis=-1) # not sure what this creates
+            return tf.gather_nd(transformed_key_configs, tensor_idx)
+
+        output = Lambda(choose_max_relevance)([W, key_configs])
         return output
 
     def construct_policy_output(self):
