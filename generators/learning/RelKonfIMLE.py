@@ -117,19 +117,41 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def construct_policy_model(self):
         model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
                               self.noise_input],
-                      outputs=self.policy_output,
+                      outputs=[self.policy_output],
                       name='policy_model')
         model.compile(loss='mse', optimizer=self.opt_D)
+
+        def loss_fcn(query, value, output, true_action):
+            """
+            max_idx = tf.argmax(query, axis=-1)
+            num_examples = tf.cast(tf.shape(query)[0], dtype=max_idx.dtype)
+            idx = tf.stack([tf.range(num_examples), max_idx], axis=-1)
+            predicted = tf.gather_nd(value, idx)
+            """
+            # it's like somehow, using only the query or value leads to undefined gradient
+
+            return tf.losses.mean_squared_error(output, true_action)
+            avg_val = tf.reduce_mean(value, axis=1)
+            return avg_val
+            return tf.reduce_mean(query)
+            #return tf.reduce_mean(tf.maximum(tf.cast(0., tf.float32), value))
+            #return tf.losses.mean_squared_error(predicted, true_action)
+
+        loss_layer = Lambda(lambda args: loss_fcn(*args))
+        loss_layer = loss_layer([self.query_output, self.value_output, self.policy_output, self.action_input])
+        loss_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
+                                   self.noise_input, self.action_input],
+                      outputs=[loss_layer],
+                      name='loss_model')
+        loss_model.compile(loss=lambda _, loss_as_pred: loss_as_pred, optimizer=self.opt_D)
+        #loss_model.compile(loss='mse', optimizer=self.opt_D)
+
+        self.loss_model = loss_model
         return model
 
-    def construt_self_attention_policy_output(self):
-        tiled_pose = self.get_tiled_input(self.pose_input)
-        concat_input = Concatenate(axis=2)(
-            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
-        dim_input = concat_input.shape[2]._value
-
-        # The query matrix
-        query = self.create_conv_layers(concat_input, dim_input, use_pooling=False, use_flatten=False)
+    def construct_query_output(self, query_input):
+        dim_input = query_input.shape[2]._value
+        query = self.create_conv_layers(query_input, dim_input, use_pooling=False, use_flatten=False)
         query = Conv2D(filters=1,
                        kernel_size=(1, 1),
                        strides=(1, 1),
@@ -138,16 +160,21 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                        bias_initializer=self.bias_initializer)(query)
 
         def compute_W(x):
+            # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x, axis=-1)
+
+            return K.softmax(x*100, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
-        self.w_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
-                             outputs=W,
-                             name='W_model')
+        self.w_model = Model(
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+            outputs=W,
+            name='W_model')
 
-        # The value matrix
+        return W
+
+    def construct_value_output(self, tiled_pose):
         tiled_noise = self.get_tiled_input(self.noise_input)
         concat_value_input = Concatenate(axis=2)(
             [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose, tiled_noise])
@@ -169,46 +196,20 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                     self.noise_input],
             outputs=value,
             name='value_model')
+
+        return value
+
+    def construt_self_attention_policy_output(self):
+        tiled_pose = self.get_tiled_input(self.pose_input)
+        concat_input = Concatenate(axis=2)(
+            [self.key_config_input, self.goal_flag_input, self.collision_input, tiled_pose])
+
+        W = self.construct_query_output(concat_input)
+        value = self.construct_value_output(tiled_pose)
+        self.query_output = W
+        self.value_output = value
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name='policy_output')([W, value])
         return output
-
-    def construct_policy_output(self):
-        # todo make this architecture
-        tiled_pose = self.get_tiled_input(self.pose_input)
-        konf_goal_flag = Concatenate(axis=2)(
-            [self.key_config_input, tiled_pose, self.goal_flag_input])
-        dim_combined = konf_goal_flag.shape[2]._value
-        hidden_relevance = self.create_conv_layers(konf_goal_flag, dim_combined, use_pooling=False,
-                                                   use_flatten=False)
-        n_conv_filters = 16
-        hidden_relevance = Conv2D(filters=n_conv_filters,
-                                  kernel_size=(1, 1),
-                                  strides=(1, 1),
-                                  activation='relu',
-                                  kernel_initializer=self.kernel_initializer,
-                                  bias_initializer=self.bias_initializer
-                                  )(hidden_relevance)
-        hidden_relevance = Reshape((615, n_conv_filters, 1))(hidden_relevance)
-        hidden_col_relevance = Concatenate(axis=2)([self.collision_input, hidden_relevance])
-        hidden_col_relevance = self.create_conv_layers(hidden_col_relevance, n_dim=2 + n_conv_filters,
-                                                       use_pooling=False)
-
-        dense_num = 256
-        h_noise = Concatenate(axis=-1)([hidden_col_relevance, self.noise_input])
-        hidden_action = Dense(dense_num, activation='relu',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer)(h_noise)
-        hidden_action = Dense(dense_num, activation='relu',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer
-                              )(hidden_action)
-
-        action_output = Dense(self.dim_action,
-                              activation='linear',
-                              kernel_initializer=self.kernel_initializer,
-                              bias_initializer=self.bias_initializer,
-                              name='policy_output')(hidden_action)
-        return action_output
 
     def train(self, states, poses, rel_konfs, goal_flags, actions, sum_rewards, epochs=1000):
         train_idxs, test_idxs = self.get_train_and_test_indices(len(actions))
@@ -251,7 +252,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                 world_states = (goal_flag_batch, rel_konf_batch, col_batch, pose_batch)
                 noise_smpls = noise(z_size=(batch_size, num_smpl_per_state, self.dim_action))
                 generated_actions = self.generate_k_smples_for_multiple_states(world_states, noise_smpls)
-                chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(actions, generated_actions,
+                chosen_noise_smpls = self.get_closest_noise_smpls_for_each_action(a_batch, generated_actions,
                                                                                   noise_smpls)
 
                 # validation data
@@ -266,6 +267,15 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
             # [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input]
+            """
+            self.loss_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls, a_batch],
+                                [a_batch],
+                                epochs=100
+                                )
+            """
+            self.policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
+                                  a_batch)
+            """
             self.q_on_policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
                                        [a_batch],
                                        epochs=100,
@@ -274,6 +284,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                            [t_actions]),
                                        callbacks=callbacks,
                                        verbose=False)
+            """
             # I think for this, you want to keep the validation batch, and stop if the validation error is high
             # fname = self.weight_file_name + '.h5'
             # self.q_on_policy_model.load_weights(self.save_folder + fname)
