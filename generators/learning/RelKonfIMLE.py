@@ -15,21 +15,18 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.weight_file_name = 'imle_pose_seed_%d' % config.seed
         self.z_vals_tried = []
         self.num_generated = 1
-        # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
         self.kernel_initializer = initializers.glorot_uniform()
         self.bias_initializer = initializers.glorot_uniform()
 
     def create_q_on_policy_model(self):
         for l in self.q_mse_model.layers:
             l.trainable = False
-            # for some obscure reason, disc weights still get updated when self.disc.fit is called
-            # I speculate that this has to do with the status of the layers at the time it was compiled
+
         q_on_policy_output = self.q_mse_model(
             [self.policy_output, self.goal_flag_input, self.pose_input, self.key_config_input, self.collision_input])
         q_on_policy_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
                     self.noise_input],
-            # outputs=[q_on_policy_output, self.policy_output])
             outputs=[self.policy_output])
         """
         q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
@@ -41,8 +38,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                   optimizer=self.opt_G,
                                   loss_weights={'policy_output': 1},
                                   metrics=[])
-
-        # but when do I train the q_mse_model?
         return q_on_policy_model
 
     def generate_k_smples_for_multiple_states(self, states, noise_smpls):
@@ -55,7 +50,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             actions = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls[:, j, :]])
             k_smpls.append(actions)
         new_k_smpls = np.array(k_smpls).swapaxes(0, 1)
-
         return new_k_smpls
 
     def find_the_idx_of_closest_point_to_x1(self, x1, database):
@@ -66,17 +60,10 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         pass
 
     def create_callbacks_for_pretraining(self):
-        fname = self.weight_file_name + '.h5'
         callbacks = [
             TerminateOnNaN(),
             EarlyStopping(monitor='val_loss', min_delta=1e-2, patience=20)
         ]
-        """
-                tf.keras.callbacks.ModelCheckpoint(filepath=self.save_folder + fname,
-                                                   verbose=False,
-                                                   save_best_only=True,
-                                                   save_weights_only=True),
-        """
         return callbacks
 
     def save_weights(self, additional_name=''):
@@ -89,33 +76,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
         z_vals_tried = []
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
-        #noise_smpls = np.array([[0,0,0,0]])
         pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
-        """
-        stime = time.time()
-        if z_vals_tried is None or len(z_vals_tried) == 0:
-            noise_smpls = self.num_generated / 10.0 * noise(z_size=(1, self.dim_action))  # n_data by k matrix
-            noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
-            import pdb;pdb.set_trace()
-            z_vals_tried.append(noise_smpls.squeeze())
-            self.num_generated += 1
-        else:
-            noise_smpls = ((20) * np.random.uniform(size=self.dim_action) - 10)[None, :]
-            z_vals_tried = np.array(z_vals_tried)
-            min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
-            i = len(z_vals_tried)
-            while min_dist < 10.:
-                noise_smpls = ((20 + i * 10) * np.random.uniform(size=self.dim_action) - (10 + i * 10))[None, :]
-                min_dist = np.min(np.linalg.norm(noise_smpls - z_vals_tried, axis=-1))
-                i += 1
-                # print i
-            z_vals_tried = z_vals_tried.tolist()
-            z_vals_tried.append(noise_smpls.squeeze())
-        # print "Z sampling time", time.time()-stime
-        # stime=time.time()
-        pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
-        # print "Prediction time", time.time() - stime
-        """
         return pred, z_vals_tried
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
@@ -207,10 +168,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         t_collisions = test_data['states']
         n_test_data = len(t_collisions)
 
-        # generate x_1,...,x_m from the generator
-        # pick random batch of size m from the real dataset Y
-        # compute the nearest neighbor for each x_i
-        n_data = len(train_idxs)
         data_resampling_step = 1
         num_smpl_per_state = 10
 
@@ -251,15 +208,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
-            # [self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input]
-            """
-            self.loss_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls, a_batch],
-                                [a_batch],
-                                epochs=100
-                                )
-            self.policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
-                                  a_batch)
-            """
             self.q_on_policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
                                        [a_batch],
                                        epochs=100,
@@ -288,5 +236,4 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             print "Val error", valid_err
             print np.min(valid_errs)
-            # if np.all(np.array(gen_w_norms) == 0):
-            #    break
+
