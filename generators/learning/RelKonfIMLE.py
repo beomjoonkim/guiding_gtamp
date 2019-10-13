@@ -132,32 +132,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                       outputs=[self.policy_output],
                       name='policy_model')
         model.compile(loss='mse', optimizer=self.opt_D)
-        """
-        def loss_fcn(query, value, output, true_action):
-            #max_idx = tf.argmax(query, axis=-1)
-            #num_examples = tf.cast(tf.shape(query)[0], dtype=max_idx.dtype)
-            #idx = tf.stack([tf.range(num_examples), max_idx], axis=-1)
-            #predicted = tf.gather_nd(value, idx)
-            # it's like somehow, using only the query or value leads to undefined gradient
-
-            return tf.losses.mean_squared_error(output, true_action)
-            avg_val = tf.reduce_mean(value, axis=1)
-            return avg_val
-            return tf.reduce_mean(query)
-            #return tf.reduce_mean(tf.maximum(tf.cast(0., tf.float32), value))
-            #return tf.losses.mean_squared_error(predicted, true_action)
-
-        loss_layer = Lambda(lambda args: loss_fcn(*args))
-        loss_layer = loss_layer([self.query_output, self.value_output, self.policy_output, self.action_input])
-        loss_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
-                                   self.noise_input, self.action_input],
-                      outputs=[loss_layer],
-                      name='loss_model')
-        loss_model.compile(loss=lambda _, loss_as_pred: loss_as_pred, optimizer=self.opt_D)
-        #loss_model.compile(loss='mse', optimizer=self.opt_D)
-
-        self.loss_model = loss_model
-        """
         return model
 
     def construct_query_output(self, query_input):
@@ -174,7 +148,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x*100, axis=-1)
+            return K.softmax(x*100, axis=-1)  # perhaps 1000 is better; but we need to test this against planning
 
         W = Lambda(compute_W, name='softmax')(query)
         self.w_model = Model(
