@@ -111,16 +111,18 @@ class AdversarialPolicy:
         H = Conv2D(filters=n_filters,
                    kernel_size=(1, n_dim),
                    strides=(1, 1),
-                   activation='relu',
+                   activation='linear',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer)(input)
+        H = LeakyReLU()(H)
         for _ in range(2):
             H = Conv2D(filters=n_filters,
                        kernel_size=(1, 1),
                        strides=(1, 1),
-                       activation='relu',
+                       activation='linear',
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer)(H)
+            H = LeakyReLU()(H)
         if use_pooling:
             H = MaxPooling2D(pool_size=(2, 1))(H)
         if use_flatten:
