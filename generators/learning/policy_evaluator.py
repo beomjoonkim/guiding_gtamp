@@ -51,7 +51,7 @@ def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
 
-    obj = problem_env.object_names[0]
+    obj = problem_env.object_names[2]
     utils.set_color(obj, [1, 0, 0])
     smpler_state = get_smpler_state(pidx, obj, problem_env)
     smpler_state.abs_obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)

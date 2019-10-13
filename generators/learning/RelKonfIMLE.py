@@ -12,6 +12,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.z_vals_tried = []
         self.num_generated = 1
         # self.q_mse_model.load_weights(self.save_folder+'pretrained_%d.h5' % config.seed)
+        self.kernel_initializer = initializers.glorot_uniform()
+        self.bias_initializer = initializers.glorot_uniform()
 
     def create_q_on_policy_model(self):
         for l in self.q_mse_model.layers:
@@ -131,7 +133,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         query = Conv2D(filters=1,
                        kernel_size=(1, 1),
                        strides=(1, 1),
-                       activation='relu',
+                       activation='linear',
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer)(query)
 
@@ -141,6 +143,9 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             return K.softmax(x, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
+        self.w_model = Model(inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
+                             outputs=W,
+                             name='W_model')
 
         # The value matrix
         tiled_noise = self.get_tiled_input(self.noise_input)
@@ -160,7 +165,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         # value = self.key_config_input
         value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
         self.value_model = Model(
-            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input, self.noise_input],
+            inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
+                    self.noise_input],
             outputs=value,
             name='value_model')
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]), name='policy_output')([W, value])
