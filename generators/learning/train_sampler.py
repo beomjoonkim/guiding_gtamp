@@ -211,7 +211,10 @@ def train_rel_konf_place_mse(config):
     states, poses, rel_konfs, goal_flags, actions, sum_rewards = get_data()
     actions = actions[:, 4:]
     poses = poses[:, :8]  # now include relative goal pose
+
     admon.train_policy(states, poses, rel_konfs, goal_flags, actions, sum_rewards)
+    pred = admon.w_model.predict([goal_flags, rel_konfs, states, poses])
+    import pdb;pdb.set_trace()
 
 
 def train_rel_konf_place_admon(config):
