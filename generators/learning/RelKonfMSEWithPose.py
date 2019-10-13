@@ -176,7 +176,7 @@ class RelKonfMSEPose(AdversarialPolicy):
             return K.softmax(x, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
-        self.W_model = Model(
+        self.w_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=W,
             name='w_model')
