@@ -6,6 +6,7 @@ from generators.learning.utils import data_processing_utils
 
 from gtamp_utils import utils
 from generators.learning.utils.sampler_utils import generate_policy_smpl_batch
+from generators.learning.RelKonfIMLE import noise
 import time
 import numpy as np
 import pickle
@@ -35,8 +36,8 @@ class LearnedGenerator(PaPUniformGenerator):
         # generate n_total_iters number of samples -  can I be systematic about this, instead of random smpling?
         # I guess they will have to live in the same space; but I need to increase the variance
 
+        """
         z_smpl_fname = 'z_smpls.pkl'
-
         if os.path.isfile(z_smpl_fname):
             z_smpls = pickle.load(open(z_smpl_fname, 'r'))
         else:
@@ -53,6 +54,9 @@ class LearnedGenerator(PaPUniformGenerator):
                     new_z = np.random.normal(size=(1, 4)).astype('float32')
                 z_smpls.append(new_z)
             pickle.dump(z_smpls, open(z_smpl_fname, 'wb'))
+        """
+        z_smpls = noise(z_size=(1900, 4))
+        z_smpls = np.vstack([np.array([0, 0, 0, 0]), z_smpls])
         self.policy_smpl_batch = generate_policy_smpl_batch(self.smpler_state, self.sampler, z_smpls)
         self.policy_smpl_idx = 0
 
@@ -61,8 +65,9 @@ class LearnedGenerator(PaPUniformGenerator):
             # place_smpls, noises_used = generate_smpls(self.smpler_state, self.sampler, 1, self.noises_used)
             # place_smpls = place_smpls[0].squeeze()
             place_smpl = self.policy_smpl_batch[self.policy_smpl_idx]
-            self.policy_smpl_idx += 1
             place_smpl = data_processing_utils.get_unprocessed_placement(place_smpl, self.smpler_state.abs_obj_pose)
+            #place_smpls = [data_processing_utils.get_unprocessed_placement(s, self.smpler_state.abs_obj_pose) for s in self.policy_smpl_batch]
+            self.policy_smpl_idx += 1
         else:
             raise NotImplementedError
         self.tried_smpls.append(place_smpl)
@@ -80,7 +85,8 @@ class LearnedGenerator(PaPUniformGenerator):
         obj = operator_skeleton.discrete_parameters['object']
 
         orig_color = utils.get_color_of(obj)
-        utils.set_color(obj, [1, 0, 0])
+        #utils.set_color(obj, [1, 0, 0])
+        #utils.viewer()
         for i in range(n_iter):
             # print 'Sampling attempts %d/%d' %(i,n_iter)
             # fix it to take in the pose

@@ -64,13 +64,10 @@ def generate_transformed_key_configs(smpler_state, policy):
 
 
 def generate_policy_smpl_batch(smpler_state, policy, noise_batch):
+    goal_flags, rel_konfs, collisions, poses = prepare_input(smpler_state)
     obj = smpler_state.obj
-
-    # utils.set_color(obj, [1, 0, 0])
-    poses = np.hstack(
-        [utils.encode_pose_with_sin_and_cos_angle(utils.get_body_xytheta(obj).squeeze()), 0, 0, 0, 0]).reshape((1, 8))
-
     obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
+
     smpler_state.abs_obj_pose = obj_pose
     if smpler_state.rel_konfs is None:
         key_configs = smpler_state.key_configs
@@ -86,7 +83,7 @@ def generate_policy_smpl_batch(smpler_state, policy, noise_batch):
     goal_flags = np.tile(goal_flags, (n_smpls, 1, 1, 1))
     rel_konfs = np.tile(rel_konfs, (n_smpls, 1, 1, 1))
     collisions = np.tile(collisions, (n_smpls, 1, 1, 1))
-    poses = poses[:, :4]
+    poses = poses[:, :8]
     poses = np.tile(poses, (n_smpls, 1))
     noise_batch = np.array(noise_batch).squeeze()
     pred_batch = policy.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_batch])
