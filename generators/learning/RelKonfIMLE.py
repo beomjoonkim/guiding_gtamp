@@ -89,7 +89,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
         z_vals_tried = []
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
-        noise_smpls = np.array([[0,0,0,0]])
+        #noise_smpls = np.array([[0,0,0,0]])
         pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
         """
         stime = time.time()
@@ -174,7 +174,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x*10000, axis=-1)
+            return K.softmax(x*100, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
         self.w_model = Model(

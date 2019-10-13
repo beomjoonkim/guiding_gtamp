@@ -78,7 +78,7 @@ def visualize_samples(policy, pidx):
     #visualize_key_configs_with_top_k_w_vals(w_values, smpler_state.key_configs, k=10)
 
     place_smpls = []
-    for _ in range(10):
+    for _ in range(20):
         policy_smpl = generate_smpls(smpler_state, policy, n_data=1)[0]
         place_smpls.append(policy_smpl)
     utils.visualize_path(place_smpls[0:10])
