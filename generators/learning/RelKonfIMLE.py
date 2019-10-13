@@ -120,14 +120,12 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                       outputs=[self.policy_output],
                       name='policy_model')
         model.compile(loss='mse', optimizer=self.opt_D)
-
+        """
         def loss_fcn(query, value, output, true_action):
-            """
-            max_idx = tf.argmax(query, axis=-1)
-            num_examples = tf.cast(tf.shape(query)[0], dtype=max_idx.dtype)
-            idx = tf.stack([tf.range(num_examples), max_idx], axis=-1)
-            predicted = tf.gather_nd(value, idx)
-            """
+            #max_idx = tf.argmax(query, axis=-1)
+            #num_examples = tf.cast(tf.shape(query)[0], dtype=max_idx.dtype)
+            #idx = tf.stack([tf.range(num_examples), max_idx], axis=-1)
+            #predicted = tf.gather_nd(value, idx)
             # it's like somehow, using only the query or value leads to undefined gradient
 
             return tf.losses.mean_squared_error(output, true_action)
@@ -147,6 +145,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         #loss_model.compile(loss='mse', optimizer=self.opt_D)
 
         self.loss_model = loss_model
+        """
         return model
 
     def construct_query_output(self, query_input):
@@ -240,6 +239,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         gen_w_norm_patience = 10
         gen_w_norms = [-1] * gen_w_norm_patience
         valid_errs = []
+        patience = 0
         for epoch in range(epochs):
             print 'Epoch %d/%d' % (epoch, epochs)
             is_time_to_smpl_new_data = epoch % data_resampling_step == 0
@@ -272,7 +272,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                 [a_batch],
                                 epochs=100
                                 )
-            """
             self.policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
                                   a_batch)
             """
@@ -284,10 +283,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                                            [t_actions]),
                                        callbacks=callbacks,
                                        verbose=False)
-            """
-            # I think for this, you want to keep the validation batch, and stop if the validation error is high
-            # fname = self.weight_file_name + '.h5'
-            # self.q_on_policy_model.load_weights(self.save_folder + fname)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
@@ -299,6 +294,13 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             if valid_err <= np.min(valid_errs):
                 self.save_weights()
+                patience = 0
+            else:
+                patience += 1
+
+            if patience > 30:
+                break
+
             print "Val error", valid_err
             print np.min(valid_errs)
             # if np.all(np.array(gen_w_norms) == 0):
