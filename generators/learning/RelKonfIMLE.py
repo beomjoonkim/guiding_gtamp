@@ -174,7 +174,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x * 1000, axis=-1)
+            return K.softmax(x*10000, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
         self.w_model = Model(
@@ -309,7 +309,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             else:
                 patience += 1
 
-            if patience > 30:
+            if patience > 50:
                 break
 
             print "Val error", valid_err
