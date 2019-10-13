@@ -162,7 +162,6 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-
             return K.softmax(x*100, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
