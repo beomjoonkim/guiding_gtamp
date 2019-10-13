@@ -190,15 +190,15 @@ class RelKonfMSEPose(AdversarialPolicy):
                        )(value)
 
         # value = self.key_config_input
-        value = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
-
         """
+        value = Lambda(lambda x: K.squeeze(x, axis=-1))(self.key_config_input)
+        """
+
         value = Lambda(lambda x: K.squeeze(x, axis=2), name='key_config_transformation')(value)
         self.value_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input],
             outputs=value,
             name='value_model')
-        """
         output = Lambda(lambda x: K.batch_dot(x[0], x[1]))([W, value])
         return output
 
