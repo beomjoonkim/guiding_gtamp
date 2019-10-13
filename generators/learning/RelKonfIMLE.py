@@ -2,6 +2,10 @@ from RelKonfMSEWithPose import *
 from keras.callbacks import *
 
 
+def noise(z_size):
+    return np.random.normal(size=z_size).astype('float32')
+
+
 class RelKonfIMLEPose(RelKonfMSEPose):
     def __init__(self, dim_action, dim_collision, save_folder, tau, config):
         RelKonfMSEPose.__init__(self, dim_action, dim_collision, save_folder, tau, config)
@@ -83,9 +87,16 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         self.policy_model.save_weights(fdir + fname)
 
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
+        z_vals_tried = []
+        noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+        noise_smpls = np.array([[0,0,0,0]])
+        pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
+        """
         stime = time.time()
         if z_vals_tried is None or len(z_vals_tried) == 0:
             noise_smpls = self.num_generated / 10.0 * noise(z_size=(1, self.dim_action))  # n_data by k matrix
+            noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+            import pdb;pdb.set_trace()
             z_vals_tried.append(noise_smpls.squeeze())
             self.num_generated += 1
         else:
@@ -104,6 +115,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         # stime=time.time()
         pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
         # print "Prediction time", time.time() - stime
+        """
         return pred, z_vals_tried
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
@@ -162,7 +174,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x*100, axis=-1)
+            return K.softmax(x * 1000, axis=-1)
 
         W = Lambda(compute_W, name='softmax')(query)
         self.w_model = Model(

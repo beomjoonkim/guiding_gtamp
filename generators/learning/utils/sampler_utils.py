@@ -29,9 +29,6 @@ def prepare_input(smpler_state):
 
 
 def generate_smpls(smpler_state, policy, n_data, noise_smpls_tried=None):
-    """
-
-    """
     goal_flags, rel_konfs, collisions, poses = prepare_input(smpler_state)
     obj = smpler_state.obj
     utils.set_color(obj, [1, 0, 0])

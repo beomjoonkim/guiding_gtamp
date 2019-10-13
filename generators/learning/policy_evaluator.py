@@ -55,7 +55,7 @@ def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
 
-    obj = problem_env.object_names[-7]
+    obj = problem_env.object_names[1]
     utils.set_color(obj, [1, 0, 0])
     smpler_state = get_smpler_state(pidx, obj, problem_env)
     smpler_state.abs_obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
@@ -72,17 +72,16 @@ def visualize_samples(policy, pidx):
 
     w_values = generate_w_values(smpler_state, policy)
     transformed_konfs = generate_transformed_key_configs(smpler_state, policy)
-    visualize_key_configs_with_top_k_w_vals(w_values, transformed_konfs, k=10)
-    import pdb;pdb.set_trace()
-
-    visualize_key_configs_with_top_k_w_vals(w_values, smpler_state.key_configs, k=1)
-
+    print "Visualizing top-k transformed konfs..."
+    #visualize_key_configs_with_top_k_w_vals(w_values, transformed_konfs, k=5)
+    print "Visualizing top-k konfs..."
+    #visualize_key_configs_with_top_k_w_vals(w_values, smpler_state.key_configs, k=10)
 
     place_smpls = []
-    for _ in range(50):
+    for _ in range(10):
         policy_smpl = generate_smpls(smpler_state, policy, n_data=1)[0]
         place_smpls.append(policy_smpl)
-    utils.visualize_path(place_smpls[0:50])
+    utils.visualize_path(place_smpls[0:10])
 
     import pdb;pdb.set_trace()
 

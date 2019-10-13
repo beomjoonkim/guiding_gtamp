@@ -21,8 +21,6 @@ def G_loss(true_actions, pred):
     return -K.mean(pred, axis=-1)
 
 
-def noise(z_size):
-    return np.random.normal(size=z_size).astype('float32')
 
 
 def slice_x(x):
