@@ -1,6 +1,7 @@
 from keras.optimizers import *
 from keras.layers import *
 from keras.callbacks import *
+from weight_regularizers.gershogorin_regularizer import gershigorin_reg
 
 import os
 import sys
@@ -113,7 +114,8 @@ class AdversarialPolicy:
                    strides=(1, 1),
                    activation='linear',
                    kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer)(input)
+                   bias_initializer=self.bias_initializer,
+                   kernel_regularizer=gershigorin_reg)(input)
         H = LeakyReLU()(H)
         for _ in range(2):
             H = Conv2D(filters=n_filters,
