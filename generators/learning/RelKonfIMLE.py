@@ -1,5 +1,6 @@
 from RelKonfMSEWithPose import *
 from keras.callbacks import *
+from weight_regularizers.gershogorin_regularizer import gershigorin_reg
 
 
 def noise(z_size):
@@ -27,16 +28,11 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         q_on_policy_model = Model(
             inputs=[self.goal_flag_input, self.key_config_input, self.collision_input, self.pose_input,
                     self.noise_input],
-            outputs=[self.policy_output])
-        """
+            outputs=[q_on_policy_output, self.policy_output])
+
         q_on_policy_model.compile(loss={'q_output': G_loss, 'policy_output': 'mse'},
                                   optimizer=self.opt_G,
                                   loss_weights={'q_output': 0, 'policy_output': 1},
-                                  metrics=[])
-        """
-        q_on_policy_model.compile(loss={'policy_output': 'mse'},
-                                  optimizer=self.opt_G,
-                                  loss_weights={'policy_output': 1},
                                   metrics=[])
         return q_on_policy_model
 
@@ -56,8 +52,32 @@ class RelKonfIMLEPose(RelKonfMSEPose):
         l2_distances = np.linalg.norm(x1 - database, axis=-1)
         return database[np.argmin(l2_distances)], np.argmin(l2_distances)
 
-    def verify_the_noise_generates_the_closest_pt_to_the_true_action(self, closest_noise, noise_smpls, true_action):
-        pass
+    def create_regularized_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
+        n_filters = 32
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, n_dim),
+                   strides=(1, 1),
+                   activation='linear',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer,
+                   kernel_regularizer=gershigorin_reg
+                   )(input)
+        H = LeakyReLU()(H)
+        for _ in range(2):
+            H = Conv2D(filters=n_filters,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='linear',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer,
+                       kernel_regularizer=gershigorin_reg
+                       )(H)
+            H = LeakyReLU()(H)
+        if use_pooling:
+            H = MaxPooling2D(pool_size=(2, 1))(H)
+        if use_flatten:
+            H = Flatten()(H)
+        return H
 
     def create_callbacks_for_pretraining(self):
         callbacks = [
@@ -97,7 +117,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
     def construct_query_output(self, query_input):
         dim_input = query_input.shape[2]._value
-        query = self.create_conv_layers(query_input, dim_input, use_pooling=False, use_flatten=False)
+        # query = self.create_conv_layers(query_input, dim_input, use_pooling=False, use_flatten=False)
+        query = self.create_regularized_conv_layers(query_input, dim_input, use_pooling=False, use_flatten=False)
         query = Conv2D(filters=1,
                        kernel_size=(1, 1),
                        strides=(1, 1),
@@ -109,7 +130,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
             x = K.squeeze(x, axis=-1)
             x = K.squeeze(x, axis=-1)
-            return K.softmax(x*100, axis=-1)  # perhaps 1000 is better; but we need to test this against planning
+            return K.softmax(x * 100, axis=-1)  # perhaps 1000 is better; but we need to test this against planning
 
         W = Lambda(compute_W, name='softmax')(query)
         self.w_model = Model(
@@ -208,14 +229,14 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
-            self.q_on_policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
-                                       [a_batch],
-                                       epochs=100,
-                                       validation_data=(
-                                           [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
-                                           [t_actions]),
-                                       callbacks=callbacks,
-                                       verbose=False)
+            self.policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
+                                  [a_batch],
+                                  epochs=100,
+                                  validation_data=(
+                                      [t_goal_flags, t_rel_konfs, t_collisions, t_poses, t_chosen_noise_smpls],
+                                      [t_actions]),
+                                  callbacks=callbacks,
+                                  verbose=False)
             after = self.policy_model.get_weights()
             gen_w_norm = np.linalg.norm(np.hstack([(a - b).flatten() for a, b in zip(before, after)]))
             print "Generator weight norm diff", gen_w_norm
@@ -236,4 +257,3 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             print "Val error", valid_err
             print np.min(valid_errs)
-

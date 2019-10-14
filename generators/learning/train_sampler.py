@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument('-tau', type=float, default=0.999)
     parser.add_argument('-d_lr', type=float, default=1e-3)
     parser.add_argument('-g_lr', type=float, default=1e-4)
-    parser.add_argument('-algo', type=str, default='rel_konf_place_mse')
+    parser.add_argument('-algo', type=str, default='rel_konf_place_admon')
     parser.add_argument('-n_score', type=int, default=5)
     parser.add_argument('-otherpi', default='uniform')
     parser.add_argument('-explr_p', type=float, default=0.3)
