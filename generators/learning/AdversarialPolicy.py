@@ -107,6 +107,29 @@ class AdversarialPolicy:
                     open('data_idxs_seed_%s' % self.seed, 'wb'))
         return train_idxs, test_idxs
 
+    def create_regularized_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
+        n_filters = 32
+        H = Conv2D(filters=n_filters,
+                   kernel_size=(1, n_dim),
+                   strides=(1, 1),
+                   activation='linear',
+                   kernel_initializer=self.kernel_initializer,
+                   bias_initializer=self.bias_initializer)(input)
+        H = LeakyReLU()(H)
+        for _ in range(2):
+            H = Conv2D(filters=n_filters,
+                       kernel_size=(1, 1),
+                       strides=(1, 1),
+                       activation='linear',
+                       kernel_initializer=self.kernel_initializer,
+                       bias_initializer=self.bias_initializer)(H)
+            H = LeakyReLU()(H)
+        if use_pooling:
+            H = MaxPooling2D(pool_size=(2, 1))(H)
+        if use_flatten:
+            H = Flatten()(H)
+        return H
+
     def create_conv_layers(self, input, n_dim, use_pooling=True, use_flatten=True):
         n_filters = 32
         H = Conv2D(filters=n_filters,
@@ -114,8 +137,7 @@ class AdversarialPolicy:
                    strides=(1, 1),
                    activation='linear',
                    kernel_initializer=self.kernel_initializer,
-                   bias_initializer=self.bias_initializer,
-                   kernel_regularizer=gershigorin_reg)(input)
+                   bias_initializer=self.bias_initializer)(input)
         H = LeakyReLU()(H)
         for _ in range(2):
             H = Conv2D(filters=n_filters,
