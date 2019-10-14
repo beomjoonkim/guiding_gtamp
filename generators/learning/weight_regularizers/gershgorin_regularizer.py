@@ -3,7 +3,7 @@ import numpy as np
 
 
 # sess = tf.Session()
-def gershigorin_reg(weight_matrix, sess=None):
+def gershgorin_reg(weight_matrix, sess=None):
     weight_matrix = tf.squeeze(weight_matrix)
     wdotw = tf.matmul(tf.transpose(weight_matrix), weight_matrix)
 

@@ -1,6 +1,6 @@
 from RelKonfMSEWithPose import *
 from keras.callbacks import *
-from weight_regularizers.gershogorin_regularizer import gershigorin_reg
+from weight_regularizers.gershgorin_regularizer import gershgorin_reg
 
 
 def noise(z_size):
