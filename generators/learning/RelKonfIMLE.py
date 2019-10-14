@@ -60,7 +60,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                    activation='linear',
                    kernel_initializer=self.kernel_initializer,
                    bias_initializer=self.bias_initializer,
-                   kernel_regularizer=gershigorin_reg
+                   kernel_regularizer=gershgorin_reg
                    )(input)
         H = LeakyReLU()(H)
         for _ in range(2):
@@ -70,7 +70,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                        activation='linear',
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer,
-                       kernel_regularizer=gershigorin_reg
+                       kernel_regularizer=gershgorin_reg
                        )(H)
             H = LeakyReLU()(H)
         if use_pooling:
