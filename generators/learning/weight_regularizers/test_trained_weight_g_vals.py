@@ -6,7 +6,7 @@ import tensorflow as tf
 
 
 def test_correctness():
-    seed = 0
+    seed = 1
     #test_mat = np.array([[1, -1, -1, -1], [4, 1, 2, 3]])
     policy = create_imle_model(seed)
     layers = policy.policy_model.layers
@@ -21,10 +21,10 @@ def test_correctness():
             continue
         test_mat = tf.constant(weight, dtype=tf.float32)
         loss = gershgorin_reg(test_mat).eval(session=sess)
-        if loss == 0:
-            import pdb;pdb.set_trace()
         gershgorin_vals *= loss
         print gershgorin_vals
+
+    # Currently, the values on some layers are zero
     import pdb;pdb.set_trace()
 
 

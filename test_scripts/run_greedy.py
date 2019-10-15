@@ -272,6 +272,8 @@ def main():
         for n in nodes:
             n.state.make_pklable()
 
+        nodes = None
+
         data = {
             'n_objs_pack': config.n_objs_pack,
             'tottime': tottime,
