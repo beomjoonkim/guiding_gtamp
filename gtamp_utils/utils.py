@@ -10,6 +10,7 @@ import numpy as np
 import math
 import time
 import scipy as sp
+from scipy import spatial as sp_spatial
 from openravepy import DOFAffine, RaveCreateKinBody, RaveCreateRobot
 
 FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
@@ -323,7 +324,7 @@ def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
     rel_t = get_relative_transform_T1_wrt_T2(t_robot, t_obj)
 
     rotation = rel_t[0:3, 0:3]
-    rel_pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    rel_pose_vec = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     xy = rel_t[0:2, 3]
     rel_pose_vec[0:2] = xy
     return rel_pose_vec
@@ -331,7 +332,7 @@ def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
 
 def get_pose_from_transform(transform):
     rotation = transform[0:3, 0:3]
-    pose_vec = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    pose_vec = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     pose_vec[0:2] = transform[0:2, 3]
     return pose_vec
 
@@ -346,7 +347,7 @@ def get_absolute_pose_from_relative_pose(relative_pose, pose_relative_to):
 def get_transform_from_pose(pose, body_type):
     pose = np.array(pose).squeeze()
     assert len(pose) == 3, "must be x,y, theta where theta is rotation around [0,0,1]"
-    rotation_mat = sp.spatial.transform.Rotation.from_rotvec([0, 0, pose[-1]]).as_dcm()
+    rotation_mat = sp_spatial.transform.Rotation.from_rotvec([0, 0, pose[-1]]).as_dcm()
     transformation_matrix = np.zeros((4, 4))
     transformation_matrix[0:3, 0:3] = rotation_mat
     transformation_matrix[3, 3] = 1
@@ -400,7 +401,7 @@ def get_body_xytheta(body):
 
 def get_xytheta_from_transform(T):
     rotation = T[0:3, 0:3]
-    xytheta = sp.spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    xytheta = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
     xytheta[0:2] = T[0:2, 3]
     return xytheta
 
