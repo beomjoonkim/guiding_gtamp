@@ -1,5 +1,5 @@
 from generators.learning.utils.model_creation_utils import create_imle_model
-from generators.learning.weight_regularizers.gershgorin_regularizer import gershgorin_reg
+from generators.learning.weight_regularizers.gershgorin_regularizer import compute_gershgorin_disc_lbs
 
 import numpy as np
 import tensorflow as tf
@@ -11,20 +11,20 @@ def test_correctness():
     policy = create_imle_model(seed)
     layers = policy.policy_model.layers
 
-    gershgorin_vals = 1
+    gershgorin_lb = 1
     sess = tf.Session()
     for layer in layers:
+        #print layer.name
         if len(layer.get_weights()) == 0:
             continue
         weight = layer.get_weights()[0].squeeze()
-        if len(weight.shape) <= 1:
-            continue
         test_mat = tf.constant(weight, dtype=tf.float32)
-        loss = gershgorin_reg(test_mat).eval(session=sess)
-        gershgorin_vals *= loss
-        print gershgorin_vals
+        lb = compute_gershgorin_disc_lbs(test_mat).eval(session=sess)
+        gershgorin_lb *= lb
+        print layer.name, lb
 
-    # Currently, the values on some layers are zero
+    # if the gershgorin_lb is less than 0, then it becomes a trivial bound on the output
+    # if the difference in z is more than 1, then the output values should differ by 1 too
     import pdb;pdb.set_trace()
 
 

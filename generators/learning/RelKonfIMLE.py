@@ -96,8 +96,13 @@ class RelKonfIMLEPose(RelKonfMSEPose):
     def generate(self, goal_flags, rel_konfs, collisions, poses, z_vals_tried=None):
         z_vals_tried = []
         noise_smpls = noise(z_size=(1, self.dim_action))  # n_data by k matrix
+        print noise_smpls
         pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, noise_smpls])
         return pred, z_vals_tried
+
+    def generate_given_noise(self, goal_flags, rel_konfs, collisions, poses, z_vals):
+        pred = self.policy_model.predict([goal_flags, rel_konfs, collisions, poses, z_vals])
+        return pred
 
     def get_closest_noise_smpls_for_each_action(self, actions, generated_actions, noise_smpls):
         chosen_noise_smpls = []
@@ -124,7 +129,8 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                        strides=(1, 1),
                        activation='linear',
                        kernel_initializer=self.kernel_initializer,
-                       bias_initializer=self.bias_initializer)(query)
+                       bias_initializer=self.bias_initializer,
+                       name='query_output')(query)
 
         def compute_W(x):
             # I need to modify this - but I cannot do argmax? That leads to undefined gradient
@@ -153,6 +159,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
                        activation='linear',
                        kernel_initializer=self.kernel_initializer,
                        bias_initializer=self.bias_initializer,
+                       name='value_output'
                        )(value)
 
         # value = self.key_config_input
@@ -229,6 +236,7 @@ class RelKonfIMLEPose(RelKonfMSEPose):
 
             # I also need to tag on the Q-learning objective
             before = self.policy_model.get_weights()
+
             self.policy_model.fit([goal_flag_batch, rel_konf_batch, col_batch, pose_batch, chosen_noise_smpls],
                                   [a_batch],
                                   epochs=100,

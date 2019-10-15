@@ -1,5 +1,6 @@
-from generators.learning.utils.model_creation_utils import create_imle_model
-from generators.learning.utils.sampler_utils import generate_smpls, generate_w_values, generate_transformed_key_configs
+from generators.learning.utils.model_creation_utils import create_imle_model, load_weights
+from generators.learning.utils.sampler_utils import generate_smpls, generate_w_values, generate_transformed_key_configs, \
+    generate_smpls_using_noise
 from trajectory_representation.concrete_node_state import ConcreteNodeState
 from test_scripts.run_greedy import get_problem_env
 from gtamp_utils import utils
@@ -51,6 +52,11 @@ def visualize_key_configs_with_top_k_w_vals(w_values, key_configs, k):
     utils.visualize_path(key_configs[np.argsort(w_values.squeeze())[-k:], :])
 
 
+def visualize_smpl(smpler_state, policy, noise):
+    policy_smpl = generate_smpls_using_noise(smpler_state, policy, noise)
+    utils.visualize_path(policy_smpl)
+
+
 def visualize_samples(policy, pidx):
     problem_env = load_problem(pidx)
     utils.viewer()
@@ -60,30 +66,39 @@ def visualize_samples(policy, pidx):
     smpler_state = get_smpler_state(pidx, obj, problem_env)
     smpler_state.abs_obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
 
-    # Question:
-    #   if I have the collision information, can I simply reject the generated smpls that are in collision?
-    #   Answer: these are not prm vertices
     """
-    z_smpl_fname = 'z_smpls.pkl'
-    noise_batch = pickle.load(open(z_smpl_fname, 'r'))
-    policy_smpls = generate_policy_smpl_batch(smpler_state, policy, noise_batch)
-    place_smpls = [data_processing_utils.get_unprocessed_placement(smpl, smpler_state.abs_obj_pose) for smpl in policy_smpls]
-    """
-
     w_values = generate_w_values(smpler_state, policy)
     transformed_konfs = generate_transformed_key_configs(smpler_state, policy)
     print "Visualizing top-k transformed konfs..."
-    #visualize_key_configs_with_top_k_w_vals(w_values, transformed_konfs, k=5)
+    visualize_key_configs_with_top_k_w_vals(w_values, transformed_konfs, k=5)
     print "Visualizing top-k konfs..."
-    #visualize_key_configs_with_top_k_w_vals(w_values, smpler_state.key_configs, k=10)
+    visualize_key_configs_with_top_k_w_vals(w_values, smpler_state.key_configs, k=10)
+    """
 
     place_smpls = []
-    for _ in range(20):
-        policy_smpl = generate_smpls(smpler_state, policy, n_data=1)[0]
-        place_smpls.append(policy_smpl)
+    noises_used = []
+    for i in range(10):
+        noise = i/10.0 * np.random.normal(size=(1, 4)).astype('float32')
+        smpl = generate_smpls_using_noise(smpler_state, policy, noise)[0]
+        place_smpls.append(smpl)
+        noises_used.append(noise)
+    import pdb;pdb.set_trace()
     utils.visualize_path(place_smpls[0:10])
 
-    import pdb;pdb.set_trace()
+
+def visualize_samples_at_noises(problem_env, policy, pidx, noises):
+    utils.viewer()
+
+    obj = problem_env.object_names[1]
+    utils.set_color(obj, [1, 0, 0])
+    smpler_state = get_smpler_state(pidx, obj, problem_env)
+    smpler_state.abs_obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
+
+    place_smpls = []
+    for noise in noises:
+        smpl = generate_smpls_using_noise(smpler_state, policy, noise)[0]
+        place_smpls.append(smpl)
+    utils.visualize_path(place_smpls)
 
 
 def main():
@@ -91,7 +106,25 @@ def main():
     pidx = int(sys.argv[2])
     # python generators/learning/policy_evaluator.py 0 0 - can you generate different samples?
     policy = create_imle_model(seed)
-    visualize_samples(policy, pidx)
+    problem_env = load_problem(pidx)
+
+    #noises = [np.random.normal(size=(1, 4)).astype('float32') for _ in range(50)]
+    noises = []
+    for i in range(30):
+        if i <= 10:
+            noise = 0.01*np.random.normal(size=(1, 4)).astype('float32')
+        elif 10 < i <= 20:
+            noise = 0.1 * np.random.normal(size=(1, 4)).astype('float32')
+        elif 20 <= i <= 30:
+            noise = 1 * np.random.normal(size=(1, 4)).astype('float32')
+        noises.append(noise)
+    visualize_samples_at_noises(problem_env, policy, pidx, noises)
+
+    unregularized_weight_fname = 'without_regularizer/imle_pose_seed_0.h5'
+    load_weights(policy, None, unregularized_weight_fname)
+    visualize_samples_at_noises(problem_env, policy, pidx, noises)
+
+    import pdb;pdb.set_trace()
 
 
 if __name__ == '__main__':

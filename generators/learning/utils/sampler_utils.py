@@ -46,6 +46,19 @@ def generate_smpls(smpler_state, policy, n_data, noise_smpls_tried=None):
         return places
 
 
+def generate_smpls_using_noise(smpler_state, policy, noises):
+    goal_flags, rel_konfs, collisions, poses = prepare_input(smpler_state)
+    obj = smpler_state.obj
+    utils.set_color(obj, [1, 0, 0])
+    obj_pose = utils.clean_pose_data(smpler_state.abs_obj_pose)
+
+    places = []
+    smpls = policy.generate_given_noise(goal_flags, rel_konfs, collisions, poses, noises)
+    placement = data_processing_utils.get_unprocessed_placement(smpls.squeeze(), obj_pose)
+    places.append(placement)
+    return places
+
+
 def generate_w_values(smpler_state, policy):
     goal_flags, rel_konfs, collisions, poses = prepare_input(smpler_state)
     w_vals = policy.w_model.predict([goal_flags, rel_konfs, collisions, poses])
