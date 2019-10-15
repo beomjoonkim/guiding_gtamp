@@ -12,7 +12,7 @@ def worker_p(config):
     for key, value in zip(config.keys(), config.values()):
         option = ' -' + str(key) + ' ' + str(value)
         command += option
-    command += ' -hcount'
+    command += ' -qlearned_hcount_old_number_in_goal'
     command += ' -gather_planning_exp'
 
     print command
@@ -39,7 +39,7 @@ def main():
 
         configs.append(config)
 
-    n_workers = multiprocessing.cpu_count()
+    n_workers = 10 #multiprocessing.cpu_count()
     pool = ThreadPool(n_workers)
     results = pool.map(worker_wrapper_multi_input, configs)
 

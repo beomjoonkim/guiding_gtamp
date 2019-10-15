@@ -22,6 +22,7 @@ class ShortestPathPaPState(PaPState):
         self.parent_state = parent_state
         self.parent_ternary_predicates = {}
         self.parent_binary_predicates = {}
+        self.goal_entities = goal_entities
         if parent_state is not None:
             moved_obj_type = type(parent_action.discrete_parameters['two_arm_place_object'])
             if moved_obj_type == str or moved_obj_type == unicode:
@@ -89,8 +90,8 @@ class ShortestPathPaPState(PaPState):
         colliding_vtx_idxs = [v for v in self.collides.values()]
         colliding_vtx_idxs = list(set().union(*colliding_vtx_idxs))
         collision_vector[colliding_vtx_idxs] = 1
-        key_config_obstacles = utils.convert_binary_vec_to_one_hot(collision_vector)
-        return key_config_obstacles.reshape((1, n_vtxs, 2, 1)) # the shape req'd for CNN
+        collision_vector = np.delete(collision_vector, [415, 586, 615, 618, 619], axis=0)
+        return collision_vector
 
     def initialize_parent_predicates(self, moved_obj, parent_state, parent_action):
         assert parent_action is not None

@@ -1,24 +1,36 @@
 from manipulation.primitives.transforms import *
-from manipulation.bodies.bodies import *
 import manipulation
+from manipulation.bodies.bodies import *
 from manipulation.primitives.transforms import get_point, set_point, pose_from_quat_point, unit_quat
-
 from manipulation.primitives.utils import mirror_arm_config
+
+import copy
 import openravepy
 import numpy as np
 import math
 import time
+import scipy as sp
+from scipy import spatial as sp_spatial
+from openravepy import DOFAffine, RaveCreateKinBody, RaveCreateRobot
 
 FOLDED_LEFT_ARM = [0.0, 1.29023451, 0.0, -2.121308, 0.0, -0.69800004, 0.0]
 
 PR2_ARM_LENGTH = 0.9844
 
 
+def get_color_of(body):
+    env = openravepy.RaveGetEnvironments()[0]
+    if type(body) == unicode or type(body) == str:
+        obj = env.GetKinBody(body)
+
+    return get_color(obj)
+
+
 def convert_binary_vec_to_one_hot(collision_vector):
     n_konf = collision_vector.shape[0]
     one_hot_cvec = np.zeros((n_konf, 2))
     one_hot_cvec[:, 0] = collision_vector
-    one_hot_cvec[:, 1] = 1-collision_vector
+    one_hot_cvec[:, 1] = 1 - collision_vector
     return one_hot_cvec
 
 
@@ -61,7 +73,7 @@ def set_obj_xytheta(xytheta, obj):
 
 def set_active_config(conf, robot=None):
     if robot is None:
-        env = openravepy.RaveGetEnvironment(1)
+        env = openravepy.RaveGetEnvironments()[0]
         robot = env.GetRobot('pr2')
     robot.SetActiveDOFValues(conf.squeeze())
 
@@ -103,7 +115,7 @@ def draw_robot_at_conf(conf, transparency, name, robot, env, color=None):
 
 
 def visualize_pick_and_place(pick, place):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     obj = pick.discrete_parameters['object']
     if type(obj) == unicode or type(object) == str:
         obj = env.GetKinBody(obj)
@@ -117,7 +129,7 @@ def visualize_pick_and_place(pick, place):
 
 def visualize_path(path):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     dim_path = len(path[0])
@@ -146,7 +158,7 @@ def visualize_path(path):
 
 def open_gripper(robot=None):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
     robot.SetDOFValues(np.array([0.54800022]), robot.GetActiveManipulator().GetGripperIndices())
 
@@ -173,7 +185,7 @@ def check_collision_except(exception_body, env):
 
 def set_robot_config(base_pose, robot=None):
     if robot is None:
-        env = openravepy.RaveGetEnvironment(1)
+        env = openravepy.RaveGetEnvironments()[0]
         robot = env.GetRobot('pr2')
 
     base_pose = np.array(base_pose)
@@ -286,7 +298,7 @@ def clean_pose_data(pose_data):
 
 
 def compute_occ_vec(key_configs):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
     occ_vec = []
     with robot:
@@ -306,7 +318,56 @@ def get_robot_xytheta(robot):
     return robot_xytheta
 
 
+def get_relative_robot_pose_wrt_body_pose(robot_pose, body_pose):
+    t_robot = get_transform_from_pose(robot_pose, 'robot')
+    t_obj = get_transform_from_pose(body_pose, 'kinbody')
+    rel_t = get_relative_transform_T1_wrt_T2(t_robot, t_obj)
+
+    rotation = rel_t[0:3, 0:3]
+    rel_pose_vec = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    xy = rel_t[0:2, 3]
+    rel_pose_vec[0:2] = xy
+    return rel_pose_vec
+
+
+def get_pose_from_transform(transform):
+    rotation = transform[0:3, 0:3]
+    pose_vec = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    pose_vec[0:2] = transform[0:2, 3]
+    return pose_vec
+
+
+def get_absolute_pose_from_relative_pose(relative_pose, pose_relative_to):
+    t_relative_pose = get_transform_from_pose(relative_pose, 'robot')
+    t_pose_relative_to = get_transform_from_pose(pose_relative_to, 'robot')
+    t_absolute = np.dot(t_pose_relative_to, t_relative_pose)
+    return get_pose_from_transform(t_absolute)
+
+
+def get_transform_from_pose(pose, body_type):
+    pose = np.array(pose).squeeze()
+    assert len(pose) == 3, "must be x,y, theta where theta is rotation around [0,0,1]"
+    rotation_mat = sp_spatial.transform.Rotation.from_rotvec([0, 0, pose[-1]]).as_dcm()
+    transformation_matrix = np.zeros((4, 4))
+    transformation_matrix[0:3, 0:3] = rotation_mat
+    transformation_matrix[3, 3] = 1
+    transformation_matrix[0:2, 3] = pose[0:2]
+    if body_type == 'robot':
+        z_for_on_the_floor = 0.139183
+    elif body_type == 'kinbody':
+        z_for_on_the_floor = 0.389
+    else:
+        raise NotImplementedError
+
+    transformation_matrix[2, 3] = z_for_on_the_floor  # this assume that the body is on the floor
+    return transformation_matrix
+
+
 def get_body_xytheta(body):
+    if not isinstance(body, openravepy.KinBody):
+        env = openravepy.RaveGetEnvironments()[0]
+        body = env.GetKinBody(body)
+
     Tbefore = body.GetTransform()
     body_quat = get_quat(body)
     th1 = np.arccos(body_quat[0]) * 2
@@ -326,7 +387,7 @@ def get_body_xytheta(body):
         import pdb;
         pdb.set_trace()
     if th < 0: th += 2 * np.pi
-    assert (th >= 0 and th < 2 * np.pi)
+    assert (0 <= th < 2 * np.pi)
 
     # set the quaternion using the one found
     set_quat(body, quat_from_angle_vector(th, np.array([0, 0, 1])))
@@ -338,9 +399,16 @@ def get_body_xytheta(body):
     return body_xytheta
 
 
+def get_xytheta_from_transform(T):
+    rotation = T[0:3, 0:3]
+    xytheta = sp_spatial.transform.Rotation.from_dcm(rotation).as_rotvec()
+    xytheta[0:2] = T[0:2, 3]
+    return xytheta
+
+
 def grab_obj(obj):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     robot.Grab(obj)
@@ -348,14 +416,14 @@ def grab_obj(obj):
 
 def release_obj():
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
     obj = robot.GetGrabbed()[0]
     robot.Release(obj)
 
 
 def convert_to_kin_body(obj):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if isinstance(obj, openravepy.KinBody):
         obj = obj
     else:
@@ -365,7 +433,7 @@ def convert_to_kin_body(obj):
 
 def one_arm_pick_object(obj, pick_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     open_gripper(robot)
@@ -378,7 +446,7 @@ def one_arm_pick_object(obj, pick_action):
 
 def one_arm_place_object(place_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     manip = robot.GetManipulator('rightarm_torso')
@@ -391,7 +459,7 @@ def one_arm_place_object(place_action):
 
 def two_arm_place_object(place_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     try:
@@ -409,7 +477,7 @@ def two_arm_place_object(place_action):
 
 def fold_arms():
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     leftarm_manip = robot.GetManipulator('leftarm')
@@ -422,7 +490,7 @@ def fold_arms():
 
 def two_arm_pick_object(obj, pick_action):
     assert len(openravepy.RaveGetEnvironments()) == 1
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     robot = env.GetRobot('pr2')
 
     if type(obj) == str or type(obj) == unicode:
@@ -430,6 +498,8 @@ def two_arm_pick_object(obj, pick_action):
     try:
         base_pose = pick_action['q_goal']
     except KeyError:
+        import pdb;
+        pdb.set_trace()
         base_pose = pick_action['base_pose']
     set_robot_config(base_pose, robot)
 
@@ -443,12 +513,12 @@ def two_arm_pick_object(obj, pick_action):
 
 
 def viewer():
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     env.SetViewer('qtcoin')
 
 
 def set_color(obj, color):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if type(obj) == str or type(obj) == unicode:
         obj = env.GetKinBody(obj)
 
@@ -499,26 +569,149 @@ def place_distance(a1, a2):
     return base_distance
 
 
-def compute_robot_xy_given_ir_parameters(portion, angle, obj, radius=PR2_ARM_LENGTH):
-    dist_to_obj = radius * portion  # how close are you to obj?
-    x = dist_to_obj * np.cos(angle)
+def compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, angle, t_obj, radius=PR2_ARM_LENGTH):
+    dist_to_obj = radius * portion_of_dist_to_obj  # how close are you to obj?
+    x = dist_to_obj * np.cos(angle)  # Relative pose to the object
     y = dist_to_obj * np.sin(angle)
     robot_wrt_o = np.array([x, y, 0, 1])
-    return np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
+    return np.dot(t_obj, robot_wrt_o)[:-1]
+
+
+def get_relative_transform_T1_wrt_T2(T1, T2):
+    return np.dot(np.linalg.inv(T2), T1)
+
+
+def get_relative_transform_body1_wrt_body2(body1, body2):
+    return get_relative_transform_T1_wrt_T2(body1.GetTransform(), body2.GetTransform())
+
+
+def subtract_pose2_from_pose1(pose1, pose2):
+    pose1 = np.array(pose1).squeeze()
+    pose2 = np.array(pose2).squeeze()
+    diff = pose1 - pose2
+    need_correction = abs(diff[-1]) > np.pi
+    if need_correction and diff[-1] < 0:
+        diff[-1] = 2 * np.pi + diff[-1]
+    elif need_correction and diff[-1] > 0:
+        diff[-1] = 2 * np.pi - diff[-1]
+    return diff
+
+
+def compute_ir_parameters_given_robot_xy(robot_xytheta, obj_xytheta, radius=PR2_ARM_LENGTH):
+    robot_xy = robot_xytheta[0:2]
+    obj_xy = obj_xytheta[0:2]
+    dist_to_obj = np.linalg.norm(robot_xy - obj_xy)
+
+    """
+    robot_x_wrt_obj = robot_xy[0]-obj_xy[0] # Why is this not the case? Because the coordinate frame might not be defined at the center
+    robot_y_wrt_obj = robot_xy[1]-obj_xy[1]
+
+    robot_wrt_o = np.array([robot_x_wrt_obj, robot_y_wrt_obj, 0, 1])
+    recovered = np.dot(obj.GetTransform(), robot_wrt_o)[:-1]
+    """
+    t_robot = get_transform_from_pose(robot_xytheta, 'robot')
+    t_obj = get_transform_from_pose(obj_xytheta, 'kinbody')
+
+    robot_xy_wrt_o = get_relative_transform_T1_wrt_T2(t_robot, t_obj)[:-2, 3]
+    robot_x_wrt_obj = robot_xy_wrt_o[0]
+    robot_y_wrt_obj = robot_xy_wrt_o[1]
+    angle = np.arccos(abs(robot_x_wrt_obj / dist_to_obj))
+    if robot_x_wrt_obj < 0 < robot_y_wrt_obj:
+        angle = np.pi - angle
+    elif robot_x_wrt_obj < 0 and robot_y_wrt_obj < 0:
+        angle += np.pi
+    elif robot_x_wrt_obj > 0 > robot_y_wrt_obj:
+        angle = -angle
+
+    portion_of_dist_to_obj = dist_to_obj / radius
+
+    return portion_of_dist_to_obj, angle
 
 
 def get_pick_base_pose_and_grasp_from_pick_parameters(obj, pick_parameters):
     grasp_params = pick_parameters[0:3]
-    portion = pick_parameters[3]
-    base_angle = pick_parameters[4]
-    facing_angle = pick_parameters[5]
+    ir_params = pick_parameters[3:]
+    obj_xyth = get_body_xytheta(obj)
+    pick_base_pose = get_absolute_pick_base_pose_from_ir_parameters(ir_params, obj_xyth)
+    return grasp_params, pick_base_pose
 
-    pick_base_pose = compute_robot_xy_given_ir_parameters(portion, base_angle, obj)
-    obj_xy = get_body_xytheta(obj).squeeze()[:-1]
+
+def get_absolute_pick_base_pose_from_ir_parameters(ir_parameters, obj_xyth):
+    portion_of_dist_to_obj = ir_parameters[0]
+    base_angle = ir_parameters[1]
+    angle_offset = ir_parameters[2]
+    t_obj = get_transform_from_pose(obj_xyth, 'kinbody')
+    pick_base_pose = compute_robot_xy_given_ir_parameters(portion_of_dist_to_obj, base_angle, t_obj)
+    obj_xy = obj_xyth.squeeze()[:-1]
     robot_xy = pick_base_pose[0:2]
     angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
-    pick_base_pose[-1] = angle_to_be_set + facing_angle
-    return grasp_params, pick_base_pose
+    pick_base_pose[-1] = angle_to_be_set + angle_offset
+    return pick_base_pose
+
+
+def get_ir_parameters_from_robot_obj_poses(robot_xyth, obj_xyth):
+    robot_xyth = robot_xyth.squeeze()
+    obj_xyth = obj_xyth.squeeze()
+    obj_xy = obj_xyth.squeeze()[0:2]
+    robot_xy = robot_xyth.squeeze()[:-1]
+    robot_th = robot_xyth.squeeze()[-1]
+
+    angle_to_be_set = compute_angle_to_be_set(obj_xy, robot_xy)
+    facing_angle_offset = robot_th - angle_to_be_set
+    while facing_angle_offset > 30. / 180 * np.pi:
+        facing_angle_offset -= 2 * np.pi
+    while facing_angle_offset < -30. / 180 * np.pi:
+        facing_angle_offset += 2 * np.pi
+
+    portion, base_angle = compute_ir_parameters_given_robot_xy(robot_xyth, obj_xyth)
+
+    recovered_robot_xyth = get_absolute_pick_base_pose_from_ir_parameters([portion, base_angle, facing_angle_offset],
+                                                                          obj_xyth)
+    recovered_robot_xyth = clean_pose_data(recovered_robot_xyth)
+    robot_xyth = clean_pose_data(robot_xyth)
+    assert np.all(np.isclose(recovered_robot_xyth, robot_xyth.squeeze()))
+    return portion, base_angle, facing_angle_offset
+
+
+def encode_pose_with_sin_and_cos_angle(pose):
+    if isinstance(pose, list):
+        pose = np.array(pose)
+    pose = pose.reshape((3,))
+    x = pose[0]
+    y = pose[1]
+    th = pose[2]
+    sin_th_cos_th = encode_angle_in_sin_and_cos(th)
+    return np.hstack([x, y, sin_th_cos_th])
+
+
+def decode_pose_with_sin_and_cos_angle(pose):
+    if isinstance(pose, list):
+        pose = np.array(pose)
+    pose = pose.reshape((4,))
+    x = pose[0]
+    y = pose[1]
+    sin_th_cos_th = pose[2:]
+    th = decode_sin_and_cos_to_angle(sin_th_cos_th)
+    return np.hstack([x, y, th])
+
+
+def get_global_pose_from_relative_pose_to_body(body, rel_robot_pose):
+    if not isinstance(body, openravepy.KinBody):
+        env = openravepy.RaveGetEnvironments()[0]
+        body = env.GetKinBody(body)
+    t_body = body.GetTransform()
+    t_pose = get_transform_from_pose(rel_robot_pose, 'robot')
+    t_pose_global = get_xytheta_from_transform(np.dot(t_body, t_pose))
+
+    return t_pose_global
+
+
+def encode_angle_in_sin_and_cos(angle):
+    return np.array([np.sin(angle), np.cos(angle)])
+
+
+def decode_sin_and_cos_to_angle(encoding):
+    return np.arctan2(encoding[0], encoding[1])
 
 
 def pick_parameter_distance(obj, param1, param2):
@@ -602,7 +795,7 @@ def get_pick_domain():
     facing_angle_domain = [[-30 * np.pi / 180.0], [30 * np.pi / 180]]
     base_pose_domain = np.hstack([portion_domain, base_angle_domain, facing_angle_domain])
 
-    grasp_param_domain = np.array([[45 * np.pi / 180, 0.5, 0.1], [180 * np.pi / 180, 1, 0.9]])
+    grasp_param_domain = np.array([[45 * np.pi / 180, 0.5, 0.1], [np.pi, 1, 0.9]])
     domain = np.hstack([grasp_param_domain, base_pose_domain])
     return domain
 
@@ -613,12 +806,12 @@ def set_obj_xyztheta(xyztheta, obj):
 
 
 def get_body_with_name(obj_name):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     return env.GetKinBody(obj_name)
 
 
 def randomly_place_region(body, region):
-    env = openravepy.RaveGetEnvironment(1)
+    env = openravepy.RaveGetEnvironments()[0]
     if env.GetKinBody(get_name(body)) is None:
         env.Add(body)
     while True:

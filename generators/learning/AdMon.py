@@ -4,86 +4,21 @@ from keras.models import Sequential, Model
 from keras.optimizers import *
 from keras import backend as K
 from keras import initializers
+from AdversarialPolicy import tau_loss, G_loss, noise, INFEASIBLE_SCORE
+from AdversarialPolicy import AdversarialPolicy
 
 import time
-import tensorflow as tf
-import sys
 import numpy as np
 import os
 
-INFEASIBLE_SCORE = -sys.float_info.max
 
-
-def tau_loss(tau):
-    def augmented_mse(score_data, D_pred):
-        # Determine which of Dpred correspond to fake val
-        neg_mask = tf.equal(score_data, INFEASIBLE_SCORE)
-        y_neg = tf.boolean_mask(D_pred, neg_mask)
-
-        # Determine which of Dpred correspond to true fcn val
-        pos_mask = tf.not_equal(score_data, INFEASIBLE_SCORE)
-        y_pos = tf.boolean_mask(D_pred, pos_mask)
-        score_pos = tf.boolean_mask(score_data, pos_mask)
-
-        # compute mse w.r.t true function values
-        mse_on_true_data = K.mean((K.square(score_pos - y_pos)), axis=-1)
-        return mse_on_true_data + tau[0] * K.mean(y_neg)  # try to minimize the value of y_neg
-
-    return augmented_mse
-
-
-def G_loss(dummy, pred):
-    return -K.mean(pred, axis=-1)  # try to maximize the value of pred
-
-
-def noise(n, z_size):
-    return np.random.normal(size=(n, z_size)).astype('float32')
-
-
-def tile(x):
-    reps = [1, 1, 32]
-    return K.tile(x, reps)
-
-
-class AdversarialMonteCarlo:
-    def __init__(self, dim_action, dim_state, save_folder, tau, explr_const, key_configs=None,
+class AdversarialMonteCarlo(AdversarialPolicy):
+    def __init__(self, dim_action, dim_state, save_folder, tau, key_configs=None,
                  action_scaler=None):
-
-        if not os.path.isdir(save_folder):
-            os.makedirs(save_folder)
-
-        self.opt_G = Adam(lr=1e-4, beta_1=0.5)
-        self.opt_D = Adam(lr=1e-3, beta_1=0.5)
-
-        # initialize
-        self.initializer = initializers.glorot_normal()
-
-        # get setup dimensions for inputs
-        self.dim_action = dim_action
-        self.dim_state = dim_state
-        self.n_key_confs = dim_state[0]
-        self.key_configs = key_configs
-
-        self.action_scaler = action_scaler
-
-        # define inputs
+        AdversarialPolicy.__init__(self, dim_action, dim_state, save_folder, tau, key_configs, action_scaler)
         self.action_input = Input(shape=(dim_action,), name='a', dtype='float32')  # action
         self.state_input = Input(shape=dim_state, name='s', dtype='float32')  # collision vector
-        self.tau_input = Input(shape=(1,), name='tau', dtype='float32')  # collision vector
-
-        self.explr_const = explr_const
-
-        if dim_action < 10:
-            dim_z = dim_action
-        else:
-            dim_z = int(dim_action / 2)
-
-        self.dim_noise = dim_z
-        self.noise_input = Input(shape=(self.dim_noise,), name='z', dtype='float32')
-
         self.a_gen, self.disc, self.DG, = self.createGAN()
-        self.save_folder = save_folder
-        self.tau = tau
 
     def createGAN(self):
         disc = self.create_discriminator()
@@ -99,11 +34,9 @@ class AdversarialMonteCarlo:
 
     def save_weights(self, additional_name=''):
         self.a_gen.save_weights(self.save_folder + '/a_gen' + additional_name + '.h5')
-        self.disc.save_weights(self.save_folder + '/disc' + additional_name + '.h5')
 
-    def load_weights(self, agen_file, disc_file):
+    def load_weights(self, agen_file):
         self.a_gen.load_weights(self.save_folder + agen_file)
-        self.disc.load_weights(self.save_folder + disc_file)
 
     def reset_weights(self, init=True):
         if init:
@@ -169,6 +102,7 @@ class AdversarialMonteCarlo:
 
         disc_output = Dense(1, activation='linear', kernel_initializer=self.initializer,
                             bias_initializer=self.initializer)(H)
+        self.disc_output = disc_output
         disc = Model(inputs=[self.action_input, self.state_input, self.tau_input],
                      outputs=disc_output,
                      name='disc_output')
@@ -191,19 +125,6 @@ class AdversarialMonteCarlo:
             raise NotImplementedError
         return g
 
-    def evaluate(self, visualize=False):
-        # Try the policy
-        traj_list = []
-        for n_iter in range(5):
-            problem = ConveyorBelt()  # different "initial" state
-            traj = problem.execute_policy(self, 20, self.v)
-            traj_list.append(traj)
-            problem.env.Destroy()
-            RaveDestroy()
-        avg_J = np.mean([np.sum(traj['r']) for traj in traj_list])
-        std_J = np.std([np.sum(traj['r']) for traj in traj_list])
-        return avg_J, std_J
-
     def predict_Q(self, w):
         a_z = noise(w.shape[0], self.dim_action)
         w = w.reshape((w.shape[0], self.n_key_confs, self.dim_state[1]))
@@ -218,60 +139,120 @@ class AdversarialMonteCarlo:
         qvals = self.predict_Q(w)
         return qvals.mean()
 
-    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-3, g_lr=1e-4):
+    def compare_to_data(self, states, actions):
+        n_data = len(states)
+        a_z = noise(n_data, self.dim_noise)
+        pred = self.a_gen.predict([a_z, states])
+        gen_ir_params = pred[:, 0:4]
+        data_ir_params = actions[:, 0:4]
+        gen_place_base = pred[:, 4:]
+        data_place_base = actions[:, 0:4]
+        print "IR params", np.mean(np.linalg.norm(gen_ir_params - data_ir_params, axis=-1))
+        print "Place params", np.mean(np.linalg.norm(gen_place_base - data_place_base, axis=-1))
 
-        BATCH_SIZE = np.min([32, int(len(actions) * 0.1)])
-        if BATCH_SIZE == 0:
-            BATCH_SIZE = 1
-        print BATCH_SIZE
+        # todo
+        #   the trouble here is that the pick parameter consists of:
+        #       - how close you are to the object expressed in terms of the proportion of the radius [0.4, 0.9]
+        #       - base angle wrt the object [0,2pi)
+        #       - angle offset from where it should look [-30,30]
+        #   and so it is not really a configuration.
+        #   How should we compare the distance in this domain?
+        #   Also, how do I make sure it is in the right unit with the place base config?
+        #   I guess one natural thing to do is to look convert it to the absolute pick base pose.
 
-        self.tau = np.tile(self.tau, (BATCH_SIZE * 2, 1))
+    def get_batch(self, states, actions, sum_rewards, batch_size):
+        indices = np.random.randint(0, actions.shape[0], size=batch_size)
+        s_batch = np.array(states[indices, :])  # collision vector
+        a_batch = np.array(actions[indices, :])
+        sum_reward_batch = np.array(sum_rewards[indices, :])
+        return s_batch, a_batch, sum_reward_batch
 
+    def train(self, states, actions, sum_rewards, epochs=500, d_lr=1e-2, g_lr=1e-3):
+
+        batch_size = np.min([32, int(len(actions) * 0.1)])
+        if batch_size == 0:
+            batch_size = 1
+        print batch_size
+
+        curr_tau = self.tau
         K.set_value(self.opt_G.lr, g_lr)
         K.set_value(self.opt_D.lr, d_lr)
-
         print self.opt_G.get_config()
 
         n_score_train = 1
         for i in range(1, epochs):
+            self.compare_to_data(states, actions)
             stime = time.time()
-            for idx in range(0, actions.shape[0], BATCH_SIZE):
-                for score_train_idx in range(n_score_train):
-                    # choose a batch of data
-                    indices = np.random.randint(0, actions.shape[0], size=BATCH_SIZE)
-                    s_batch = np.array(states[indices, :])  # collision vector
-                    a_batch = np.array(actions[indices, :])
-                    sum_reward_batch = np.array(sum_rewards[indices, :])
+            tau_values = np.tile(curr_tau, (batch_size * 2, 1))
+            print "Current tau value", curr_tau
+            gen_before = self.a_gen.get_weights()
+            disc_before = self.disc.get_weights()
+            batch_idxs = range(0, actions.shape[0], batch_size)
+            for k, idx in enumerate(batch_idxs):
+                #print 'Epoch completion: %d / %d' % (k, len(batch_idxs))
+                s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
 
-                    # train \hat{S}
-                    # make fake and reals
-                    a_z = noise(BATCH_SIZE, self.dim_noise)
-                    fake = self.a_gen.predict([a_z, s_batch])
-                    real = a_batch
+                # train \hat{S}
+                # make fake and reals
+                a_z = noise(batch_size, self.dim_noise)
+                fake = self.a_gen.predict([a_z, s_batch])
+                real = a_batch
 
-                    # make their scores
-                    fake_action_q = np.ones((BATCH_SIZE, 1)) * INFEASIBLE_SCORE  # marks fake data
-                    real_action_q = sum_reward_batch
-
-                    batch_a = np.vstack([fake, real])
-                    batch_s = np.vstack([s_batch, s_batch])
-                    batch_scores = np.vstack([fake_action_q, real_action_q])
-                    self.disc.fit({'a': batch_a, 's': batch_s, 'tau': self.tau},
-                                  batch_scores,
-                                  epochs=1,
-                                  verbose=False)
+                # make their scores
+                fake_action_q = np.ones((batch_size, 1)) * INFEASIBLE_SCORE  # marks fake data
+                real_action_q = sum_rewards_batch.reshape((batch_size,1))
+                batch_a = np.vstack([fake, real])
+                batch_s = np.vstack([s_batch, s_batch])
+                batch_scores = np.vstack([fake_action_q, real_action_q])
+                self.disc.fit({'a': batch_a, 's': batch_s, 'tau': tau_values},
+                              batch_scores,
+                              epochs=1,
+                              verbose=False)
 
                 # train G
-                # why do i have labels for agen_output?
-                a_z = noise(BATCH_SIZE, self.dim_noise)
-                y_labels = np.ones((BATCH_SIZE,))  # dummy variable
+                a_z = noise(batch_size, self.dim_noise)
+                y_labels = np.ones((batch_size,))  # dummy variable
                 self.DG.fit({'z': a_z, 's': s_batch},
                             {'disc_output': y_labels, 'a_gen_output': y_labels},
                             epochs=1,
                             verbose=0)
-            print 'Completed: %.2f%%' % (i / float(epochs) * 100)
-            self.save_weights(additional_name='_epoch_' + str(i))
-            print "Epoch took: %.2fs" % (time.time() - stime)
+                
+                tttau_values = np.tile(curr_tau, (batch_size, 1))
+                a_z = noise(batch_size, self.dim_noise)
+                s_batch, a_batch, sum_rewards_batch = self.get_batch(states, actions, sum_rewards, batch_size)
+                real_score_values = np.mean((self.disc.predict([a_batch, s_batch, tttau_values]).squeeze()))
+                fake_score_values = np.mean((self.DG.predict([a_z, s_batch]).squeeze()))
+                #print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
 
-            # How do I evaluate this shit? I need to use it with the trained Q?
-            # (1) Take the
+                if real_score_values <= fake_score_values:
+                    g_lr = 1e-4 / (1+1e-1*i)
+                    d_lr = 1e-3 / (1+1e-1*i) 
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)    
+                else:
+                    g_lr = 1e-3 / (1+1e-1*i)
+                    d_lr = 1e-4 / (1+1e-1*i)
+                    K.set_value(self.opt_G.lr, g_lr)
+                    K.set_value(self.opt_D.lr, d_lr)    
+
+            gen_after = self.a_gen.get_weights()
+            disc_after = self.disc.get_weights()
+            gen_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(gen_before, gen_after)]))
+            disc_w_norm = np.linalg.norm(np.hstack([(a-b).flatten() for a, b in zip(disc_before, disc_after)]))
+
+            print 'Completed: %d / %d' % (i, float(epochs))
+            print "g_lr %.5f d_lr %.5f" %(g_lr, d_lr)
+            #curr_tau = curr_tau * 1 /
+            curr_tau = self.tau / (1.0 + 1e-1 * i)
+            self.save_weights(additional_name='_epoch_' + str(i))
+            self.compare_to_data(states, actions)
+            a_z = noise(len(states), self.dim_noise)
+
+            tttau_values = np.tile(curr_tau, (len(states), 1))
+            print "Real %.4f Gen %.4f" % (real_score_values, fake_score_values)
+            print "Discriminiator MSE error", np.mean(np.linalg.norm(np.array(sum_rewards).squeeze() - self.disc.predict([actions, states, tttau_values]).squeeze()))
+            print "Epoch took: %.2fs" % (time.time() - stime)
+            print "Generator weight norm diff", gen_w_norm
+            print "Disc weight norm diff", disc_w_norm
+            print "================================"
+

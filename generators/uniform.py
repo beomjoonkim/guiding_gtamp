@@ -4,24 +4,27 @@ from gtamp_utils.utils import get_pick_domain, get_place_domain
 # from mover_library import utils
 # from mover_library.utils import get_pick_domain, get_place_domain
 
-
 from feasibility_checkers.two_arm_pick_feasibility_checker import TwoArmPickFeasibilityChecker
 from feasibility_checkers.two_arm_place_feasibility_checker import TwoArmPlaceFeasibilityChecker
 from feasibility_checkers.one_arm_pick_feasibility_checker import OneArmPickFeasibilityChecker
 from feasibility_checkers.one_arm_place_feasibility_checker import OneArmPlaceFeasibilityChecker
 from feasibility_checkers.two_arm_pap_feasiblity_checker import TwoArmPaPFeasibilityChecker
+
 import numpy as np
+import time
 
 
 class UniformGenerator:
-    # Only used in RSC
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
+    def __init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint=None):
         self.problem_env = problem_env
         self.env = problem_env.env
         self.evaled_actions = []
         self.evaled_q_values = []
         self.swept_volume_constraint = swept_volume_constraint
         self.objects_to_check_collision = None
+        self.tried_smpls = []
+        self.smpling_time = []
+        self.max_n_iter = max_n_iter
         operator_type = operator_skeleton.type
 
         target_region = None
@@ -72,11 +75,18 @@ class UniformGenerator:
         assert n_iter > 0
         feasible_op_parameters = []
         for i in range(n_iter):
+            # print 'Sampling attempts %d/%d' % (i, n_iter)
+            stime = time.time()
             op_parameters = self.sample_from_uniform()
+            self.tried_smpls.append(op_parameters)
+            # is this sampling the absolute or relative pick base config?
+            # It is sampling the relative config, but q_goal is the absolute.
             op_parameters, status = self.op_feasibility_checker.check_feasibility(operator_skeleton,
                                                                                   op_parameters,
                                                                                   self.swept_volume_constraint)
 
+            smpling_time = time.time() - stime
+            self.smpling_time.append(smpling_time)
             if status == 'HasSolution':
                 feasible_op_parameters.append(op_parameters)
                 if len(feasible_op_parameters) >= n_parameters_to_try_motion_planning:
@@ -140,11 +150,11 @@ class UniformGenerator:
 
 
 class PaPUniformGenerator(UniformGenerator):
-    def __init__(self, operator_skeleton, problem_env, swept_volume_constraint=None):
-        UniformGenerator.__init__(self, operator_skeleton, problem_env, swept_volume_constraint)
+    def __init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint=None):
+        UniformGenerator.__init__(self, operator_skeleton, problem_env, max_n_iter, swept_volume_constraint)
         self.feasible_pick_params = {}
 
-    def sample_next_point(self, operator_skeleton, n_iter, n_parameters_to_try_motion_planning=1,
+    def sample_next_point(self, operator_skeleton, n_parameters_to_try_motion_planning=1,
                           cached_collisions=None, cached_holding_collisions=None, dont_check_motion_existence=False):
         # Not yet motion-planning-feasible
         target_obj = operator_skeleton.discrete_parameters['object']
@@ -152,15 +162,33 @@ class PaPUniformGenerator(UniformGenerator):
             self.op_feasibility_checker.feasible_pick = self.feasible_pick_params[target_obj]
 
         status = "NoSolution"
-        for n_iter in range(10, n_iter, 10):
+        stime = time.time()
+        for curr_n_iter in range(10, self.max_n_iter, 10):
             feasible_op_parameters, status = self.sample_feasible_op_parameters(operator_skeleton,
-                                                                                n_iter,
+                                                                                curr_n_iter,
                                                                                 n_parameters_to_try_motion_planning)
+
             if status == 'HasSolution':
+                # Don't break here, but try to get more parameters
                 break
+                """
+                if dont_check_motion_existence:
+                    chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
+                    return chosen_op_param
+                else:
+                    chosen_op_param = self.get_pap_param_with_feasible_motion_plan(operator_skeleton,
+                                                                                   feasible_op_parameters,
+                                                                                   cached_collisions,
+                                                                                   cached_holding_collisions)
+                    if chosen_op_param['is_feasible']:
+                        return chosen_op_param
+                """
+        print "Time taken", time.time() - stime, status
+
         if status == "NoSolution":
             return {'is_feasible': False}
 
+        # We would have to move these to the loop in order to be fair
         if dont_check_motion_existence:
             chosen_op_param = self.choose_one_of_params(feasible_op_parameters, status)
         else:

@@ -1,8 +1,7 @@
 import os
+
 from multiprocessing.pool import ThreadPool  # dummy is nothing but multiprocessing but wrapper around threading
-from threaded_test_utils import get_sahs_configs
 from test_scripts.run_greedy import parse_arguments
-import multiprocessing
 
 
 def worker_p(config):
@@ -39,16 +38,6 @@ def main():
             if value is False:
                 continue
             elif value is True:
-                """
-                if key == 'hcount':
-                    config['hcount'] = ""
-                elif key == 'state_hcount':
-                    config['state_hcount'] = ""
-                elif key == 'qlearned_hcount':
-                    config['qlearned_hcount'] = ""
-                if key == 'use_region_agnostic':
-                    config['use_region_agnostic'] = ""
-                """
                 config[key] = ""
             else:
                 config[key] = value

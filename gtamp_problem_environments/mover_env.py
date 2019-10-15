@@ -5,9 +5,8 @@ from gtamp_problem_environments.problem_environment import ProblemEnvironment
 from gtamp_problem_environments.mover_environment_definition import MoverEnvironmentDefinition
 from trajectory_representation.operator import Operator
 
-from gtamp_utils.utils import two_arm_pick_object, two_arm_place_object, set_robot_config, get_body_xytheta, \
-    visualize_path, CustomStateSaver, set_obj_xytheta
-from gtamp_utils.operator_utils.grasp_utils import solveTwoArmIKs, compute_two_arm_grasp
+from gtamp_utils.utils import two_arm_pick_object, set_robot_config, get_body_xytheta, \
+    CustomStateSaver, set_obj_xytheta
 
 OBJECT_ORIGINAL_COLOR = (0, 0, 0)
 COLLIDING_OBJ_COLOR = (0, 1, 1)
@@ -276,42 +275,6 @@ class Mover(ProblemEnvironment):
         applicable_ops = [Operator(operator_name, {'object': o, 'region': r})
                           for o in self.object_names for r in self.region_names]
 
-        """
-        for op_name in self.operator_names:
-            if op_name.find('place') != -1:
-                if self.check_holding_object_precondition():
-                    object_held = self.robot.GetGrabbed()[0]
-                    if self.applicable_op_constraint is None:
-                        for region in self.placement_regions.values():
-                            if op_name == 'one_arm_place':
-                                assert parent_op is not None
-                                op = Operator(operator_type=op_name,
-                                              discrete_parameters={'region': region,
-                                                                   'object': object_held},
-                                              continuous_parameters={
-                                                  'grasp_params': parent_op.continuous_parameters['grasp_params']})
-                            else:
-                                op = Operator(operator_type=op_name,
-                                              discrete_parameters={'region': region,
-                                                                   'object': object_held})
-                            applicable_ops.append(op)
-                    else:
-                        op = Operator(operator_type=op_name,
-                                      discrete_parameters={'region': self.applicable_op_constraint['region'],
-                                                           'object': object_held})
-                        applicable_ops.append(op)
-            else:
-                if not self.check_holding_object_precondition():
-                    if self.applicable_op_constraint is None:
-                        for obj in self.objects:
-                            op = Operator(operator_type=op_name,
-                                          discrete_parameters={'object': obj})
-                            applicable_ops.append(op)
-                    else:
-                        op = Operator(operator_type=op_name,
-                                      discrete_parameters={'object': self.applicable_op_constraint['object']})
-                        applicable_ops.append(op)
-            """
         return applicable_ops
 
 

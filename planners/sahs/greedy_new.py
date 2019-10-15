@@ -10,6 +10,7 @@ from generators.uniform import PaPUniformGenerator
 from generators.learned_generator import LearnedGenerator
 
 from trajectory_representation.operator import Operator
+from trajectory_representation.concrete_node_state import ConcreteNodeState
 
 from helper import get_actions, compute_heuristic, get_state_class
 
@@ -20,6 +21,44 @@ connected = np.array([len(s) >= 2 for s in prm_edges])
 prm_indices = {tuple(v): i for i, v in enumerate(prm_vertices)}
 DISABLE_COLLISIONS = False
 MAX_DISTANCE = 1.0
+
+
+def create_state_vec(key_config_obstacles, action, goal_entities):
+    obj = action.discrete_parameters['object']
+    region = action.discrete_parameters['region']
+    one_hot = utils.convert_binary_vec_to_one_hot(key_config_obstacles)
+    is_goal_obj = utils.convert_binary_vec_to_one_hot(np.array([obj in goal_entities]))
+    is_goal_region = utils.convert_binary_vec_to_one_hot(np.array([region in goal_entities]))
+
+    state_vec = np.vstack([one_hot, is_goal_obj, is_goal_region])
+    state_vec = state_vec.reshape((1, len(state_vec), 2, 1))
+
+    return state_vec
+
+
+def get_pick_base_poses(action, smples):
+    pick_base_poses = []
+    for smpl in smples:
+        smpl = smpl[0:4]
+        sin_cos_encoding = smpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        smpl = np.hstack([smpl[0:2], decoded_angle])
+        abs_base_pose = utils.get_absolute_pick_base_pose_from_ir_parameters(smpl, action.discrete_parameters['object'])
+        pick_base_poses.append(abs_base_pose)
+    return pick_base_poses
+
+
+def get_place_base_poses(action, smples, mover):
+    place_base_poses = smples[:, 4:]
+    to_return = []
+    for bsmpl in place_base_poses:
+        sin_cos_encoding = bsmpl[-2:]
+        decoded_angle = utils.decode_sin_and_cos_to_angle(sin_cos_encoding)
+        bsmpl = np.hstack([bsmpl[0:2], decoded_angle])
+        to_return.append(bsmpl)
+    to_return = np.array(to_return)
+    to_return[:, 0:2] += mover.regions[action.discrete_parameters['region']].box[0]
+    return to_return
 
 
 def search(mover, config, pap_model, learned_smpler=None):
@@ -34,16 +73,24 @@ def search(mover, config, pap_model, learned_smpler=None):
 
     state = statecls(mover, goal)
 
+    # utils.viewer()
     """
     actions = get_actions(mover, goal, config)
     action = actions[0]
+    utils.set_color(action.discrete_parameters['object'], [1, 0, 0])
+    state_vec = create_state_vec(state.key_config_obstacles, action, goal)
+    smpler = LearnedGenerator(action, mover, learned_smpler, state_vec)
+    smples = np.vstack([smpler.sampler.generate(state_vec) for _ in range(10)])
+    pick_base_poses = get_pick_base_poses(action, smples)
+    place_base_poses = get_place_base_poses(action, smples, mover)
+    utils.visualize_path(place_base_poses)
+    #utils.visualize_path(pick_base_poses)
+    import pdb;
+    pdb.set_trace()
 
-    smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
-    # How can I change the state.collides to the one_hot? How long would it take?
     smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
                                             cached_collisions=state.collides,
                                             cached_holding_collisions=None)
-    import pdb;pdb.set_trace()
     """
 
     # lowest valued items are retrieved first in PriorityQueue
@@ -51,6 +98,7 @@ def search(mover, config, pap_model, learned_smpler=None):
     initnode = Node(None, None, state)
     initial_state = state
     actions = get_actions(mover, goal, config)
+    nodes = [initnode]
     for a in actions:
         hval = compute_heuristic(state, a, pap_model, mover, config)
         discrete_params = (a.discrete_parameters['object'], a.discrete_parameters['region'])
@@ -65,7 +113,7 @@ def search(mover, config, pap_model, learned_smpler=None):
         print "Time %.2f / %.2f " % (curr_time, config.timelimit)
         print "Iter %d / %d" % (iter, config.num_node_limit)
         if curr_time > config.timelimit or iter > config.num_node_limit:
-            return None, iter
+            return None, iter, nodes
 
         if action_queue.empty():
             actions = get_actions(mover, goal, config)
@@ -86,26 +134,21 @@ def search(mover, config, pap_model, learned_smpler=None):
 
         if action.type == 'two_arm_pick_two_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
-            a_obj = action.discrete_parameters['two_arm_place_object']
-            a_region = action.discrete_parameters['two_arm_place_region']
             if learned_smpler is None:
-                smpler = PaPUniformGenerator(action, mover, None)
-                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
-                                                        cached_collisions=state.collides, cached_holding_collisions=None)
-            else:
-                smpler = LearnedGenerator(action, mover, learned_smpler, state.key_config_obstacles)
-                # How can I change the state.collides to the one_hot? How long would it take?
-                smpled_param = smpler.sample_next_point(action, n_iter=200, n_parameters_to_try_motion_planning=3,
+                smpler = PaPUniformGenerator(action, mover, max_n_iter=200)
+                stime = time.time()
+                smpled_param = smpler.sample_next_point(action, n_parameters_to_try_motion_planning=3,
                                                         cached_collisions=state.collides,
                                                         cached_holding_collisions=None)
-            """
-            smpler = UniformPaPGenerator(None, action, mover, None,
-                                         n_candidate_params_to_smpl=3,
-                                         total_number_of_feasibility_checks=200,
-                                         dont_check_motion_existence=False)
-            smpled_param = smpler.sample_next_point(cached_collisions=state.collides,
-                                                    cached_holding_collisions=None)
-            """
+                print 'smpling time', time.time() - stime
+            else:
+                smpler = LearnedGenerator(action, mover, learned_smpler, state, max_n_iter=200)
+                # How can I change the state.collides to the one_hot? How long would it take?
+                stime = time.time()
+                smpled_param = smpler.sample_next_point(action, n_parameters_to_try_motion_planning=3,
+                                                        cached_collisions=state.collides,
+                                                        cached_holding_collisions=None)
+                print 'smpling time', time.time() - stime
 
             if smpled_param['is_feasible']:
                 action.continuous_parameters = smpled_param
@@ -122,7 +165,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                 print("found successful plan: {}".format(n_objs_pack))
                 plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
                 plan = [nd.action for nd in plan[1:]] + [action]
-                return plan, iter
+                return plan, iter, nodes
             else:
                 newstate = statecls(mover, goal, node.state, action)
                 print "New state computed"
@@ -131,7 +174,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                 for newaction in newactions:
                     hval = compute_heuristic(newstate, newaction, pap_model, mover, config) - 1. * newnode.depth
                     action_queue.put((hval, float('nan'), newaction, newnode))
-                # import pdb;pdb.set_trace()
+                nodes.append(newnode)
 
         elif action.type == 'one_arm_pick_one_arm_place':
             print("Sampling for {}".format(action.discrete_parameters.values()))
@@ -181,7 +224,7 @@ def search(mover, config, pap_model, learned_smpler=None):
                     print("found successful plan: {}".format(n_objs_pack))
                     plan = list(node.backtrack())[::-1]  # plan of length 0 is possible I think
                     plan = [nd.action for nd in plan[1:]] + [action]
-                    return plan, iter
+                    return plan, iter, nodes
                 else:
                     newstate = statecls(mover, goal, node.state, action)
                     print "New state computed"

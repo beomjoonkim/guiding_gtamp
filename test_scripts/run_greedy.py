@@ -6,17 +6,17 @@ import socket
 import random
 import os
 import tensorflow as tf
+import collections
 
+from manipulation.primitives.savers import DynamicEnvironmentStateSaver
 from gtamp_problem_environments.mover_env import PaPMoverEnv
 from gtamp_problem_environments.one_arm_mover_env import PaPOneArmMoverEnv
 from planners.subplanners.motion_planner import BaseMotionPlanner
-from manipulation.primitives.savers import DynamicEnvironmentStateSaver
-
-from generators.learning.AdMon import AdversarialMonteCarlo
 
 from planners.sahs.greedy_new import search
 from learn.pap_gnn import PaPGNN
-import collections
+
+from generators.learning.utils.model_creation_utils import create_imle_model
 
 
 def get_problem_env(config):
@@ -67,7 +67,7 @@ def get_solution_file_name(config):
                    '_mse_weight_' + str(config.mse_weight) + \
                    '_use_region_agnostic_' + str(config.use_region_agnostic) + \
                    '_mix_rate_' + str(config.mixrate) + '/'
-        sampler_config = '/smpler_config_num_train_' + str(config.num_train)  + '/'
+        sampler_config = '/smpler_config_num_train_' + str(config.num_train) + '/'
         solution_file_dir = solution_file_dir + q_config + sampler_config
     elif config.qlearned_hcount:
         solution_file_dir += '/qlearned_hcount_obj_already_in_goal/shortest_irsc' \
@@ -125,6 +125,7 @@ def parse_arguments():
     parser.add_argument('-n_objs_pack', type=int, default=1)
     parser.add_argument('-num_node_limit', type=int, default=3000)
     parser.add_argument('-num_train', type=int, default=5000)
+    parser.add_argument('-sampler_seed', type=int, default=0)
     parser.add_argument('-timelimit', type=float, default=300)
     parser.add_argument('-mixrate', type=float, default=1.0)
     parser.add_argument('-mse_weight', type=float, default=1.0)
@@ -212,16 +213,10 @@ def get_pap_gnn_model(mover, config):
     return pap_model
 
 
-def get_learned_smpler():
-    n_key_configs = 618
-    dim_state = (n_key_configs, 2, 1)
-    dim_action = 6
-    admon = AdversarialMonteCarlo(dim_action=dim_action, dim_state=dim_state,
-                                  save_folder='./generators/learning/learned_weights/',
-                                  tau=1.0,
-                                  explr_const=0.0)
-    #admon.load_weights(agen_file='a_gen_epoch_11.h5',
-    #                   disc_file='disc_epoch_11.h5')
+def get_learned_smpler(sampler_seed):
+    print "Creating the learned sampler.."
+    admon = create_imle_model(sampler_seed)
+    print "Created IMLE model with weight name", admon.weight_file_name
     return admon
 
 
@@ -251,12 +246,11 @@ def main():
     else:
         pap_model = None
     if config.integrated:
-        smpler = get_learned_smpler()
+        smpler = get_learned_smpler(config.sampler_seed)
     else:
         smpler = None
 
     solution_file_name = get_solution_file_name(config)
-
     is_problem_solved_before = os.path.isfile(solution_file_name)
     plan_length = 0
     num_nodes = 0
@@ -268,12 +262,17 @@ def main():
             num_nodes = trajectory['num_nodes']
     else:
         t = time.time()
-        plan, num_nodes = search(problem_env, config, pap_model, smpler)
+        plan, num_nodes, nodes = search(problem_env, config, pap_model, smpler)
         tottime = time.time() - t
         success = plan is not None
         plan_length = len(plan) if success else 0
         if success and config.domain == 'one_arm_mover':
             make_pklable(plan)
+
+        for n in nodes:
+            n.state.make_pklable()
+
+        nodes = None
 
         data = {
             'n_objs_pack': config.n_objs_pack,
@@ -281,7 +280,8 @@ def main():
             'success': success,
             'plan_length': plan_length,
             'num_nodes': num_nodes,
-            'plan': plan
+            'plan': plan,
+            'nodes': nodes
         }
         with open(solution_file_name, 'wb') as f:
             pickle.dump(data, f)
